@@ -121,20 +121,35 @@ export class WhatsAppClient {
 
     // Handle incoming messages
     this.sock.ev.on('messages.upsert', async ({ messages, type }: { messages: any[]; type: string }) => {
-      if (type !== 'notify') return;
+      console.log(`[WA] messages.upsert event: type=${type}, count=${messages.length}`);
+
+      if (type !== 'notify') {
+        console.log(`[WA] Skipping non-notify type: ${type}`);
+        return;
+      }
 
       for (const msg of messages) {
+        console.log(`[WA] Message: fromMe=${msg.key.fromMe}, remoteJid=${msg.key.remoteJid}, id=${msg.key.id}`);
+
         // Skip own messages
-        if (msg.key.fromMe) continue;
+        if (msg.key.fromMe) {
+          console.log(`[WA] Skipping own message`);
+          continue;
+        }
 
         // Skip status updates
-        if (msg.key.remoteJid === 'status@broadcast') continue;
+        if (msg.key.remoteJid === 'status@broadcast') {
+          console.log(`[WA] Skipping status broadcast`);
+          continue;
+        }
 
         const content = this.extractMessageContent(msg);
+        console.log(`[WA] Extracted content: ${content ? content.substring(0, 100) : 'NULL'}`);
         if (!content) continue;
 
         const isGroup = msg.key.remoteJid?.endsWith('@g.us') || false;
 
+        console.log(`[WA] Forwarding message to nanobot: sender=${msg.key.remoteJid}, content=${content.substring(0, 50)}`);
         this.options.onMessage({
           id: msg.key.id || '',
           sender: msg.key.remoteJid || '',

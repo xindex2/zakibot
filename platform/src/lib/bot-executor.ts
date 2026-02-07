@@ -132,6 +132,23 @@ export async function startBot(configId: string) {
 
         const qrFilePath = path.join(workspacePath, 'whatsapp_qr.txt');
 
+        console.log(`[Bridge ${config.name}]: bridgeDir=${bridgeDir}`);
+        console.log(`[Bridge ${config.name}]: bridgePort=${bridgePort}`);
+        console.log(`[Bridge ${config.name}]: authDir=${authDir}`);
+        console.log(`[Bridge ${config.name}]: qrFilePath=${qrFilePath}`);
+
+        // Auto-install bridge dependencies if node_modules missing
+        const bridgeNodeModules = path.join(bridgeDir, 'node_modules');
+        if (!fs.existsSync(bridgeNodeModules)) {
+            console.log(`[Bridge ${config.name}]: node_modules not found, running npm install...`);
+            try {
+                execSync('npm install', { cwd: bridgeDir, stdio: 'pipe', timeout: 120000 });
+                console.log(`[Bridge ${config.name}]: npm install completed`);
+            } catch (installErr: any) {
+                console.error(`[Bridge ${config.name}]: npm install failed:`, installErr.stderr?.toString() || installErr.message);
+            }
+        }
+
         // Auto-build bridge if dist doesn't exist
         const bridgeDistEntry = path.join(bridgeDir, 'dist', 'index.js');
         if (!fs.existsSync(bridgeDistEntry)) {
@@ -144,21 +161,39 @@ export async function startBot(configId: string) {
             }
         }
 
-        // Start bridge
-        const bridge = spawn('node', ['dist/index.js'], {
-            cwd: bridgeDir,
-            env: {
-                ...process.env,
-                BRIDGE_PORT: bridgePort.toString(),
-                AUTH_DIR: authDir,
-                QR_FILE_PATH: qrFilePath
-            }
-        });
+        // Verify dist exists before spawning
+        if (!fs.existsSync(bridgeDistEntry)) {
+            console.error(`[Bridge ${config.name}]: FATAL - dist/index.js still missing after build attempt. Bridge will NOT start.`);
+        } else {
+            console.log(`[Bridge ${config.name}]: Starting bridge on port ${bridgePort}...`);
 
-        bridge.stdout?.on('data', (data) => console.log(`[Bridge ${config.name}]: ${data}`));
-        bridge.stderr?.on('data', (data) => console.error(`[Bridge error ${config.name}]: ${data}`));
+            // Start bridge
+            const bridge = spawn('node', ['dist/index.js'], {
+                cwd: bridgeDir,
+                env: {
+                    ...process.env,
+                    BRIDGE_PORT: bridgePort.toString(),
+                    AUTH_DIR: authDir,
+                    QR_FILE_PATH: qrFilePath
+                }
+            });
 
-        processes[configId].bridge = bridge;
+            bridge.stdout?.on('data', (data: any) => console.log(`[Bridge ${config.name}]: ${data}`));
+            bridge.stderr?.on('data', (data: any) => console.error(`[Bridge error ${config.name}]: ${data}`));
+
+            bridge.on('error', (err) => {
+                console.error(`[Bridge ${config.name}]: SPAWN ERROR:`, err.message);
+            });
+
+            bridge.on('close', (code) => {
+                console.log(`[Bridge ${config.name}]: Process exited with code ${code}`);
+                if (code !== 0) {
+                    console.error(`[Bridge ${config.name}]: Bridge crashed! Check bridge dependencies with: cd ${bridgeDir} && npm install`);
+                }
+            });
+
+            processes[configId].bridge = bridge;
+        }
     }
 
     // Spawn nanobot

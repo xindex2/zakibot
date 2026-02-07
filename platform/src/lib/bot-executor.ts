@@ -83,6 +83,12 @@ export async function startBot(configId: string) {
                 encrypt_key: config.feishuEncryptKey || "",
                 verification_token: config.feishuVerificationToken || "",
                 allow_from: (config as any).feishuAllowFrom ? (config as any).feishuAllowFrom.split(',').map((s: string) => s.trim()) : []
+            },
+            slack: {
+                enabled: (config as any).slackEnabled || false,
+                bot_token: (config as any).slackBotToken || "",
+                app_token: (config as any).slackAppToken || "",
+                allow_from: (config as any).slackAllowFrom ? (config as any).slackAllowFrom.split(',').map((s: string) => s.trim()) : []
             }
         },
         tools: {
@@ -132,18 +138,15 @@ export async function startBot(configId: string) {
 
         const qrFilePath = path.join(workspacePath, 'whatsapp_qr.txt');
 
-        console.log(`[Bridge ${config.name}]: bridgeDir=${bridgeDir}`);
-        console.log(`[Bridge ${config.name}]: bridgePort=${bridgePort}`);
-        console.log(`[Bridge ${config.name}]: authDir=${authDir}`);
-        console.log(`[Bridge ${config.name}]: qrFilePath=${qrFilePath}`);
+
 
         // Auto-install bridge dependencies if node_modules missing
         const bridgeNodeModules = path.join(bridgeDir, 'node_modules');
         if (!fs.existsSync(bridgeNodeModules)) {
-            console.log(`[Bridge ${config.name}]: node_modules not found, running npm install...`);
+
             try {
                 execSync('npm install', { cwd: bridgeDir, stdio: 'pipe', timeout: 120000 });
-                console.log(`[Bridge ${config.name}]: npm install completed`);
+
             } catch (installErr: any) {
                 console.error(`[Bridge ${config.name}]: npm install failed:`, installErr.stderr?.toString() || installErr.message);
             }
@@ -151,10 +154,10 @@ export async function startBot(configId: string) {
 
         // Always rebuild bridge to ensure compiled code matches source
         const bridgeDistEntry = path.join(bridgeDir, 'dist', 'index.js');
-        console.log(`[Bridge ${config.name}]: Building bridge (npx tsc)...`);
+
         try {
             execSync('npx tsc', { cwd: bridgeDir, stdio: 'pipe', timeout: 30000 });
-            console.log(`[Bridge ${config.name}]: Bridge built successfully`);
+
         } catch (buildErr: any) {
             console.error(`[Bridge ${config.name}]: Failed to build bridge:`, buildErr.stderr?.toString() || buildErr.message);
         }
@@ -163,7 +166,7 @@ export async function startBot(configId: string) {
         if (!fs.existsSync(bridgeDistEntry)) {
             console.error(`[Bridge ${config.name}]: FATAL - dist/index.js still missing after build attempt. Bridge will NOT start.`);
         } else {
-            console.log(`[Bridge ${config.name}]: Starting bridge on port ${bridgePort}...`);
+
 
             // Start bridge
             const bridge = spawn('node', ['dist/index.js'], {
@@ -176,7 +179,7 @@ export async function startBot(configId: string) {
                 }
             });
 
-            bridge.stdout?.on('data', (data: any) => console.log(`[Bridge ${config.name}]: ${data}`));
+
             bridge.stderr?.on('data', (data: any) => console.error(`[Bridge error ${config.name}]: ${data}`));
 
             bridge.on('error', (err) => {
@@ -184,7 +187,7 @@ export async function startBot(configId: string) {
             });
 
             bridge.on('close', (code) => {
-                console.log(`[Bridge ${config.name}]: Process exited with code ${code}`);
+
                 if (code !== 0) {
                     console.error(`[Bridge ${config.name}]: Bridge crashed! Check bridge dependencies with: cd ${bridgeDir} && npm install`);
                 }
@@ -209,15 +212,17 @@ export async function startBot(configId: string) {
             APIFY_API_TOKEN: config.apifyApiToken || env.APIFY_API_TOKEN,
             ENABLE_WEATHER: config.weatherEnabled ? "true" : "false",
             ENABLE_SUMMARIZE: config.summarizeEnabled ? "true" : "false",
-            ENABLE_TMUX: config.tmuxEnabled ? "true" : "false"
+            ENABLE_TMUX: config.tmuxEnabled ? "true" : "false",
+            ENABLE_CRON: (config as any).cronEnabled ? "true" : "false",
+            ENABLE_SKILL_CREATOR: (config as any).skillCreatorEnabled ? "true" : "false"
         }
     });
 
-    child.stdout?.on('data', (data: any) => console.log(`[Bot ${config.name}]: ${data}`));
+
     child.stderr?.on('data', (data: any) => console.error(`[Bot error ${config.name}]: ${data}`));
 
     child.on('close', (code: any) => {
-        console.log(`[Bot ${config.name}] stopped with code ${code}`);
+
         // Only kill the bridge that was spawned WITH this bot, not a newer one
         if (currentBridge && processes[configId]?.bridge === currentBridge) {
             currentBridge.kill('SIGTERM');

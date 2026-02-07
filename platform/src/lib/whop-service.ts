@@ -20,7 +20,7 @@ export class WhopService {
      * Process Whop Webhook Event
      */
     static async handleEvent(event: any) {
-        console.log(`[Whop] Processing event: ${event.action || event.type}`);
+
 
         let eventType = event.action || event.type;
         let data = event.data || event;
@@ -99,11 +99,11 @@ export class WhopService {
             case 'dispute_updated':
             case 'refund.updated':
             case 'refund_updated':
-                console.log(`[Whop] Audit event acknowledged: ${eventType}`);
+
                 break;
 
             default:
-                console.log(`[Whop] No specific handler for event: ${eventType}`);
+
         }
     }
 
@@ -122,7 +122,7 @@ export class WhopService {
         let user = await prisma.user.findUnique({ where: { email } });
 
         if (!user) {
-            console.log(`[Whop] Creating new user for ${email}`);
+
             user = await prisma.user.create({
                 data: {
                     email,
@@ -164,6 +164,6 @@ export class WhopService {
             }
         });
 
-        console.log(`[Whop] Subscription ${status} for user ${user.id} (Plan: ${planId})`);
+
     }
 }

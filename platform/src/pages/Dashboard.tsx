@@ -22,7 +22,8 @@ const ICONS = {
     discord: 'https://favicon.im/discord.com?t=1770422839363',
     whatsapp: 'https://favicon.im/whatsapp.com?larger=true',
     feishu: 'https://www.feishu.cn/favicon.ico',
-    github: 'https://github.com/favicon.ico'
+    github: 'https://github.com/favicon.ico',
+    slack: 'https://a.slack-edge.com/80588/marketing/img/meta/favicon-32.png'
 };
 
 const PROVIDERS = [
@@ -127,6 +128,10 @@ interface AgentConfig {
     feishuEncryptKey: string;
     feishuVerificationToken: string;
     feishuAllowFrom: string;
+    slackEnabled: boolean;
+    slackBotToken: string;
+    slackAppToken: string;
+    slackAllowFrom: string;
     webSearchApiKey: string;
     githubEnabled: boolean;
     githubToken: string;
@@ -136,6 +141,8 @@ interface AgentConfig {
     restrictToWorkspace: boolean;
     weatherEnabled: boolean;
     summarizeEnabled: boolean;
+    cronEnabled: boolean;
+    skillCreatorEnabled: boolean;
     firecrawlApiKey: string;
     apifyApiToken: string;
     gatewayHost: string;
@@ -167,7 +174,7 @@ export default function Dashboard() {
             const interval = setInterval(() => {
                 fetchAgents();
                 fetchSubscription();
-            }, 5000);
+            }, 30000);
             return () => clearInterval(interval);
         }
     }, [user]);
@@ -283,11 +290,14 @@ export default function Dashboard() {
             discordEnabled: false,
             whatsappEnabled: false,
             feishuEnabled: false,
+            slackEnabled: false,
             browserEnabled: true,
             shellEnabled: false,
             tmuxEnabled: false,
             weatherEnabled: false,
             summarizeEnabled: false,
+            cronEnabled: false,
+            skillCreatorEnabled: false,
             webSearchApiKey: '',
             githubToken: '',
             firecrawlApiKey: '',
@@ -813,6 +823,44 @@ export default function Dashboard() {
                                                     </InputWrapper>
                                                 </div>
                                             </ChannelInput>
+
+                                            <ChannelInput
+                                                name="Slack" icon={ICONS.slack}
+                                                enabled={editingAgent.slackEnabled}
+                                                onToggle={(v: boolean) => setEditingAgent({ ...editingAgent, slackEnabled: v })}
+                                            >
+                                                <div className="space-y-4">
+                                                    <div className="bg-white/5 p-4 rounded-2xl text-[11px] text-white/60 leading-relaxed border border-white/5">
+                                                        Create a Slack app at <a href="https://api.slack.com/apps" target="_blank" className="text-primary hover:underline">api.slack.com</a>. Enable <span className="text-white font-bold">Socket Mode</span> and add the <span className="text-white font-bold">app_mentions:read</span> and <span className="text-white font-bold">chat:write</span> scopes. Generate both a Bot Token (xoxb-) and an App-Level Token (xapp-).
+                                                    </div>
+                                                    <InputWrapper label="Bot Token (xoxb-...)">
+                                                        <input
+                                                            type="password"
+                                                            value={editingAgent.slackBotToken || ''}
+                                                            onChange={e => setEditingAgent({ ...editingAgent, slackBotToken: e.target.value })}
+                                                            className="input-modern w-full font-mono text-xs"
+                                                            placeholder="xoxb-..."
+                                                        />
+                                                    </InputWrapper>
+                                                    <InputWrapper label="App Token (xapp-... for Socket Mode)">
+                                                        <input
+                                                            type="password"
+                                                            value={editingAgent.slackAppToken || ''}
+                                                            onChange={e => setEditingAgent({ ...editingAgent, slackAppToken: e.target.value })}
+                                                            className="input-modern w-full font-mono text-xs"
+                                                            placeholder="xapp-..."
+                                                        />
+                                                    </InputWrapper>
+                                                    <InputWrapper label="Allowed Users (IDs)">
+                                                        <input
+                                                            value={editingAgent.slackAllowFrom || ''}
+                                                            onChange={e => setEditingAgent({ ...editingAgent, slackAllowFrom: e.target.value })}
+                                                            className="input-modern w-full text-xs"
+                                                            placeholder="e.g. U01234567, U07654321"
+                                                        />
+                                                    </InputWrapper>
+                                                </div>
+                                            </ChannelInput>
                                         </div>
                                     </Section>
                                 )}
@@ -952,9 +1000,11 @@ export default function Dashboard() {
                                     <Section icon={<Zap className="text-violet-400" />} title="Skills" desc="Enable bundled capabilities.">
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-10">
                                             {[
-                                                { name: 'Web Search', desc: 'Real-time internet search via Brave Search API.', icon: <Search size={20} />, key: 'weatherEnabled' },
+                                                { name: 'Weather', desc: 'Real-time weather data and forecasts.', icon: <Search size={20} />, key: 'weatherEnabled' },
                                                 { name: 'GitHub', desc: 'Interact with repos, PRs, issues, and code reviews.', icon: <Globe size={20} />, key: 'githubEnabled' },
                                                 { name: 'Summarization', desc: 'Generate summaries of long documents and web pages.', icon: <FileText size={20} />, key: 'summarizeEnabled' },
+                                                { name: 'Cron Scheduler', desc: 'Schedule recurring tasks, reminders and periodic actions.', icon: <Clock size={20} />, key: 'cronEnabled' },
+                                                { name: 'Skill Creator', desc: 'Dynamically create new skills and capabilities.', icon: <Sparkles size={20} />, key: 'skillCreatorEnabled' },
                                                 { name: 'tmux Sessions', desc: 'Manage persistent terminal sessions for long tasks.', icon: <Terminal size={20} />, key: 'tmuxEnabled' },
                                                 { name: 'Web Browser', desc: 'Full headless Chrome for browsing and scraping.', icon: <Globe size={20} />, key: 'browserEnabled' },
                                                 { name: 'System Shell', desc: 'Execute system commands and scripts.', icon: <Terminal size={20} />, key: 'shellEnabled' },

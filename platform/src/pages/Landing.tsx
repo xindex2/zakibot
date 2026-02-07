@@ -178,6 +178,121 @@ export default function Landing() {
                     </div>
                 </div>
             </section>
+
+            {/* Deploy Under 1 Minute */}
+            <section style={{ padding: 'var(--spacing-2xl) 0', background: 'rgba(255,107,107,0.02)', borderTop: '1px solid var(--color-border)', position: 'relative', zIndex: 1 }}>
+                <div className="container">
+                    <h2 className="text-center" style={{ fontSize: '2.5rem', marginBottom: 'var(--spacing-sm)', letterSpacing: '-0.02em' }}>
+                        Deploy OpenClaw under 1 minute
+                    </h2>
+                    <p className="text-center" style={{ color: 'var(--color-text-secondary)', maxWidth: '700px', margin: '0 auto var(--spacing-2xl)', fontSize: '1.1rem', lineHeight: 1.6 }}>
+                        Avoid all technical complexity and one-click deploy your own 24/7 active OpenClaw instance under 1 minute.
+                    </p>
+
+                    <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))',
+                        gap: 'var(--spacing-xl)',
+                        maxWidth: '1000px',
+                        margin: '0 auto'
+                    }}>
+                        {/* Traditional Method */}
+                        <div className="card-glass" style={{
+                            padding: 'var(--spacing-xl)',
+                            borderRadius: 'var(--radius-xl)',
+                            opacity: 0.7,
+                            border: '1px solid var(--color-border)'
+                        }}>
+                            <h3 style={{ fontSize: '1.3rem', marginBottom: 'var(--spacing-lg)', color: 'var(--color-text-muted)' }}>
+                                Traditional Method
+                            </h3>
+                            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 'var(--spacing-sm)' }}>
+                                {[
+                                    { step: 'Purchasing a VPS server', time: '15 min' },
+                                    { step: 'Creating SSH keys & storing securely', time: '10 min' },
+                                    { step: 'Connecting to the server via SSH', time: '5 min' },
+                                    { step: 'Installing Node.js and NPM', time: '5 min' },
+                                    { step: 'Installing OpenClaw', time: '7 min' },
+                                    { step: 'Setting up OpenClaw', time: '10 min' },
+                                    { step: 'Connecting to AI provider', time: '4 min' },
+                                    { step: 'Pairing with Telegram', time: '4 min' },
+                                ].map((item, i) => (
+                                    <li key={i} style={{
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
+                                        padding: '0.6rem 0',
+                                        borderBottom: '1px solid rgba(255,255,255,0.05)',
+                                        fontSize: '0.9rem',
+                                        color: 'var(--color-text-secondary)'
+                                    }}>
+                                        <span>{item.step}</span>
+                                        <span style={{ fontWeight: 'bold', color: 'var(--color-text-muted)', whiteSpace: 'nowrap', marginLeft: '1rem' }}>{item.time}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                            <div style={{
+                                marginTop: 'var(--spacing-lg)',
+                                padding: '0.75rem 1rem',
+                                background: 'rgba(255,255,255,0.03)',
+                                borderRadius: 'var(--radius-md)',
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center'
+                            }}>
+                                <span style={{ fontWeight: 'bold', color: 'var(--color-text-secondary)' }}>Total</span>
+                                <span style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#ef4444' }}>~60 min</span>
+                            </div>
+                            <p style={{ marginTop: 'var(--spacing-md)', fontSize: '0.8rem', color: 'var(--color-text-muted)', lineHeight: 1.5, fontStyle: 'italic' }}>
+                                If you're non-technical, multiply these times by 10 — you have to learn each step before doing it.
+                            </p>
+                        </div>
+
+                        {/* SimpleClaw */}
+                        <div className="card-glass" style={{
+                            padding: 'var(--spacing-xl)',
+                            borderRadius: 'var(--radius-xl)',
+                            border: '2px solid var(--coral-bright)',
+                            background: 'rgba(255,107,107,0.05)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            textAlign: 'center',
+                            position: 'relative'
+                        }}>
+                            <div style={{
+                                position: 'absolute',
+                                top: '-12px',
+                                left: '50%',
+                                transform: 'translateX(-50%)',
+                                background: 'var(--coral-bright)',
+                                color: 'white',
+                                padding: '4px 16px',
+                                borderRadius: 'var(--radius-full)',
+                                fontSize: '0.75rem',
+                                fontWeight: 'bold',
+                                textTransform: 'uppercase'
+                            }}>
+                                SimpleClaw
+                            </div>
+                            <div style={{ fontSize: '5rem', fontWeight: 'bold', color: 'var(--coral-bright)', lineHeight: 1, marginBottom: 'var(--spacing-md)' }}>
+                                &lt;1 min
+                            </div>
+                            <p style={{ fontSize: '1.1rem', color: 'var(--color-text-secondary)', lineHeight: 1.6, maxWidth: '320px', marginBottom: 'var(--spacing-lg)' }}>
+                                Pick a model, connect Telegram, deploy — done under 1 minute.
+                            </p>
+                            <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', lineHeight: 1.6, maxWidth: '320px' }}>
+                                Servers, SSH and OpenClaw environments are already set up, waiting to get assigned. Simple, secure and fast connection to your bot.
+                            </p>
+                            <Link to="/register" className="btn btn-primary" style={{ marginTop: 'var(--spacing-xl)', padding: '0.8rem 2.5rem', fontSize: '1rem' }}>
+                                <FontAwesomeIcon icon={faArrowRight} style={{ marginRight: '8px' }} />
+                                Deploy Now
+                            </Link>
+                        </div>
+                    </div>
+                </div>
+            </section>
             {/* Pricing Section */}
             <section id="pricing" style={{ padding: 'var(--spacing-2xl) 0', position: 'relative', zIndex: 1, borderTop: '1px solid var(--color-border)' }}>
                 <div className="container">

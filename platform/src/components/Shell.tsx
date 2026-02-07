@@ -47,9 +47,8 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                         {sidebarOpen ? <X size={22} /> : <Menu size={22} />}
                     </button>
                     <Link to="/dashboard" className="flex items-center gap-2 md:gap-3 group">
-                        <div className="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center transition-transform hover:scale-110">
-                            <Logo size={32} className="drop-shadow-lg md:hidden" />
-                            <Logo size={40} className="drop-shadow-lg hidden md:block" />
+                        <div className="flex items-center justify-center transition-transform hover:scale-110">
+                            <Logo size={80} className="drop-shadow-lg" />
                         </div>
                         <span className="text-xs md:text-sm font-black tracking-widest uppercase italic">OpenClaw<span className="text-red-600"> Host</span></span>
                     </Link>

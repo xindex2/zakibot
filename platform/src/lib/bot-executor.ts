@@ -196,6 +196,9 @@ export async function startBot(configId: string) {
         }
     }
 
+    // Capture current bridge reference so close handler doesn't kill a NEW bridge on restart
+    const currentBridge = processes[configId].bridge;
+
     // Spawn nanobot
     const child = spawn(pythonPath, ['-m', 'nanobot', 'gateway'], {
         cwd: nanobotRoot,
@@ -212,13 +215,16 @@ export async function startBot(configId: string) {
         }
     });
 
-    child.stdout?.on('data', (data) => console.log(`[Bot ${config.name}]: ${data}`));
-    child.stderr?.on('data', (data) => console.error(`[Bot error ${config.name}]: ${data}`));
+    child.stdout?.on('data', (data: any) => console.log(`[Bot ${config.name}]: ${data}`));
+    child.stderr?.on('data', (data: any) => console.error(`[Bot error ${config.name}]: ${data}`));
 
-    child.on('close', (code) => {
+    child.on('close', (code: any) => {
         console.log(`[Bot ${config.name}] stopped with code ${code}`);
-        processes[configId]?.bridge?.kill('SIGTERM');
-        delete processes[configId];
+        // Only kill the bridge that was spawned WITH this bot, not a newer one
+        if (currentBridge && processes[configId]?.bridge === currentBridge) {
+            currentBridge.kill('SIGTERM');
+            delete processes[configId];
+        }
         prisma.botConfig.update({
             where: { id: configId },
             data: { status: 'stopped' }
@@ -244,13 +250,13 @@ export async function stopBot(configId: string) {
     if (p) {
         p.bot.kill('SIGTERM');
         p.bridge?.kill('SIGTERM');
-        setTimeout(() => {
-            try {
-                p.bot.kill('SIGKILL');
-                p.bridge?.kill('SIGKILL');
-            } catch (e) { }
-        }, 1000);
         delete processes[configId];
+        // Wait for processes to fully exit before allowing restart
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        try {
+            p.bot.kill('SIGKILL');
+            p.bridge?.kill('SIGKILL');
+        } catch (e) { }
     }
 
     await prisma.botConfig.update({

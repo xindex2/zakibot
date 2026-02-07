@@ -647,12 +647,13 @@ export default function Dashboard() {
                                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-10">
                                             <ChannelInput
                                                 name="Telegram" icon={ICONS.telegram}
+                                                badge="Recommended"
                                                 enabled={editingAgent.telegramEnabled}
                                                 onToggle={(v: boolean) => setEditingAgent({ ...editingAgent, telegramEnabled: v })}
                                             >
                                                 <div className="space-y-4">
                                                     <div className="bg-white/5 p-4 rounded-2xl text-[11px] text-white/60 leading-relaxed border border-white/5">
-                                                        Get a token from <a href="https://t.me/botfather" target="_blank" className="text-primary hover:underline">@BotFather</a>.
+                                                        Get a token from <a href="https://t.me/botfather" target="_blank" className="text-primary hover:underline">@BotFather</a>. Telegram gives your bot its own dedicated identity — users message the bot directly, no personal number needed.
                                                     </div>
                                                     <InputWrapper label="Bot Token">
                                                         <input
@@ -700,6 +701,9 @@ export default function Dashboard() {
                                                 onToggle={(v: boolean) => setEditingAgent({ ...editingAgent, whatsappEnabled: v })}
                                             >
                                                 <div className="space-y-4">
+                                                    <div className="bg-amber-500/10 p-4 rounded-2xl text-[11px] text-amber-200/80 leading-relaxed border border-amber-500/20">
+                                                        <span className="font-bold text-amber-300">⚠️ Important:</span> The phone number you link will <span className="font-bold text-white">become the bot</span> — it will auto-reply to all incoming messages. We strongly recommend using a <span className="font-bold text-white">dedicated/new number</span> instead of your personal one. For a simpler setup, consider <span className="font-bold text-white">Telegram</span> (recommended).
+                                                    </div>
                                                     <div className="bg-white/5 p-6 rounded-2xl border border-white/5 flex flex-col items-center gap-6">
                                                         <div className="text-center space-y-2">
                                                             <div className="text-xs font-black uppercase text-white">Device Linking</div>
@@ -1105,7 +1109,7 @@ function Section({ icon, title, desc, children }: any) {
     );
 }
 
-function ChannelInput({ name, icon, enabled, onToggle, children }: any) {
+function ChannelInput({ name, icon, enabled, onToggle, badge, children }: any) {
     return (
         <div className={cn(
             "p-8 rounded-[2rem] border transition-all duration-500 relative overflow-hidden",
@@ -1117,7 +1121,10 @@ function ChannelInput({ name, icon, enabled, onToggle, children }: any) {
                         <img src={icon} alt={name} className="w-full h-full object-contain" />
                     </div>
                     <div>
-                        <h3 className="text-lg font-black text-white uppercase italic tracking-tight">{name}</h3>
+                        <div className="flex items-center gap-2">
+                            <h3 className="text-lg font-black text-white uppercase italic tracking-tight">{name}</h3>
+                            {badge && <span className="px-2 py-0.5 text-[9px] font-black uppercase tracking-wider bg-green-500/20 text-green-400 rounded-full border border-green-500/30">{badge}</span>}
+                        </div>
                         <p className="text-[9px] text-primary font-black uppercase tracking-widest">{enabled ? 'Active Protocol' : 'Standby'}</p>
                     </div>
                 </div>

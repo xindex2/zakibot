@@ -149,16 +149,14 @@ export async function startBot(configId: string) {
             }
         }
 
-        // Auto-build bridge if dist doesn't exist
+        // Always rebuild bridge to ensure compiled code matches source
         const bridgeDistEntry = path.join(bridgeDir, 'dist', 'index.js');
-        if (!fs.existsSync(bridgeDistEntry)) {
-            console.log(`[Bridge ${config.name}]: dist/index.js not found, building bridge...`);
-            try {
-                execSync('npx tsc', { cwd: bridgeDir, stdio: 'pipe', timeout: 30000 });
-                console.log(`[Bridge ${config.name}]: Bridge built successfully`);
-            } catch (buildErr: any) {
-                console.error(`[Bridge ${config.name}]: Failed to build bridge:`, buildErr.stderr?.toString() || buildErr.message);
-            }
+        console.log(`[Bridge ${config.name}]: Building bridge (npx tsc)...`);
+        try {
+            execSync('npx tsc', { cwd: bridgeDir, stdio: 'pipe', timeout: 30000 });
+            console.log(`[Bridge ${config.name}]: Bridge built successfully`);
+        } catch (buildErr: any) {
+            console.error(`[Bridge ${config.name}]: Failed to build bridge:`, buildErr.stderr?.toString() || buildErr.message);
         }
 
         // Verify dist exists before spawning

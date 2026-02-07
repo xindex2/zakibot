@@ -4,7 +4,8 @@
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import makeWASocket, {
+import {
+  makeWASocket,
   DisconnectReason,
   useMultiFileAuthState,
   fetchLatestBaileysVersion,

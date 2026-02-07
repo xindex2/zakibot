@@ -248,17 +248,14 @@ export default function Landing() {
                             </p>
                         </div>
 
-                        {/* SimpleClaw */}
+                        {/* OpenClaw Host */}
                         <div className="card-glass" style={{
                             padding: 'var(--spacing-xl)',
                             borderRadius: 'var(--radius-xl)',
                             border: '2px solid var(--coral-bright)',
-                            background: 'rgba(255,107,107,0.05)',
+                            background: 'linear-gradient(135deg, rgba(255,107,107,0.06) 0%, rgba(255,107,107,0.02) 100%)',
                             display: 'flex',
                             flexDirection: 'column',
-                            justifyContent: 'center',
-                            alignItems: 'center',
-                            textAlign: 'center',
                             position: 'relative'
                         }}>
                             <div style={{
@@ -266,26 +263,58 @@ export default function Landing() {
                                 top: '-12px',
                                 left: '50%',
                                 transform: 'translateX(-50%)',
-                                background: 'var(--coral-bright)',
+                                background: 'linear-gradient(135deg, var(--coral-bright), #ff8a5c)',
                                 color: 'white',
-                                padding: '4px 16px',
+                                padding: '4px 18px',
                                 borderRadius: 'var(--radius-full)',
                                 fontSize: '0.75rem',
                                 fontWeight: 'bold',
-                                textTransform: 'uppercase'
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.05em'
                             }}>
-                                SimpleClaw
+                                ⚡ OpenClaw Host
                             </div>
-                            <div style={{ fontSize: '5rem', fontWeight: 'bold', color: 'var(--coral-bright)', lineHeight: 1, marginBottom: 'var(--spacing-md)' }}>
-                                &lt;1 min
+                            <h3 style={{ fontSize: '1.3rem', marginBottom: 'var(--spacing-lg)', color: 'var(--coral-bright)', textAlign: 'center' }}>
+                                With OpenClaw Host
+                            </h3>
+                            {/* 3-step flow */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-md)', marginBottom: 'var(--spacing-lg)' }}>
+                                {[
+                                    { num: '1', label: 'Choose your AI model', icon: '🧠', time: '10s' },
+                                    { num: '2', label: 'Connect Telegram or WhatsApp', icon: '💬', time: '20s' },
+                                    { num: '3', label: 'Hit Deploy — you\'re live', icon: '🚀', time: '5s' },
+                                ].map((step, i) => (
+                                    <div key={i} style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 'var(--spacing-md)',
+                                        padding: '0.75rem 1rem',
+                                        background: 'rgba(255,255,255,0.04)',
+                                        borderRadius: 'var(--radius-md)',
+                                        borderLeft: '3px solid var(--coral-bright)'
+                                    }}>
+                                        <span style={{ fontSize: '1.5rem' }}>{step.icon}</span>
+                                        <span style={{ flex: 1, fontSize: '0.95rem', color: 'var(--color-text-secondary)' }}>{step.label}</span>
+                                        <span style={{ fontWeight: 'bold', color: 'var(--coral-bright)', fontSize: '0.85rem', whiteSpace: 'nowrap' }}>{step.time}</span>
+                                    </div>
+                                ))}
                             </div>
-                            <p style={{ fontSize: '1.1rem', color: 'var(--color-text-secondary)', lineHeight: 1.6, maxWidth: '320px', marginBottom: 'var(--spacing-lg)' }}>
-                                Pick a model, connect Telegram, deploy — done under 1 minute.
+                            <div style={{
+                                padding: '0.75rem 1rem',
+                                background: 'rgba(255,107,107,0.08)',
+                                borderRadius: 'var(--radius-md)',
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                marginBottom: 'var(--spacing-md)'
+                            }}>
+                                <span style={{ fontWeight: 'bold', color: 'var(--color-text-secondary)' }}>Total</span>
+                                <span style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--coral-bright)' }}>&lt;1 min</span>
+                            </div>
+                            <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', lineHeight: 1.6, textAlign: 'center', marginBottom: 'var(--spacing-md)' }}>
+                                No servers. No SSH. No terminal. Everything is pre-configured and ready to go.
                             </p>
-                            <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', lineHeight: 1.6, maxWidth: '320px' }}>
-                                Servers, SSH and OpenClaw environments are already set up, waiting to get assigned. Simple, secure and fast connection to your bot.
-                            </p>
-                            <Link to="/register" className="btn btn-primary" style={{ marginTop: 'var(--spacing-xl)', padding: '0.8rem 2.5rem', fontSize: '1rem' }}>
+                            <Link to="/register" className="btn btn-primary" style={{ padding: '0.8rem 2.5rem', fontSize: '1rem', alignSelf: 'center' }}>
                                 <FontAwesomeIcon icon={faArrowRight} style={{ marginRight: '8px' }} />
                                 Deploy Now
                             </Link>

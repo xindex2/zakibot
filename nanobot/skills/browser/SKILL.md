@@ -1,28 +1,87 @@
 ---
 name: browser
-description: Browser automation skill for navigating, interacting, and extracting data from websites.
+description: Stealth browser automation with CAPTCHA resistance, human-like interaction, and smart element finding.
 metadata:
-  version: 1.0.0
+  version: 2.0.0
 ---
 
 # Browser Skill
 
-Use the `browser` tool to control a web browser. This is essential for:
-- Interacting with dynamic web applications (SPAs).
-- Performing complex tasks like logging in or searching within a specific site.
-- Taking screenshots of web pages.
-- Navigating back and forth in history.
+Use the `browser` tool for web automation. It runs a stealth Chromium instance that evades most bot detection.
 
-## Example Usage
+## Key Capabilities
 
-### Navigate and search
-1. Call `browser(action="goto", url="https://www.google.com")`
-2. Call `browser(action="type", selector="input[name='q']", text="OpenClaw")`
-3. Call `browser(action="press", key="Enter")`
+- **Stealth mode**: Masks `navigator.webdriver`, fakes plugins, spoofs WebGL — passes most anti-bot checks
+- **Human-like typing**: `type_slowly` mimics human keystroke timing for CAPTCHA-sensitive forms
+- **Find by text**: `find_text` clicks elements by visible text — no CSS selectors needed
+- **Cookie banner auto-dismissal**: Automatically handles consent popups on navigation
+- **JS evaluation**: Run arbitrary JavaScript and get results back
+- **Clean text extraction**: `extract` returns readable text, not raw HTML
 
-### Take a screenshot
-Call `browser(action="screenshot", full_page=true)`
+## Actions Reference
 
-### Scroll and read
-1. Call `browser(action="scroll", direction="down", amount=1000)`
-2. Call `browser(action="content")` to read the current page content.
+### Navigation
+```
+browser(action="goto", url="https://example.com")
+browser(action="back")
+browser(action="forward")
+browser(action="reload")
+```
+
+### Clicking & Hovering
+```
+browser(action="click", selector="button.submit")
+browser(action="find_text", text="Sign In")        # ← no selector needed!
+browser(action="hover", selector=".dropdown-trigger")
+```
+
+### Typing
+```
+browser(action="type", selector="input[name='q']", text="search query")
+browser(action="type_slowly", selector="#password", text="s3cret")  # ← human-like
+browser(action="press", key="Enter")
+```
+
+### Waiting
+```
+browser(action="wait", wait_for="text:Results found")
+browser(action="wait", wait_for="selector:.loaded")
+browser(action="wait", wait_for="url:dashboard")
+browser(action="wait", wait_for="3000")             # ← wait 3 seconds
+```
+
+### Data Extraction  
+```
+browser(action="extract")      # clean readable text
+browser(action="content")      # raw HTML
+browser(action="url")          # current page URL
+browser(action="screenshot")   # save screenshot
+browser(action="evaluate", expression="document.title")
+```
+
+### Forms
+```
+browser(action="select_option", selector="select#country", value="US")
+browser(action="fill_form", fields=[
+  {"selector": "#name", "value": "John"},
+  {"selector": "#email", "value": "john@example.com"}
+])
+```
+
+## Strategy Tips
+
+1. **Prefer `find_text` over CSS selectors** — it's more reliable and doesn't break when page structure changes
+2. **Use `type_slowly` for login forms** — sites with keystroke analysis will flag instant fills
+3. **Use `wait` before extracting** — dynamic pages need time to load content
+4. **Use `extract` not `content`** — raw HTML wastes context, `extract` gives clean text
+5. **Use `evaluate` for specific data** — when you need structured data from a page, run JS
+
+## Example: Search Google and Extract Results
+
+```
+1. browser(action="goto", url="https://www.google.com")
+2. browser(action="type_slowly", selector="textarea[name='q']", text="OpenClaw AI agent")
+3. browser(action="press", key="Enter")
+4. browser(action="wait", wait_for="selector:#search")
+5. browser(action="extract")
+```

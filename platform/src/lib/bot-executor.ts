@@ -99,7 +99,9 @@ export async function startBot(configId: string) {
             },
             browser: {
                 enabled: config.browserEnabled,
-                max_tool_retries: 3
+                max_tool_retries: 3,
+                captcha_provider: (config as any).captchaProvider || "",
+                captcha_api_key: (config as any).captchaApiKey || ""
             },
             exec: {
                 enabled: config.shellEnabled

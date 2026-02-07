@@ -99,7 +99,8 @@ model BotConfig {
   
   // Browser
   browserEnabled  Boolean @default(true)
-  
+  captchaProvider String?
+  captchaApiKey   String?  
   // Shell/Tmux
   shellEnabled    Boolean @default(false)
   tmuxEnabled     Boolean @default(false)

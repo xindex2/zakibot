@@ -152,7 +152,7 @@ app.post('/api/config', async (req, res) => {
             'feishuEnabled', 'feishuAppId', 'feishuAppSecret', 'feishuEncryptKey', 'feishuVerificationToken', 'feishuAllowFrom',
             'webSearchApiKey',
             'githubEnabled', 'githubToken',
-            'browserEnabled',
+            'browserEnabled', 'captchaProvider', 'captchaApiKey',
             'shellEnabled', 'tmuxEnabled', 'restrictToWorkspace',
             'weatherEnabled',
             'summarizeEnabled', 'firecrawlApiKey', 'apifyApiToken',

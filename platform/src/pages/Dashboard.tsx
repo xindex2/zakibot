@@ -4,7 +4,7 @@ import {
     Bot, Cpu, Share2, Terminal, Server, CreditCard, User, LogOut, Search, Globe, HardDrive, Clock,
     Trash2, Play, Square, Settings, LayoutDashboard, ChevronRight, CheckCircle, Plus, Rocket,
     Cloud, FileText, Lock, Sparkles, ChevronLeft, Edit3, Activity, Check, Info, Loader2, Zap, Layout, RefreshCw,
-    MessageSquare, Smartphone, QrCode, ShieldAlert, Layers
+    MessageSquare, Smartphone, QrCode, ShieldAlert, Shield, Layers
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { clsx, type ClassValue } from 'clsx';
@@ -145,6 +145,8 @@ interface AgentConfig {
     skillCreatorEnabled: boolean;
     firecrawlApiKey: string;
     apifyApiToken: string;
+    captchaProvider: string;
+    captchaApiKey: string;
     gatewayHost: string;
     gatewayPort: number;
     maxToolIterations: number;
@@ -302,6 +304,8 @@ export default function Dashboard() {
             githubToken: '',
             firecrawlApiKey: '',
             apifyApiToken: '',
+            captchaProvider: '',
+            captchaApiKey: '',
             restrictToWorkspace: true,
             gatewayHost: '0.0.0.0',
             gatewayPort: 18790 + (agents.length * 10),
@@ -923,6 +927,29 @@ export default function Dashboard() {
                                                     onChange={e => setEditingAgent({ ...editingAgent, apifyApiToken: e.target.value })}
                                                     className="input-modern w-full text-[10px] mt-2"
                                                     placeholder="Apify API Token..."
+                                                />
+                                            </ToolCard>
+                                            <ToolCard
+                                                title="CAPTCHA Solver" icon={<Shield size={20} />}
+                                                desc="Auto-solve reCAPTCHA, hCaptcha & Turnstile."
+                                                checked={!!editingAgent.captchaApiKey}
+                                            >
+                                                <select
+                                                    value={editingAgent.captchaProvider || ''}
+                                                    onChange={e => setEditingAgent({ ...editingAgent, captchaProvider: e.target.value })}
+                                                    className="input-modern w-full text-[10px] mt-2"
+                                                >
+                                                    <option value="">Select Provider...</option>
+                                                    <option value="capsolver">CapSolver (AI, fastest)</option>
+                                                    <option value="2captcha">2Captcha (human workers)</option>
+                                                    <option value="anticaptcha">Anti-Captcha (human workers)</option>
+                                                </select>
+                                                <input
+                                                    type="password"
+                                                    value={editingAgent.captchaApiKey || ''}
+                                                    onChange={e => setEditingAgent({ ...editingAgent, captchaApiKey: e.target.value })}
+                                                    className="input-modern w-full text-[10px] mt-2"
+                                                    placeholder="CAPTCHA API Key..."
                                                 />
                                             </ToolCard>
                                         </div>

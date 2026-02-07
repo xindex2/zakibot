@@ -109,6 +109,8 @@ class BrowserConfig(BaseModel):
     enabled: bool = True
     headless: bool = True
     max_tool_retries: int = 3
+    captcha_provider: str = ""  # capsolver, 2captcha, or anticaptcha
+    captcha_api_key: str = ""  # API key for the CAPTCHA solving provider
 
 
 class WebToolsConfig(BaseModel):

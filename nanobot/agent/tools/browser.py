@@ -1,4 +1,4 @@
-"""Browser tools: browser_action — stealth-first, CAPTCHA-resistant browser automation."""
+"""Browser tools: browser_action — stealth-first, CAPTCHA-solving browser automation."""
 
 import asyncio
 import json
@@ -7,6 +7,7 @@ import re
 import random
 import time
 import base64
+import httpx
 from typing import Any
 from pathlib import Path
 
@@ -100,9 +101,446 @@ COOKIE_DISMISS_SELECTORS = [
 ]
 
 
+# ---------------------------------------------------------------------------
+# CAPTCHA Solver — supports CapSolver, 2Captcha, Anti-Captcha
+# ---------------------------------------------------------------------------
+
+class CaptchaSolver:
+    """
+    Auto-detects and solves reCAPTCHA v2, reCAPTCHA v3, hCaptcha, and Turnstile
+    using external solving services.
+    
+    Configured via bot config (tools.browser.captcha_provider + captcha_api_key)
+    or env vars as fallback.
+    """
+    
+    PROVIDER_MAP = {
+        "capsolver": "capsolver",
+        "2captcha": "twocaptcha",
+        "twocaptcha": "twocaptcha",
+        "anticaptcha": "anticaptcha",
+        "anti-captcha": "anticaptcha",
+    }
+    
+    def __init__(self, provider: str = "", api_key: str = ""):
+        # Normalize provider name
+        provider_norm = self.PROVIDER_MAP.get(provider.lower().strip(), "") if provider else ""
+        
+        # Set keys based on explicit config or fall back to env vars
+        self.capsolver_key = (
+            api_key if provider_norm == "capsolver" 
+            else os.environ.get("CAPSOLVER_API_KEY", "")
+        )
+        self.twocaptcha_key = (
+            api_key if provider_norm == "twocaptcha" 
+            else os.environ.get("TWOCAPTCHA_API_KEY", "")
+        )
+        self.anticaptcha_key = (
+            api_key if provider_norm == "anticaptcha" 
+            else os.environ.get("ANTICAPTCHA_API_KEY", "")
+        )
+    
+    @property
+    def available(self) -> bool:
+        return bool(self.capsolver_key or self.twocaptcha_key or self.anticaptcha_key)
+    
+    @property
+    def provider_name(self) -> str:
+        if self.capsolver_key:
+            return "CapSolver"
+        if self.twocaptcha_key:
+            return "2Captcha"
+        if self.anticaptcha_key:
+            return "Anti-Captcha"
+        return "none"
+    
+    async def detect_captcha(self, page) -> dict | None:
+        """
+        Detect CAPTCHA on the current page.
+        Returns dict with captcha_type, sitekey, and page_url, or None.
+        """
+        detection_js = """
+        () => {
+            // reCAPTCHA v2 (iframe or div)
+            const recaptchaFrame = document.querySelector('iframe[src*="recaptcha"]');
+            const recaptchaDiv = document.querySelector('.g-recaptcha, [data-sitekey]');
+            
+            if (recaptchaDiv) {
+                const sitekey = recaptchaDiv.getAttribute('data-sitekey');
+                if (sitekey) {
+                    // Check if it's v3 (invisible) or v2
+                    const isV3 = recaptchaDiv.getAttribute('data-size') === 'invisible' 
+                              || document.querySelector('script[src*="recaptcha/api.js?render="]');
+                    return {
+                        type: isV3 ? 'recaptcha_v3' : 'recaptcha_v2',
+                        sitekey: sitekey,
+                        action: recaptchaDiv.getAttribute('data-action') || 'verify'
+                    };
+                }
+            }
+            
+            if (recaptchaFrame) {
+                const src = recaptchaFrame.src;
+                const match = src.match(/[?&]k=([^&]+)/);
+                if (match) {
+                    return { type: 'recaptcha_v2', sitekey: match[1] };
+                }
+            }
+            
+            // hCaptcha
+            const hcaptchaFrame = document.querySelector('iframe[src*="hcaptcha"]');
+            const hcaptchaDiv = document.querySelector('.h-captcha, [data-hcaptcha-sitekey]');
+            
+            if (hcaptchaDiv) {
+                const sitekey = hcaptchaDiv.getAttribute('data-sitekey') 
+                             || hcaptchaDiv.getAttribute('data-hcaptcha-sitekey');
+                if (sitekey) {
+                    return { type: 'hcaptcha', sitekey: sitekey };
+                }
+            }
+            
+            if (hcaptchaFrame) {
+                const src = hcaptchaFrame.src;
+                const match = src.match(/[?&]sitekey=([^&]+)/);
+                if (match) {
+                    return { type: 'hcaptcha', sitekey: match[1] };
+                }
+            }
+            
+            // Cloudflare Turnstile
+            const turnstile = document.querySelector('.cf-turnstile, [data-turnstile-sitekey]');
+            if (turnstile) {
+                const sitekey = turnstile.getAttribute('data-sitekey') 
+                             || turnstile.getAttribute('data-turnstile-sitekey');
+                if (sitekey) {
+                    return { type: 'turnstile', sitekey: sitekey };
+                }
+            }
+            
+            return null;
+        }
+        """
+        try:
+            result = await page.evaluate(detection_js)
+            if result:
+                result["page_url"] = page.url
+            return result
+        except Exception as e:
+            logger.warning(f"CAPTCHA detection failed: {e}")
+            return None
+    
+    async def solve(self, captcha_info: dict) -> str | None:
+        """
+        Solve a detected CAPTCHA using the configured provider.
+        Returns the solution token, or None on failure.
+        """
+        captcha_type = captcha_info.get("type", "")
+        sitekey = captcha_info.get("sitekey", "")
+        page_url = captcha_info.get("page_url", "")
+        action = captcha_info.get("action", "verify")
+        
+        if not sitekey or not page_url:
+            return None
+        
+        logger.info(f"Solving {captcha_type} (sitekey={sitekey[:12]}...) via {self.provider_name}")
+
+        if self.capsolver_key:
+            return await self._solve_capsolver(captcha_type, sitekey, page_url, action)
+        elif self.twocaptcha_key:
+            return await self._solve_2captcha(captcha_type, sitekey, page_url, action)
+        elif self.anticaptcha_key:
+            return await self._solve_anticaptcha(captcha_type, sitekey, page_url, action)
+        return None
+    
+    # ---- CapSolver ----
+    async def _solve_capsolver(self, ctype: str, sitekey: str, url: str, action: str) -> str | None:
+        task_type_map = {
+            "recaptcha_v2": "ReCaptchaV2TaskProxyLess",
+            "recaptcha_v3": "ReCaptchaV3TaskProxyLess",
+            "hcaptcha": "HCaptchaTaskProxyLess",
+            "turnstile": "AntiTurnstileTaskProxyLess",
+        }
+        task_type = task_type_map.get(ctype)
+        if not task_type:
+            return None
+        
+        task = {
+            "type": task_type,
+            "websiteURL": url,
+            "websiteKey": sitekey,
+        }
+        if ctype == "recaptcha_v3":
+            task["pageAction"] = action
+            task["minScore"] = 0.7
+        
+        try:
+            async with httpx.AsyncClient(timeout=15) as client:
+                # Create task
+                resp = await client.post(
+                    "https://api.capsolver.com/createTask",
+                    json={"clientKey": self.capsolver_key, "task": task},
+                )
+                data = resp.json()
+                
+                if data.get("errorId", 0) != 0:
+                    logger.error(f"CapSolver create error: {data.get('errorDescription')}")
+                    return None
+                
+                task_id = data.get("taskId")
+                if not task_id:
+                    return None
+                
+                # Poll for result (max 120s)
+                for _ in range(60):
+                    await asyncio.sleep(2)
+                    resp = await client.post(
+                        "https://api.capsolver.com/getTaskResult",
+                        json={"clientKey": self.capsolver_key, "taskId": task_id},
+                    )
+                    result = resp.json()
+                    
+                    status = result.get("status", "")
+                    if status == "ready":
+                        solution = result.get("solution", {})
+                        token = solution.get("gRecaptchaResponse") or solution.get("token") or solution.get("text")
+                        if token:
+                            logger.info(f"CapSolver solved {ctype} successfully")
+                            return token
+                        return None
+                    elif status == "failed":
+                        logger.error(f"CapSolver failed: {result.get('errorDescription')}")
+                        return None
+                
+                logger.error("CapSolver timeout")
+                return None
+        except Exception as e:
+            logger.error(f"CapSolver error: {e}")
+            return None
+    
+    # ---- 2Captcha ----
+    async def _solve_2captcha(self, ctype: str, sitekey: str, url: str, action: str) -> str | None:
+        method_map = {
+            "recaptcha_v2": "userrecaptcha",
+            "recaptcha_v3": "userrecaptcha",
+            "hcaptcha": "hcaptcha",
+            "turnstile": "turnstile",
+        }
+        method = method_map.get(ctype)
+        if not method:
+            return None
+        
+        try:
+            async with httpx.AsyncClient(timeout=15) as client:
+                params = {
+                    "key": self.twocaptcha_key,
+                    "method": method,
+                    "sitekey": sitekey,
+                    "pageurl": url,
+                    "json": 1,
+                }
+                if ctype == "recaptcha_v3":
+                    params["version"] = "v3"
+                    params["action"] = action
+                    params["min_score"] = "0.7"
+                
+                # Submit
+                resp = await client.post(
+                    "https://2captcha.com/in.php",
+                    data=params,
+                )
+                data = resp.json()
+                
+                if data.get("status") != 1:
+                    logger.error(f"2Captcha submit error: {data.get('request')}")
+                    return None
+                
+                task_id = data.get("request")
+                
+                # Poll for result (max 120s)
+                for _ in range(40):
+                    await asyncio.sleep(3)
+                    resp = await client.get(
+                        "https://2captcha.com/res.php",
+                        params={
+                            "key": self.twocaptcha_key,
+                            "action": "get",
+                            "id": task_id,
+                            "json": 1,
+                        },
+                    )
+                    result = resp.json()
+                    
+                    if result.get("status") == 1:
+                        token = result.get("request")
+                        logger.info(f"2Captcha solved {ctype} successfully")
+                        return token
+                    elif result.get("request") != "CAPCHA_NOT_READY":
+                        logger.error(f"2Captcha error: {result.get('request')}")
+                        return None
+                
+                logger.error("2Captcha timeout")
+                return None
+        except Exception as e:
+            logger.error(f"2Captcha error: {e}")
+            return None
+    
+    # ---- Anti-Captcha ----
+    async def _solve_anticaptcha(self, ctype: str, sitekey: str, url: str, action: str) -> str | None:
+        task_type_map = {
+            "recaptcha_v2": "RecaptchaV2TaskProxyless",
+            "recaptcha_v3": "RecaptchaV3TaskProxyless",
+            "hcaptcha": "HCaptchaTaskProxyless",
+            "turnstile": "TurnstileTaskProxyless",
+        }
+        task_type = task_type_map.get(ctype)
+        if not task_type:
+            return None
+        
+        task = {
+            "type": task_type,
+            "websiteURL": url,
+            "websiteKey": sitekey,
+        }
+        if ctype == "recaptcha_v3":
+            task["pageAction"] = action
+            task["minScore"] = 0.7
+        
+        try:
+            async with httpx.AsyncClient(timeout=15) as client:
+                resp = await client.post(
+                    "https://api.anti-captcha.com/createTask",
+                    json={"clientKey": self.anticaptcha_key, "task": task},
+                )
+                data = resp.json()
+                
+                if data.get("errorId", 0) != 0:
+                    logger.error(f"Anti-Captcha error: {data.get('errorDescription')}")
+                    return None
+                
+                task_id = data.get("taskId")
+                
+                for _ in range(40):
+                    await asyncio.sleep(3)
+                    resp = await client.post(
+                        "https://api.anti-captcha.com/getTaskResult",
+                        json={"clientKey": self.anticaptcha_key, "taskId": task_id},
+                    )
+                    result = resp.json()
+                    
+                    status = result.get("status", "")
+                    if status == "ready":
+                        solution = result.get("solution", {})
+                        token = solution.get("gRecaptchaResponse") or solution.get("token") or solution.get("text")
+                        if token:
+                            logger.info(f"Anti-Captcha solved {ctype} successfully")
+                            return token
+                        return None
+                    elif result.get("errorId", 0) != 0:
+                        logger.error(f"Anti-Captcha error: {result.get('errorDescription')}")
+                        return None
+                
+                logger.error("Anti-Captcha timeout")
+                return None
+        except Exception as e:
+            logger.error(f"Anti-Captcha error: {e}")
+            return None
+    
+    async def inject_token(self, page, captcha_info: dict, token: str) -> bool:
+        """Inject the solved CAPTCHA token into the page and submit."""
+        ctype = captcha_info.get("type", "")
+        
+        inject_js = """
+        (token) => {
+            // reCAPTCHA v2/v3
+            const recaptchaTextarea = document.querySelector('#g-recaptcha-response') 
+                || document.querySelector('[name="g-recaptcha-response"]')
+                || document.querySelector('textarea[id*="g-recaptcha-response"]');
+            if (recaptchaTextarea) {
+                recaptchaTextarea.value = token;
+                recaptchaTextarea.style.display = 'block';  // make visible for form submission
+                recaptchaTextarea.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+            
+            // Also set in all iframes response textareas
+            document.querySelectorAll('textarea[id*="g-recaptcha-response"]').forEach(el => {
+                el.value = token;
+                el.style.display = 'block';
+            });
+            
+            // hCaptcha
+            const hTextarea = document.querySelector('[name="h-captcha-response"]')
+                || document.querySelector('textarea[data-hcaptcha-response]');
+            if (hTextarea) {
+                hTextarea.value = token;
+                hTextarea.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+            
+            // Turnstile
+            const tInput = document.querySelector('[name="cf-turnstile-response"]')
+                || document.querySelector('input[name*="turnstile"]');
+            if (tInput) {
+                tInput.value = token;
+                tInput.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+            
+            // Try to call reCAPTCHA callback
+            try {
+                if (window.___grecaptcha_cfg && window.___grecaptcha_cfg.clients) {
+                    for (const clientId of Object.keys(window.___grecaptcha_cfg.clients)) {
+                        const client = window.___grecaptcha_cfg.clients[clientId];
+                        // Walk the client object to find callback
+                        const findCallback = (obj, depth = 0) => {
+                            if (depth > 5 || !obj) return null;
+                            for (const key of Object.keys(obj)) {
+                                if (typeof obj[key] === 'function' && key !== 'bind') {
+                                    return obj[key];
+                                }
+                                if (typeof obj[key] === 'object') {
+                                    const found = findCallback(obj[key], depth + 1);
+                                    if (found) return found;
+                                }
+                            }
+                            return null;
+                        };
+                        const cb = findCallback(client);
+                        if (cb) {
+                            cb(token);
+                            return true;
+                        }
+                    }
+                }
+            } catch (e) {}
+            
+            // Try submitting the form
+            try {
+                const form = (recaptchaTextarea || hTextarea || tInput)?.closest('form');
+                if (form) {
+                    const submit = form.querySelector('[type="submit"], button:not([type="button"])');
+                    if (submit) {
+                        submit.click();
+                        return true;
+                    }
+                    form.submit();
+                    return true;
+                }
+            } catch (e) {}
+            
+            return true;
+        }
+        """
+        
+        try:
+            result = await page.evaluate(inject_js, token)
+            logger.info(f"Injected {ctype} token into page")
+            return bool(result)
+        except Exception as e:
+            logger.error(f"Token injection failed: {e}")
+            return False
+
+
 class BrowserTool(Tool):
     """
-    A stealth-first browser tool with CAPTCHA resistance.
+    A stealth-first browser tool with CAPTCHA auto-solving.
     
     Supports:
     - Navigation with cookie banner auto-dismissal
@@ -111,17 +549,19 @@ class BrowserTool(Tool):
     - Wait conditions (text, selector, URL, time)
     - JavaScript evaluation
     - Page content extraction (cleaned text, not raw HTML)
+    - CAPTCHA auto-detection and solving (reCAPTCHA v2/v3, hCaptcha, Turnstile)
     - Screenshots
     """
     
     name = "browser"
     description = (
-        "Control a stealth web browser. Actions: goto, click, type, type_slowly, "
-        "find_text, hover, press, select_option, wait, evaluate, screenshot, "
-        "extract, content, url, scroll, back, forward, reload, fill_form. "
+        "Control a stealth web browser with CAPTCHA solving. "
+        "Actions: goto, click, type, type_slowly, find_text, hover, press, "
+        "select_option, wait, evaluate, screenshot, extract, content, url, "
+        "scroll, back, forward, reload, fill_form, solve_captcha. "
         "Use 'find_text' to click elements by visible text instead of CSS selectors. "
         "Use 'type_slowly' for sites with bot detection. "
-        "Use 'wait' to wait for page elements or delays. "
+        "Use 'solve_captcha' when a CAPTCHA blocks the page — it auto-detects and solves it. "
         "Use 'extract' to get clean readable text from pages."
     )
     parameters = {
@@ -133,7 +573,8 @@ class BrowserTool(Tool):
                     "goto", "click", "type", "type_slowly", "find_text",
                     "hover", "press", "select_option", "wait", "evaluate",
                     "screenshot", "extract", "content", "url",
-                    "scroll", "back", "forward", "reload", "fill_form"
+                    "scroll", "back", "forward", "reload", "fill_form",
+                    "solve_captcha"
                 ],
                 "description": "The action to perform"
             },
@@ -165,7 +606,7 @@ class BrowserTool(Tool):
         "required": ["action"]
     }
     
-    def __init__(self, workspace: Path | str):
+    def __init__(self, workspace: Path | str, captcha_provider: str = "", captcha_api_key: str = ""):
         self.workspace = Path(workspace)
         self.browser = None
         self.context = None
@@ -173,6 +614,7 @@ class BrowserTool(Tool):
         self.playwright = None
         self._screenshots_dir = self.workspace / "screenshots"
         self._screenshots_dir.mkdir(exist_ok=True)
+        self._captcha_solver = CaptchaSolver(provider=captcha_provider, api_key=captcha_api_key)
 
     # ------------------------------------------------------------------
     # Browser lifecycle
@@ -258,6 +700,29 @@ class BrowserTool(Tool):
             except Exception:
                 continue
 
+    async def _auto_solve_captcha(self) -> str | None:
+        """Detect and solve CAPTCHA if present. Returns status message or None."""
+        if not self._captcha_solver.available:
+            return None
+        
+        captcha_info = await self._captcha_solver.detect_captcha(self.page)
+        if not captcha_info:
+            return None
+        
+        logger.info(f"CAPTCHA detected: {captcha_info['type']}")
+        token = await self._captcha_solver.solve(captcha_info)
+        if not token:
+            return f"⚠ CAPTCHA detected ({captcha_info['type']}) but solving failed"
+        
+        await self._captcha_solver.inject_token(self.page, captcha_info, token)
+        # Wait for page to react
+        await asyncio.sleep(2)
+        try:
+            await self.page.wait_for_load_state("networkidle", timeout=5000)
+        except Exception:
+            pass
+        return f"✅ Solved {captcha_info['type']} CAPTCHA via {self._captcha_solver.provider_name}"
+
     async def _retry_action(self, action_fn, retries: int = 1):
         """Retry an action once on failure with a short delay."""
         try:
@@ -270,17 +735,12 @@ class BrowserTool(Tool):
 
     def _extract_text(self, html: str) -> str:
         """Extract clean readable text from HTML."""
-        # Remove scripts and styles
         text = re.sub(r'<script[^>]*>.*?</script>', '', html, flags=re.DOTALL | re.IGNORECASE)
         text = re.sub(r'<style[^>]*>.*?</style>', '', text, flags=re.DOTALL | re.IGNORECASE)
-        # Remove HTML tags
         text = re.sub(r'<[^>]+>', ' ', text)
-        # Decode entities
         text = text.replace('&amp;', '&').replace('&lt;', '<').replace('&gt;', '>')
         text = text.replace('&quot;', '"').replace('&#39;', "'").replace('&nbsp;', ' ')
-        # Clean whitespace
         text = re.sub(r'\s+', ' ', text).strip()
-        # Truncate for LLM context
         if len(text) > 8000:
             text = text[:8000] + "\n\n[...TRUNCATED — page too large, use 'evaluate' for specific data]"
         return text
@@ -304,10 +764,43 @@ class BrowserTool(Tool):
                     await self.page.wait_for_load_state("networkidle", timeout=8000)
                 except Exception:
                     pass
-                # Auto-dismiss cookie banners after navigation
+                # Auto-dismiss cookie banners
                 await self._dismiss_cookie_banners()
+                # Auto-solve CAPTCHA if present
+                captcha_msg = await self._auto_solve_captcha()
                 title = await self.page.title()
-                return f"Navigated to {url} — Title: \"{title}\""
+                result = f"Navigated to {url} — Title: \"{title}\""
+                if captcha_msg:
+                    result += f"\n{captcha_msg}"
+                return result
+            
+            # ---- Solve CAPTCHA (explicit) ----
+            elif action == "solve_captcha":
+                if not self._captcha_solver.available:
+                    return (
+                        "Error: No CAPTCHA solver configured. "
+                        "Set one of: CAPSOLVER_API_KEY, TWOCAPTCHA_API_KEY, or ANTICAPTCHA_API_KEY "
+                        "in your environment variables."
+                    )
+                captcha_info = await self._captcha_solver.detect_captcha(self.page)
+                if not captcha_info:
+                    return "No CAPTCHA detected on this page."
+                
+                token = await self._captcha_solver.solve(captcha_info)
+                if not token:
+                    return f"Failed to solve {captcha_info['type']} CAPTCHA. The solver returned no token."
+                
+                await self._captcha_solver.inject_token(self.page, captcha_info, token)
+                await asyncio.sleep(2)
+                try:
+                    await self.page.wait_for_load_state("networkidle", timeout=5000)
+                except Exception:
+                    pass
+                title = await self.page.title()
+                return (
+                    f"✅ Solved {captcha_info['type']} CAPTCHA via {self._captcha_solver.provider_name}.\n"
+                    f"Token injected and form submitted. Current page: \"{title}\""
+                )
             
             # ---- Click ----
             elif action == "click":
@@ -333,13 +826,11 @@ class BrowserTool(Tool):
                     await locator.click()
                     return f"Found and clicked text: '{text}'"
                 except Exception:
-                    # Fallback: try as link text
                     try:
                         locator = self.page.get_by_role("link", name=text).first
                         await locator.click()
                         return f"Found and clicked link: '{text}'"
                     except Exception:
-                        # Last resort: try button
                         try:
                             locator = self.page.get_by_role("button", name=text).first
                             await locator.click()
@@ -367,9 +858,7 @@ class BrowserTool(Tool):
                 await self._human_delay()
                 await self.page.wait_for_selector(selector, state="visible", timeout=10000)
                 await self.page.click(selector)
-                # Clear existing content first
                 await self.page.evaluate(f'document.querySelector("{selector}").value = ""')
-                # Type character by character with random delays
                 for char in text:
                     await self.page.keyboard.type(char)
                     await asyncio.sleep(random.uniform(0.05, 0.15))

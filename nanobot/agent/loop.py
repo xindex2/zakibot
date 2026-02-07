@@ -102,7 +102,11 @@ class AgentLoop:
         self.tools.register(WebFetchTool())
         
         if self.browser_config.enabled:
-            self.tools.register(BrowserTool(workspace=self.workspace))
+            self.tools.register(BrowserTool(
+                workspace=self.workspace,
+                captcha_provider=self.browser_config.captcha_provider,
+                captcha_api_key=self.browser_config.captcha_api_key,
+            ))
         
         # Message tool
         message_tool = MessageTool(send_callback=self.bus.publish_outbound)

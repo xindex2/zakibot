@@ -188,13 +188,22 @@ class CronService:
         
         delay_ms = max(0, next_wake - _now_ms())
         delay_s = delay_ms / 1000
+        logger.info(f"Cron: next timer fires in {delay_s:.1f}s")
         
         async def tick():
-            await asyncio.sleep(delay_s)
-            if self._running:
-                await self._on_timer()
+            try:
+                await asyncio.sleep(delay_s)
+                if self._running:
+                    await self._on_timer()
+            except asyncio.CancelledError:
+                pass
+            except Exception as e:
+                logger.error(f"Cron timer tick failed: {e}")
         
-        self._timer_task = asyncio.create_task(tick())
+        try:
+            self._timer_task = asyncio.create_task(tick())
+        except RuntimeError as e:
+            logger.error(f"Cron: failed to create timer task: {e}")
     
     async def _on_timer(self) -> None:
         """Handle timer tick - run due jobs."""
@@ -216,16 +225,19 @@ class CronService:
     async def _execute_job(self, job: CronJob) -> None:
         """Execute a single job."""
         start_ms = _now_ms()
-        logger.info(f"Cron: executing job '{job.name}' ({job.id})")
+        logger.info(f"Cron: executing job '{job.name}' ({job.id}) deliver={job.payload.deliver} channel={job.payload.channel} to={job.payload.to}")
         
         try:
             response = None
             if self.on_job:
                 response = await self.on_job(job)
+                logger.info(f"Cron: job '{job.name}' got response: {str(response)[:100]}")
+            else:
+                logger.warning(f"Cron: no on_job callback set, job '{job.name}' will not execute")
             
             job.state.last_status = "ok"
             job.state.last_error = None
-            logger.info(f"Cron: job '{job.name}' completed")
+            logger.info(f"Cron: job '{job.name}' completed successfully")
             
         except Exception as e:
             job.state.last_status = "error"

@@ -167,15 +167,17 @@ class AgentLoop:
         
         logger.info(f"Processing message from {msg.channel}:{msg.sender_id}")
         
-        # Free Tier Limit Check
-        if self.plan == "free" and self.message_count >= 2:
+        # Free Tier Limit Check (exempt cron callbacks, heartbeats, and system messages)
+        is_internal = msg.channel == "system" or msg.metadata.get("internal", False)
+        if not is_internal and self.plan == "free" and self.message_count >= 2:
              return OutboundMessage(
                 channel=msg.channel,
                 chat_id=msg.chat_id,
                 content="[ACCESS RESTRICTED] You have reached the limit of the Free Plan (2 messages). Please upgrade to continue using your Agent: https://openclaw-host.com/billing"
             )
         
-        self.message_count += 1
+        if not is_internal:
+            self.message_count += 1
         
         # Get or create session
         session = self.sessions.get_or_create(msg.session_key)
@@ -391,24 +393,27 @@ class AgentLoop:
         session_key: str = "cli:direct",
         channel: str = "cli",
         chat_id: str = "direct",
+        internal: bool = False,
     ) -> str:
         """
-        Process a message directly (for CLI or cron usage).
+        Process a message directly (for CLI, cron, or heartbeat usage).
         
         Args:
             content: The message content.
             session_key: Session identifier.
             channel: Source channel (for context).
             chat_id: Source chat ID (for context).
+            internal: If True, exempt from rate limits (for cron/heartbeat).
         
         Returns:
             The agent's response.
         """
         msg = InboundMessage(
             channel=channel,
-            sender_id="user",
+            sender_id="cron" if internal else "user",
             chat_id=chat_id,
-            content=content
+            content=content,
+            metadata={"internal": internal, "session_key_override": session_key},
         )
         
         response = await self._process_message(msg)

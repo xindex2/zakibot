@@ -222,6 +222,7 @@ def gateway(
             session_key=f"cron:{job.id}",
             channel=job.payload.channel or "cli",
             chat_id=job.payload.to or "direct",
+            internal=True,
         )
         if job.payload.deliver and job.payload.to:
             from nanobot.bus.events import OutboundMessage

@@ -1,0 +1,129 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id                 String   @id @default(cuid())
+  email              String   @unique
+  password           String
+  full_name          String   @default("Commander")
+  role               String   @default("user") // "user", "admin"
+  acquisition_source String?  @default("Direct")
+  whop_user_id       String?  @unique
+  google_id          String?  @unique
+  avatar_url         String?
+  configs            BotConfig[]
+  subscription       Subscription?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+model Subscription {
+  id                 String   @id @default(cuid())
+  userId             String   @unique
+  user               User     @relation(fields: [userId], references: [id])
+  plan               String   @default("Free")
+  status             String   @default("active") // "active", "deactivated"
+  maxInstances       Int      @default(1)
+  whopMembershipId   String?  @unique
+  whopPlanId         String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+model WhopEvent {
+  id                 String   @id @default(cuid())
+  eventType          String
+  whopUserId         String?
+  email              String?
+  payload            String // JSON string
+  createdAt          DateTime @default(now())
+}
+
+model WhopPlan {
+  id                 String   @id @default(cuid())
+  whopPlanId         String   @unique
+  planName           String
+  maxInstances       Int      @default(1)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+model BotConfig {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  name           String   @default("New Agent")
+  description    String?
+  // Model & Provider
+  provider       String   @default("openrouter") // openrouter, openai, anthropic, deepseek, groq, zhipu, gemini, moonshot, vllm
+  apiKey         String   @default("")
+  apiBase        String?
+  model          String   @default("anthropic/claude-opus-4-5")
+  
+  // Channels
+  telegramEnabled Boolean @default(false)
+  telegramToken   String?
+  telegramAllowFrom String?
+  
+  discordEnabled  Boolean @default(false)
+  discordToken    String?
+  discordAllowFrom String?
+  
+  whatsappEnabled Boolean @default(false)
+  whatsappBridgeUrl String? @default("ws://localhost:3001")
+  whatsappAllowFrom String?
+  
+  feishuEnabled   Boolean @default(false)
+  feishuAppId     String?
+  feishuAppSecret String?
+  feishuEncryptKey String?
+  feishuVerificationToken String?
+  feishuAllowFrom   String?
+  
+  // Tools/Skills
+  webSearchApiKey String?
+  githubEnabled   Boolean @default(false)
+  githubToken     String?
+  
+  // Browser
+  browserEnabled  Boolean @default(true)
+  
+  // Shell/Tmux
+  shellEnabled    Boolean @default(false)
+  tmuxEnabled     Boolean @default(false)
+  restrictToWorkspace Boolean @default(false)
+
+  // Weather
+  weatherEnabled  Boolean @default(false)
+
+  // Summarize
+  summarizeEnabled Boolean @default(false)
+  firecrawlApiKey  String?
+  apifyApiToken    String?
+  
+  // System
+  gatewayHost    String   @default("0.0.0.0")
+  gatewayPort    Int      @default(18790)
+  maxToolIterations Int   @default(20)
+  
+  status         String   @default("stopped") // "running", "stopped", "error"
+  lastRun        DateTime?
+  
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model SystemConfig {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

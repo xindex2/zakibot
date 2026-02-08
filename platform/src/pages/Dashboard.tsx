@@ -474,10 +474,10 @@ export default function Dashboard() {
                                     {[
                                         { id: 'provider', label: 'Model', icon: <Cpu size={16} /> },
                                         { id: 'channels', label: 'Channels', icon: <Share2 size={16} /> },
+                                        { id: 'skills', label: 'Skills', icon: <Zap size={16} /> },
                                         { id: 'tools', label: 'Tools', icon: <Terminal size={16} /> },
                                         { id: 'workspace', label: 'Workspace', icon: <HardDrive size={16} /> },
                                         { id: 'automation', label: 'Automation', icon: <Clock size={16} /> },
-                                        { id: 'skills', label: 'Skills', icon: <Zap size={16} /> },
                                         { id: 'system', label: 'System', icon: <Settings size={16} /> },
                                     ].map(tab => (
                                         <button

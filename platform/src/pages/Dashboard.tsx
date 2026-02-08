@@ -5,7 +5,7 @@ import {
     Trash2, Play, Square, Settings, LayoutDashboard, ChevronRight, CheckCircle, Plus, Rocket,
     Cloud, FileText, Lock, Sparkles, ChevronLeft, Edit3, Activity, Check, Info, Loader2, Zap, Layout, RefreshCw,
     MessageSquare, Smartphone, QrCode, ShieldAlert, Shield, Layers, Upload, FolderOpen, File, Image, Code,
-    Download, Eye, X, FilePlus
+    Download, Eye, X, FilePlus, Video
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { clsx, type ClassValue } from 'clsx';
@@ -169,6 +169,7 @@ export default function Dashboard() {
     const [fetchedModels, setFetchedModels] = useState<{ id: string; name: string }[]>([]);
     const [isFetchingModels, setIsFetchingModels] = useState(false);
     const [modelFetchError, setModelFetchError] = useState<string | null>(null);
+    const [showVideoGuide, setShowVideoGuide] = useState(false);
 
     // Workspace state
     const [wsFiles, setWsFiles] = useState<any[]>([]);
@@ -427,13 +428,23 @@ export default function Dashboard() {
                                 </h1>
                                 <p className="text-white/40 text-sm font-medium">Manage your AI agents.</p>
                             </div>
-                            <button
-                                onClick={handleCreateAgent}
-                                className="bg-green-600 hover:bg-green-500 text-white font-bold px-6 md:px-8 py-3 md:py-4 rounded-xl transition-all shadow-lg shadow-green-900/20 flex items-center gap-2"
-                            >
-                                <Plus size={20} strokeWidth={3} />
-                                <span>New Agent</span>
-                            </button>
+                            <div className="flex items-center gap-3">
+                                <button
+                                    onClick={() => setShowVideoGuide(true)}
+                                    className="bg-purple-600 hover:bg-purple-500 text-white font-bold px-4 md:px-6 py-3 md:py-4 rounded-xl transition-all shadow-lg shadow-purple-900/20 flex items-center gap-2"
+                                >
+                                    <Video size={18} strokeWidth={3} />
+                                    <span className="hidden md:inline">How to Launch</span>
+                                    <span className="md:hidden">Guide</span>
+                                </button>
+                                <button
+                                    onClick={handleCreateAgent}
+                                    className="bg-green-600 hover:bg-green-500 text-white font-bold px-6 md:px-8 py-3 md:py-4 rounded-xl transition-all shadow-lg shadow-green-900/20 flex items-center gap-2"
+                                >
+                                    <Plus size={20} strokeWidth={3} />
+                                    <span>New Agent</span>
+                                </button>
+                            </div>
                         </header>
 
                         {agents.length === 0 ? (
@@ -457,6 +468,73 @@ export default function Dashboard() {
                                 ))}
                             </div>
                         )}
+
+                        {/* Video Guide Popup */}
+                        <AnimatePresence>
+                            {showVideoGuide && (
+                                <motion.div
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    exit={{ opacity: 0 }}
+                                    className="fixed inset-0 z-50 flex items-center justify-center p-4"
+                                    style={{ backgroundColor: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)' }}
+                                    onClick={() => setShowVideoGuide(false)}
+                                >
+                                    <motion.div
+                                        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                                        exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                                        className="glass-panel rounded-2xl md:rounded-3xl w-full max-w-4xl max-h-[90vh] overflow-y-auto border border-white/10"
+                                        onClick={e => e.stopPropagation()}
+                                    >
+                                        <div className="p-6 md:p-8">
+                                            <div className="flex items-center justify-between mb-6">
+                                                <div>
+                                                    <h2 className="text-xl md:text-2xl font-black uppercase italic tracking-tight text-white">📺 How to Set Up Your First Agent</h2>
+                                                    <p className="text-white/40 text-sm mt-1">Watch the video guide to get started quickly.</p>
+                                                </div>
+                                                <button
+                                                    onClick={() => setShowVideoGuide(false)}
+                                                    className="bg-white/5 hover:bg-white/10 border border-white/10 text-white/60 hover:text-white p-2 rounded-xl transition-all"
+                                                >
+                                                    <X size={20} />
+                                                </button>
+                                            </div>
+
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                {/* Desktop Version */}
+                                                <div className="bg-white/5 rounded-2xl p-4 border border-white/5">
+                                                    <h3 className="text-sm font-black uppercase tracking-widest text-white/60 mb-3 text-center">🖥️ Desktop</h3>
+                                                    <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0, borderRadius: '12px', overflow: 'hidden' }}>
+                                                        <iframe
+                                                            src="https://www.youtube.com/embed/BoQAmvbViAg"
+                                                            title="OpenClaw Setup Guide - Desktop"
+                                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                                            allowFullScreen
+                                                            style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}
+                                                        />
+                                                    </div>
+                                                </div>
+
+                                                {/* Mobile Version */}
+                                                <div className="bg-white/5 rounded-2xl p-4 border border-white/5">
+                                                    <h3 className="text-sm font-black uppercase tracking-widest text-white/60 mb-3 text-center">📱 Mobile</h3>
+                                                    <div style={{ position: 'relative', paddingBottom: '177.78%', height: 0, borderRadius: '12px', overflow: 'hidden', maxWidth: '220px', margin: '0 auto' }}>
+                                                        <iframe
+                                                            src="https://www.youtube.com/embed/eubbQ_LZDmk"
+                                                            title="OpenClaw Setup Guide - Mobile"
+                                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                                            allowFullScreen
+                                                            style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </motion.div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
                     </motion.div>
                 ) : (
                     <motion.div

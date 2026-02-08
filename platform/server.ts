@@ -219,7 +219,7 @@ app.get('/api/admin/stats', authenticateToken, isAdmin, async (req: any, res: an
             take: 5
         });
 
-        const agentUsage = runningConfigs.map(c => ({
+        const agentUsage = runningConfigs.map((c: any) => ({
             id: c.id,
             name: c.name,
             subdomain: `${c.id.slice(0, 8)}.bot.local`,

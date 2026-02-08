@@ -470,7 +470,7 @@ export default function Dashboard() {
                         <aside className="w-full md:w-72 border-b md:border-b-0 md:border-r border-white/5 bg-black/20 p-4 md:p-8 flex flex-col gap-4 md:gap-8 shrink-0">
                             <div>
                                 <div className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em] mb-6 pl-2">Configuration</div>
-                                <nav className="flex md:flex-col gap-1 md:gap-2 overflow-x-auto pb-2 md:pb-0 custom-scrollbar">
+                                <nav className="flex md:flex-col gap-1.5 md:gap-1 overflow-x-auto pb-2 md:pb-0 custom-scrollbar -mx-2 px-2 md:mx-0 md:px-0">
                                     {[
                                         { id: 'provider', label: 'Model', icon: <Cpu size={16} /> },
                                         { id: 'channels', label: 'Channels', icon: <Share2 size={16} /> },
@@ -479,21 +479,39 @@ export default function Dashboard() {
                                         { id: 'workspace', label: 'Workspace', icon: <HardDrive size={16} /> },
                                         { id: 'automation', label: 'Automation', icon: <Clock size={16} /> },
                                         { id: 'system', label: 'System', icon: <Settings size={16} /> },
-                                    ].map(tab => (
-                                        <button
-                                            key={tab.id}
-                                            onClick={() => setActiveTab(tab.id)}
-                                            className={cn(
-                                                "flex items-center gap-2 md:gap-3 px-3 md:px-5 py-2.5 md:py-4 rounded-xl md:rounded-2xl font-black text-[10px] md:text-[11px] transition-all text-left uppercase tracking-widest whitespace-nowrap",
-                                                activeTab === tab.id
-                                                    ? "text-primary bg-primary/5 border border-primary/20 shadow-inner"
-                                                    : "text-white/40 hover:text-white hover:bg-white/5"
-                                            )}
-                                        >
-                                            {tab.icon}
-                                            <span>{tab.label}</span>
-                                        </button>
-                                    ))}
+                                    ].map((tab, idx) => {
+                                        const isActive = activeTab === tab.id;
+                                        const tabIds = ['provider', 'channels', 'skills', 'tools', 'workspace', 'automation', 'system'];
+                                        const activeIdx = tabIds.indexOf(activeTab);
+                                        const isPast = idx < activeIdx;
+                                        return (
+                                            <button
+                                                key={tab.id}
+                                                onClick={() => setActiveTab(tab.id)}
+                                                className={cn(
+                                                    "flex items-center gap-2 md:gap-3 px-3 md:px-4 py-2 md:py-3 rounded-xl md:rounded-xl font-bold text-[10px] md:text-[11px] transition-all text-left uppercase tracking-widest whitespace-nowrap relative",
+                                                    isActive
+                                                        ? "text-white bg-primary/10 border border-primary/30 shadow-lg shadow-primary/5"
+                                                        : isPast
+                                                            ? "text-green-400/60 hover:text-white hover:bg-white/5"
+                                                            : "text-white/30 hover:text-white hover:bg-white/5"
+                                                )}
+                                            >
+                                                <span className={cn(
+                                                    "w-5 h-5 md:w-6 md:h-6 rounded-full flex items-center justify-center text-[9px] md:text-[10px] font-black shrink-0 border",
+                                                    isActive
+                                                        ? "bg-primary/20 border-primary/50 text-primary"
+                                                        : isPast
+                                                            ? "bg-green-500/10 border-green-500/30 text-green-400"
+                                                            : "bg-white/5 border-white/10 text-white/30"
+                                                )}>
+                                                    {isPast ? '✓' : idx + 1}
+                                                </span>
+                                                <span className="hidden md:inline">{tab.label}</span>
+                                                <span className="md:hidden">{tab.label}</span>
+                                            </button>
+                                        );
+                                    })}
                                 </nav>
                             </div>
                         </aside>
@@ -1474,23 +1492,25 @@ function Section({ icon, title, desc, children }: any) {
 function ChannelInput({ name, icon, enabled, onToggle, badge, children }: any) {
     return (
         <div className={cn(
-            "p-8 rounded-[2rem] border transition-all duration-500 relative overflow-hidden",
+            "p-6 md:p-8 rounded-[2rem] border transition-all duration-500 relative overflow-hidden",
             enabled ? "bg-white/[0.02] border-primary/20" : "bg-transparent border-white/5 opacity-40 grayscale"
         )}>
-            <div className="flex items-center justify-between mb-8">
-                <div className="flex items-center gap-5">
-                    <div className="w-14 h-14 bg-white p-2 rounded-2xl shadow-xl">
+            <div className="flex items-center justify-between gap-3 mb-8">
+                <div className="flex items-center gap-3 md:gap-5 min-w-0">
+                    <div className="w-11 h-11 md:w-14 md:h-14 bg-white p-1.5 md:p-2 rounded-xl md:rounded-2xl shadow-xl shrink-0">
                         <img src={icon} alt={name} className="w-full h-full object-contain" />
                     </div>
-                    <div>
-                        <div className="flex items-center gap-2">
-                            <h3 className="text-lg font-black text-white uppercase italic tracking-tight">{name}</h3>
-                            {badge && <span className="px-2 py-0.5 text-[9px] font-black uppercase tracking-wider bg-green-500/20 text-green-400 rounded-full border border-green-500/30">{badge}</span>}
+                    <div className="min-w-0">
+                        <h3 className="text-base md:text-lg font-black text-white uppercase italic tracking-tight truncate">{name}</h3>
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <p className="text-[9px] text-primary font-black uppercase tracking-widest">{enabled ? 'Active Protocol' : 'Standby'}</p>
+                            {badge && <span className="px-2 py-0.5 text-[8px] md:text-[9px] font-black uppercase tracking-wider bg-green-500/20 text-green-400 rounded-full border border-green-500/30">{badge}</span>}
                         </div>
-                        <p className="text-[9px] text-primary font-black uppercase tracking-widest">{enabled ? 'Active Protocol' : 'Standby'}</p>
                     </div>
                 </div>
-                <Toggle checked={enabled} onChange={onToggle} />
+                <div className="shrink-0">
+                    <Toggle checked={enabled} onChange={onToggle} />
+                </div>
             </div>
             <AnimatePresence>
                 {enabled && (

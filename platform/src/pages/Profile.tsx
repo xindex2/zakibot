@@ -83,7 +83,7 @@ export default function Profile() {
                                 <input
                                     value={profileForm.full_name}
                                     onChange={e => setProfileForm({ ...profileForm, full_name: e.target.value })}
-                                    className="form-input"
+                                    className="input-modern w-full"
                                     placeholder="Enter your name"
                                 />
                             </InputWrapper>
@@ -91,7 +91,7 @@ export default function Profile() {
                                 <input
                                     value={profileForm.avatar_url}
                                     onChange={e => setProfileForm({ ...profileForm, avatar_url: e.target.value })}
-                                    className="form-input"
+                                    className="input-modern w-full"
                                     placeholder="https://images.com/photo..."
                                 />
                             </InputWrapper>
@@ -101,7 +101,7 @@ export default function Profile() {
                                         type="password"
                                         value={profileForm.password}
                                         onChange={e => setProfileForm({ ...profileForm, password: e.target.value })}
-                                        className="form-input pr-12"
+                                        className="input-modern w-full pr-12"
                                         placeholder="••••••••"
                                     />
                                     <Lock size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-700" />

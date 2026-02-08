@@ -77,7 +77,7 @@ router.get('/stats', async (req, res) => {
 
         // Group by day
         const growthMap: any = {};
-        growth.forEach(u => {
+        growth.forEach((u: any) => {
             const date = u.createdAt.toISOString().split('T')[0];
             growthMap[date] = (growthMap[date] || 0) + 1;
         });
@@ -106,7 +106,7 @@ router.get('/stats', async (req, res) => {
 router.get('/config', async (req, res) => {
     try {
         const configs = await prisma.systemConfig.findMany();
-        const configMap = configs.reduce((acc, curr) => ({ ...acc, [curr.key]: curr.value }), {});
+        const configMap = configs.reduce((acc: any, curr: any) => ({ ...acc, [curr.key]: curr.value }), {});
         res.json(configMap);
     } catch (e: any) {
         res.status(500).json({ error: e.message });

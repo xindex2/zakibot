@@ -484,13 +484,13 @@ export default function Dashboard() {
                                         initial={{ opacity: 0, scale: 0.9, y: 20 }}
                                         animate={{ opacity: 1, scale: 1, y: 0 }}
                                         exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                                        className="glass-panel rounded-2xl md:rounded-3xl w-full max-w-4xl max-h-[90vh] overflow-y-auto border border-white/10"
+                                        className="glass-panel rounded-2xl md:rounded-3xl w-full max-w-3xl max-h-[90vh] overflow-y-auto border border-white/10"
                                         onClick={e => e.stopPropagation()}
                                     >
                                         <div className="p-6 md:p-8">
                                             <div className="flex items-center justify-between mb-6">
                                                 <div>
-                                                    <h2 className="text-xl md:text-2xl font-black uppercase italic tracking-tight text-white">📺 How to Set Up Your First Agent</h2>
+                                                    <h2 className="text-xl md:text-2xl font-black uppercase italic tracking-tight text-white">How to Set Up Your First Agent</h2>
                                                     <p className="text-white/40 text-sm mt-1">Watch the video guide to get started quickly.</p>
                                                 </div>
                                                 <button
@@ -501,33 +501,29 @@ export default function Dashboard() {
                                                 </button>
                                             </div>
 
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                {/* Desktop Version */}
-                                                <div className="bg-white/5 rounded-2xl p-4 border border-white/5">
-                                                    <h3 className="text-sm font-black uppercase tracking-widest text-white/60 mb-3 text-center">🖥️ Desktop</h3>
-                                                    <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0, borderRadius: '12px', overflow: 'hidden' }}>
-                                                        <iframe
-                                                            src="https://www.youtube.com/embed/BoQAmvbViAg"
-                                                            title="OpenClaw Setup Guide - Desktop"
-                                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                                            allowFullScreen
-                                                            style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}
-                                                        />
-                                                    </div>
+                                            {/* Desktop: landscape video */}
+                                            <div className="hidden md:block bg-white/5 rounded-2xl p-4 border border-white/5">
+                                                <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0, borderRadius: '12px', overflow: 'hidden' }}>
+                                                    <iframe
+                                                        src="https://www.youtube.com/embed/BoQAmvbViAg"
+                                                        title="OpenClaw Setup Guide"
+                                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                                        allowFullScreen
+                                                        style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}
+                                                    />
                                                 </div>
+                                            </div>
 
-                                                {/* Mobile Version */}
-                                                <div className="bg-white/5 rounded-2xl p-4 border border-white/5">
-                                                    <h3 className="text-sm font-black uppercase tracking-widest text-white/60 mb-3 text-center">📱 Mobile</h3>
-                                                    <div style={{ position: 'relative', paddingBottom: '177.78%', height: 0, borderRadius: '12px', overflow: 'hidden', maxWidth: '220px', margin: '0 auto' }}>
-                                                        <iframe
-                                                            src="https://www.youtube.com/embed/eubbQ_LZDmk"
-                                                            title="OpenClaw Setup Guide - Mobile"
-                                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                                            allowFullScreen
-                                                            style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}
-                                                        />
-                                                    </div>
+                                            {/* Mobile: vertical short */}
+                                            <div className="md:hidden bg-white/5 rounded-2xl p-4 border border-white/5">
+                                                <div style={{ position: 'relative', paddingBottom: '177.78%', height: 0, borderRadius: '12px', overflow: 'hidden', maxWidth: '280px', margin: '0 auto' }}>
+                                                    <iframe
+                                                        src="https://www.youtube.com/embed/eubbQ_LZDmk"
+                                                        title="OpenClaw Setup Guide"
+                                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                                        allowFullScreen
+                                                        style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}
+                                                    />
                                                 </div>
                                             </div>
                                         </div>

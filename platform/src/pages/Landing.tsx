@@ -150,28 +150,19 @@ export default function Landing() {
             <section style={{ padding: 'var(--spacing-2xl) 0', background: 'rgba(255,255,255,0.02)', borderTop: '1px solid var(--color-border)', position: 'relative', zIndex: 1 }}>
                 <div className="container">
                     <h2 className="text-center mb-xl" style={{ letterSpacing: '-0.02em', fontSize: '2.5rem' }}>
-                        🎬 Video Demo
+                        Video Demo
                     </h2>
                     <p className="text-center" style={{ color: 'var(--color-text-secondary)', maxWidth: '700px', margin: '0 auto var(--spacing-2xl)', fontSize: '1.1rem', lineHeight: 1.6 }}>
                         Watch how to deploy your OpenClaw agent in under 60 seconds.
                     </p>
 
-                    <div style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-                        gap: 'var(--spacing-xl)',
-                        maxWidth: '1000px',
-                        margin: '0 auto'
-                    }}>
-                        {/* Desktop Version */}
-                        <div className="card-glass" style={{ padding: 'var(--spacing-lg)', borderRadius: 'var(--radius-xl)' }}>
-                            <h3 style={{ fontSize: '1.1rem', marginBottom: 'var(--spacing-md)', textAlign: 'center' }}>
-                                🖥️ Desktop Visitors
-                            </h3>
+                    <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+                        {/* Desktop: 16:9 landscape video */}
+                        <div className="hidden md:block card-glass" style={{ padding: 'var(--spacing-lg)', borderRadius: 'var(--radius-xl)' }}>
                             <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0, borderRadius: 'var(--radius-lg)', overflow: 'hidden' }}>
                                 <iframe
                                     src="https://www.youtube.com/embed/BoQAmvbViAg"
-                                    title="OpenClaw Demo - Desktop"
+                                    title="OpenClaw Demo"
                                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                                     allowFullScreen
                                     style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}
@@ -179,15 +170,12 @@ export default function Landing() {
                             </div>
                         </div>
 
-                        {/* Mobile Version */}
-                        <div className="card-glass" style={{ padding: 'var(--spacing-lg)', borderRadius: 'var(--radius-xl)' }}>
-                            <h3 style={{ fontSize: '1.1rem', marginBottom: 'var(--spacing-md)', textAlign: 'center' }}>
-                                📱 Mobile Visitors
-                            </h3>
-                            <div style={{ position: 'relative', paddingBottom: '177.78%', height: 0, borderRadius: 'var(--radius-lg)', overflow: 'hidden', maxWidth: '300px', margin: '0 auto' }}>
+                        {/* Mobile: 9:16 vertical short */}
+                        <div className="md:hidden card-glass" style={{ padding: 'var(--spacing-lg)', borderRadius: 'var(--radius-xl)' }}>
+                            <div style={{ position: 'relative', paddingBottom: '177.78%', height: 0, borderRadius: 'var(--radius-lg)', overflow: 'hidden', maxWidth: '350px', margin: '0 auto' }}>
                                 <iframe
                                     src="https://www.youtube.com/embed/eubbQ_LZDmk"
-                                    title="OpenClaw Demo - Mobile"
+                                    title="OpenClaw Demo"
                                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                                     allowFullScreen
                                     style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}

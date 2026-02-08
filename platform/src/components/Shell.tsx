@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { Bot, Layout as LayoutIcon, Users, Settings, LogOut, Activity, ShieldCheck, MessageSquare, CreditCard, Cpu, Menu, X } from 'lucide-react';
+import { Bot, Layout as LayoutIcon, Users, Settings, LogOut, Activity, ShieldCheck, MessageSquare, CreditCard, Cpu, Menu, X, Crown, Zap } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import Logo from './Logo';
 
@@ -9,8 +9,22 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     const navigate = useNavigate();
     const location = useLocation();
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [subscription, setSubscription] = useState<any>(null);
 
     const isAdmin = user?.role === 'admin';
+
+    useEffect(() => {
+        const fetchSub = async () => {
+            try {
+                const token = localStorage.getItem('token');
+                const resp = await fetch('/api/subscription', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (resp.ok) setSubscription(await resp.json());
+            } catch (e) { }
+        };
+        fetchSub();
+    }, [location.pathname]);
 
     const menuItems = [
         { icon: <LayoutIcon size={18} />, label: 'Dashboard', path: '/dashboard' },
@@ -35,6 +49,9 @@ export default function Shell({ children }: { children: React.ReactNode }) {
         setSidebarOpen(false);
     };
 
+    const isFree = subscription?.plan === 'Free';
+    const atLimit = subscription && subscription.currentCount >= subscription.maxInstances;
+
     return (
         <div className="min-h-screen bg-zinc-950 text-white flex flex-col font-sans overflow-hidden">
             {/* Topbar Header */}
@@ -54,7 +71,30 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                     </Link>
                 </div>
 
-                <div className="flex items-center gap-6">
+                <div className="flex items-center gap-3 md:gap-5">
+                    {/* Plan & Usage */}
+                    {subscription && (
+                        <div className="hidden sm:flex items-center gap-3">
+                            <div className="flex items-center gap-2 bg-zinc-800/80 border border-zinc-700/50 rounded-lg px-3 py-1.5">
+                                <Crown size={12} className={isFree ? 'text-zinc-500' : 'text-yellow-400'} />
+                                <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-300">{subscription.plan}</span>
+                                <span className="text-zinc-600">|</span>
+                                <Bot size={12} className="text-zinc-400" />
+                                <span className={`text-[10px] font-bold ${atLimit ? 'text-red-400' : 'text-zinc-400'}`}>
+                                    {subscription.currentCount}/{subscription.maxInstances}
+                                </span>
+                            </div>
+                            {(isFree || atLimit) && (
+                                <button
+                                    onClick={() => navigate('/billing')}
+                                    className="flex items-center gap-1.5 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 text-black text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-lg transition-all shadow-lg shadow-yellow-900/20"
+                                >
+                                    <Zap size={11} strokeWidth={3} />
+                                    Upgrade
+                                </button>
+                            )}
+                        </div>
+                    )}
                     <a href="mailto:support@openclaw-host.com" className="hidden sm:flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400 hover:text-red-500 transition-colors">
                         <MessageSquare size={14} /> Mission Support
                     </a>

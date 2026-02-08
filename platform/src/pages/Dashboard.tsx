@@ -444,47 +444,6 @@ export default function Dashboard() {
                             </div>
                         </header>
 
-                        {/* Subscription Info Bar */}
-                        {subscription && (
-                            <div className="glass-panel p-4 md:p-5 rounded-xl md:rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                                <div className="flex items-center gap-4 flex-1 w-full sm:w-auto">
-                                    <div className="flex items-center gap-2">
-                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${subscription.plan === 'Free' ? 'bg-white/5' : 'bg-yellow-500/10'}`}>
-                                            <Crown size={16} className={subscription.plan === 'Free' ? 'text-white/40' : 'text-yellow-400'} />
-                                        </div>
-                                        <div>
-                                            <span className="text-white text-sm font-bold">{subscription.plan} Plan</span>
-                                        </div>
-                                    </div>
-                                    <div className="flex-1 max-w-xs">
-                                        <div className="flex items-center justify-between mb-1">
-                                            <span className="text-white/40 text-xs">Agents</span>
-                                            <span className="text-white/60 text-xs font-bold">{subscription.currentCount} / {subscription.maxInstances}</span>
-                                        </div>
-                                        <div className="w-full bg-white/5 rounded-full h-1.5">
-                                            <div
-                                                className={`h-1.5 rounded-full transition-all ${subscription.currentCount >= subscription.maxInstances
-                                                        ? 'bg-red-500'
-                                                        : subscription.currentCount >= subscription.maxInstances * 0.8
-                                                            ? 'bg-yellow-500'
-                                                            : 'bg-green-500'
-                                                    }`}
-                                                style={{ width: `${Math.min(100, (subscription.currentCount / subscription.maxInstances) * 100)}%` }}
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-                                {(subscription.plan === 'Free' || subscription.currentCount >= subscription.maxInstances) && (
-                                    <button
-                                        onClick={() => navigate('/billing')}
-                                        className="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 text-black font-bold text-sm px-5 py-2.5 rounded-xl transition-all flex items-center gap-2 shadow-lg shadow-yellow-900/20 whitespace-nowrap"
-                                    >
-                                        <Zap size={14} strokeWidth={3} />
-                                        Upgrade Plan
-                                    </button>
-                                )}
-                            </div>
-                        )}
 
                         {agents.length === 0 ? (
                             <div className="flex flex-col items-center justify-center py-20 text-center">

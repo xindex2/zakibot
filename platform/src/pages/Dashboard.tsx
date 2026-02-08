@@ -431,11 +431,11 @@ export default function Dashboard() {
                             <div className="flex items-center gap-3">
                                 <button
                                     onClick={() => setShowVideoGuide(true)}
-                                    className="bg-purple-600 hover:bg-purple-500 text-white font-bold px-4 md:px-6 py-3 md:py-4 rounded-xl transition-all shadow-lg shadow-purple-900/20 flex items-center gap-2"
+                                    className="bg-white/5 hover:bg-white/10 border border-white/10 text-white font-bold px-4 md:px-6 py-3 md:py-4 rounded-xl transition-all flex items-center gap-2"
                                 >
-                                    <Video size={18} strokeWidth={3} />
-                                    <span className="hidden md:inline">How to Launch</span>
-                                    <span className="md:hidden">Guide</span>
+                                    <Play size={18} strokeWidth={3} className="text-red-500" fill="currentColor" />
+                                    <span className="hidden md:inline">How to Set Up Your First Agent?</span>
+                                    <span className="md:hidden">Setup Guide</span>
                                 </button>
                                 <button
                                     onClick={handleCreateAgent}
@@ -502,7 +502,7 @@ export default function Dashboard() {
                                             </div>
 
                                             {/* Desktop: landscape video */}
-                                            <div className="hidden md:block bg-white/5 rounded-2xl p-4 border border-white/5">
+                                            <div className="hidden md:block">
                                                 <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0, borderRadius: '12px', overflow: 'hidden' }}>
                                                     <iframe
                                                         src="https://www.youtube.com/embed/BoQAmvbViAg"
@@ -515,7 +515,7 @@ export default function Dashboard() {
                                             </div>
 
                                             {/* Mobile: vertical short */}
-                                            <div className="md:hidden bg-white/5 rounded-2xl p-4 border border-white/5">
+                                            <div className="md:hidden">
                                                 <div style={{ position: 'relative', paddingBottom: '177.78%', height: 0, borderRadius: '12px', overflow: 'hidden', maxWidth: '280px', margin: '0 auto' }}>
                                                     <iframe
                                                         src="https://www.youtube.com/embed/eubbQ_LZDmk"

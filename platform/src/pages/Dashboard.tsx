@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     Bot, Cpu, Share2, Terminal, Server, CreditCard, User, LogOut, Search, Globe, HardDrive, Clock,
     Trash2, Play, Square, Settings, LayoutDashboard, ChevronRight, CheckCircle, Plus, Rocket,
     Cloud, FileText, Lock, Sparkles, ChevronLeft, Edit3, Activity, Check, Info, Loader2, Zap, Layout, RefreshCw,
-    MessageSquare, Smartphone, QrCode, ShieldAlert, Shield, Layers
+    MessageSquare, Smartphone, QrCode, ShieldAlert, Shield, Layers, Upload, FolderOpen, File, Image, Code,
+    Download, Eye, X, FilePlus
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { clsx, type ClassValue } from 'clsx';
@@ -168,6 +169,16 @@ export default function Dashboard() {
     const [fetchedModels, setFetchedModels] = useState<{ id: string; name: string }[]>([]);
     const [isFetchingModels, setIsFetchingModels] = useState(false);
     const [modelFetchError, setModelFetchError] = useState<string | null>(null);
+
+    // Workspace state
+    const [wsFiles, setWsFiles] = useState<any[]>([]);
+    const [wsPath, setWsPath] = useState('');
+    const [wsLoading, setWsLoading] = useState(false);
+    const [wsPreview, setWsPreview] = useState<{ name: string; content: string; type: string } | null>(null);
+    const [wsNewFile, setWsNewFile] = useState(false);
+    const [wsNewFileName, setWsNewFileName] = useState('');
+    const [wsNewFileContent, setWsNewFileContent] = useState('');
+    const [wsDragOver, setWsDragOver] = useState(false);
 
     useEffect(() => {
         if (user) {
@@ -464,6 +475,7 @@ export default function Dashboard() {
                                         { id: 'provider', label: 'Model', icon: <Cpu size={16} /> },
                                         { id: 'channels', label: 'Channels', icon: <Share2 size={16} /> },
                                         { id: 'tools', label: 'Tools', icon: <Terminal size={16} /> },
+                                        { id: 'workspace', label: 'Workspace', icon: <HardDrive size={16} /> },
                                         { id: 'automation', label: 'Automation', icon: <Clock size={16} /> },
                                         { id: 'skills', label: 'Skills', icon: <Zap size={16} /> },
                                         { id: 'system', label: 'System', icon: <Settings size={16} /> },
@@ -1054,6 +1066,30 @@ export default function Dashboard() {
                                     </Section>
                                 )}
 
+                                {activeTab === 'workspace' && (
+                                    <WorkspaceTab
+                                        configId={editingAgent.id}
+                                        userId={(editingAgent as any).userId || user?.id}
+                                        token={token}
+                                        files={wsFiles}
+                                        currentPath={wsPath}
+                                        loading={wsLoading}
+                                        preview={wsPreview}
+                                        showNewFile={wsNewFile}
+                                        newFileName={wsNewFileName}
+                                        newFileContent={wsNewFileContent}
+                                        dragOver={wsDragOver}
+                                        setFiles={setWsFiles}
+                                        setPath={setWsPath}
+                                        setLoading={setWsLoading}
+                                        setPreview={setWsPreview}
+                                        setShowNewFile={setWsNewFile}
+                                        setNewFileName={setWsNewFileName}
+                                        setNewFileContent={setWsNewFileContent}
+                                        setDragOver={setWsDragOver}
+                                    />
+                                )}
+
                             </div>
 
                             {/* Floating Action Bar */}
@@ -1078,6 +1114,255 @@ export default function Dashboard() {
                 )}
             </AnimatePresence>
         </div >
+    );
+}
+
+// --- Workspace Tab Component ---
+const FILE_ICONS: Record<string, any> = {
+    json: <Code size={16} className="text-yellow-400" />,
+    yaml: <Code size={16} className="text-blue-400" />,
+    yml: <Code size={16} className="text-blue-400" />,
+    py: <Code size={16} className="text-green-400" />,
+    js: <Code size={16} className="text-amber-400" />,
+    ts: <Code size={16} className="text-blue-500" />,
+    txt: <FileText size={16} className="text-white/40" />,
+    md: <FileText size={16} className="text-white/60" />,
+    log: <FileText size={16} className="text-white/30" />,
+    png: <Image size={16} className="text-pink-400" />,
+    jpg: <Image size={16} className="text-pink-400" />,
+    jpeg: <Image size={16} className="text-pink-400" />,
+    gif: <Image size={16} className="text-pink-400" />,
+    webp: <Image size={16} className="text-pink-400" />,
+    svg: <Image size={16} className="text-orange-400" />,
+};
+const IMAGE_EXTS = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'];
+const TEXT_EXTS = ['json', 'yaml', 'yml', 'py', 'js', 'ts', 'txt', 'md', 'log', 'csv', 'html', 'css', 'xml', 'sh', 'bash', 'env', 'cfg', 'ini', 'toml'];
+
+function formatBytes(bytes: number) {
+    if (bytes === 0) return '0 B';
+    const k = 1024, sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+}
+
+function WorkspaceTab({ configId, userId, token, files, currentPath, loading, preview, showNewFile, newFileName, newFileContent, dragOver, setFiles, setPath, setLoading, setPreview, setShowNewFile, setNewFileName, setNewFileContent, setDragOver }: any) {
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const fetchFiles = async (subPath?: string) => {
+        setLoading(true);
+        try {
+            const q = subPath ? `?path=${encodeURIComponent(subPath)}` : '';
+            const resp = await fetch(`/api/workspace/${configId}${q}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (resp.ok) {
+                const data = await resp.json();
+                setFiles(data.files || []);
+                setPath(subPath || '');
+            }
+        } catch (e) { console.error(e); }
+        setLoading(false);
+    };
+
+    useEffect(() => { if (configId && !configId.startsWith('temp-')) fetchFiles(); }, [configId]);
+
+    const uploadFiles = async (fileList: FileList) => {
+        const fd = new FormData();
+        Array.from(fileList).forEach(f => fd.append('files', f));
+        if (currentPath) fd.append('path', currentPath);
+        await fetch(`/api/workspace/${configId}/upload`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` },
+            body: fd,
+        });
+        fetchFiles(currentPath);
+    };
+
+    const createFile = async () => {
+        if (!newFileName.trim()) return;
+        await fetch(`/api/workspace/${configId}/create`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ filename: newFileName, content: newFileContent, directory: currentPath || undefined }),
+        });
+        setShowNewFile(false);
+        setNewFileName('');
+        setNewFileContent('');
+        fetchFiles(currentPath);
+    };
+
+    const deleteFile = async (filePath: string) => {
+        if (!confirm('Delete this file?')) return;
+        await fetch(`/api/workspace/${configId}/${filePath}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` },
+        });
+        fetchFiles(currentPath);
+    };
+
+    const previewFile = async (file: any) => {
+        const ext = file.extension || '';
+        if (IMAGE_EXTS.includes(ext)) {
+            setPreview({ name: file.name, content: `/api/files/${userId}/${configId}/${file.path}`, type: 'image' });
+        } else if (TEXT_EXTS.includes(ext) && file.size < 500000) {
+            try {
+                const resp = await fetch(`/api/files/${userId}/${configId}/${file.path}`);
+                const text = await resp.text();
+                setPreview({ name: file.name, content: text, type: 'text' });
+            } catch { setPreview({ name: file.name, content: 'Failed to load', type: 'text' }); }
+        }
+    };
+
+    const pathParts = currentPath ? currentPath.split('/').filter(Boolean) : [];
+
+    if (configId?.startsWith('temp-')) {
+        return (
+            <Section icon={<HardDrive className="text-cyan-400" />} title="Workspace" desc="Manage your bot's files.">
+                <div className="flex flex-col items-center justify-center py-16 text-center">
+                    <HardDrive size={32} className="text-white/20 mb-4" />
+                    <p className="text-white/40 text-sm">Save the agent first to access its workspace.</p>
+                </div>
+            </Section>
+        );
+    }
+
+    return (
+        <Section icon={<HardDrive className="text-cyan-400" />} title="Workspace" desc="Manage your bot's files — upload cookies, configs, and more.">
+            {/* Toolbar */}
+            <div className="flex flex-wrap items-center gap-2 mt-6 mb-4">
+                <button onClick={() => { setShowNewFile(true); setNewFileName(''); setNewFileContent(''); }}
+                    className="flex items-center gap-1.5 bg-green-600 hover:bg-green-500 text-white text-[10px] font-bold px-3 py-2 rounded-lg transition-all uppercase tracking-wider">
+                    <FilePlus size={14} /> New File
+                </button>
+                <button onClick={() => fileInputRef.current?.click()}
+                    className="flex items-center gap-1.5 bg-primary/20 hover:bg-primary/30 text-primary text-[10px] font-bold px-3 py-2 rounded-lg transition-all uppercase tracking-wider border border-primary/20">
+                    <Upload size={14} /> Upload
+                </button>
+                <button onClick={() => fetchFiles(currentPath)}
+                    className="flex items-center gap-1.5 bg-white/5 hover:bg-white/10 text-white/60 text-[10px] font-bold px-3 py-2 rounded-lg transition-all uppercase tracking-wider">
+                    <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Refresh
+                </button>
+                <input ref={fileInputRef} type="file" multiple className="hidden" onChange={e => { if (e.target.files?.length) uploadFiles(e.target.files); e.target.value = ''; }} />
+            </div>
+
+            {/* Breadcrumb */}
+            <div className="flex items-center gap-1 text-[10px] font-bold text-white/30 mb-4 uppercase tracking-wider">
+                <button onClick={() => fetchFiles('')} className="hover:text-white transition-colors">/</button>
+                {pathParts.map((part: string, i: number) => (
+                    <span key={i} className="flex items-center gap-1">
+                        <ChevronRight size={10} />
+                        <button onClick={() => fetchFiles(pathParts.slice(0, i + 1).join('/'))} className="hover:text-white transition-colors">{part}</button>
+                    </span>
+                ))}
+            </div>
+
+            {/* Drag & Drop Zone */}
+            <div
+                onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={e => { e.preventDefault(); setDragOver(false); if (e.dataTransfer.files.length) uploadFiles(e.dataTransfer.files); }}
+                className={cn(
+                    "rounded-2xl border-2 border-dashed transition-all min-h-[300px]",
+                    dragOver ? "border-primary bg-primary/5" : "border-white/5 bg-black/20"
+                )}
+            >
+                {loading ? (
+                    <div className="flex items-center justify-center py-20">
+                        <Loader2 className="animate-spin text-white/30" size={28} />
+                    </div>
+                ) : files.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-16 text-center">
+                        <FolderOpen size={32} className="text-white/10 mb-3" />
+                        <p className="text-white/30 text-xs">Empty workspace. Drag files here or use the buttons above.</p>
+                    </div>
+                ) : (
+                    <div className="divide-y divide-white/5">
+                        {files.map((file: any) => (
+                            <div key={file.path} className="flex items-center gap-3 px-4 py-3 hover:bg-white/[0.02] transition-colors group/file">
+                                {/* Icon */}
+                                <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center shrink-0">
+                                    {file.isDirectory ? <FolderOpen size={16} className="text-cyan-400" /> : (FILE_ICONS[file.extension] || <File size={16} className="text-white/30" />)}
+                                </div>
+                                {/* Name */}
+                                <button
+                                    onClick={() => file.isDirectory ? fetchFiles(file.path) : previewFile(file)}
+                                    className="flex-1 text-left text-sm font-semibold text-white/80 hover:text-white truncate transition-colors">
+                                    {file.name}
+                                </button>
+                                {/* Size */}
+                                <span className="text-[10px] text-white/20 font-mono hidden md:block">{file.isDirectory ? '—' : formatBytes(file.size)}</span>
+                                {/* Date */}
+                                <span className="text-[10px] text-white/20 hidden lg:block">{new Date(file.modified).toLocaleDateString()}</span>
+                                {/* Actions */}
+                                <div className="flex items-center gap-1 opacity-0 group-hover/file:opacity-100 transition-opacity">
+                                    {!file.isDirectory && (TEXT_EXTS.includes(file.extension) || IMAGE_EXTS.includes(file.extension)) && (
+                                        <button onClick={() => previewFile(file)} className="p-1.5 hover:bg-white/10 rounded-lg transition-colors" title="Preview">
+                                            <Eye size={14} className="text-white/40" />
+                                        </button>
+                                    )}
+                                    {!file.isDirectory && (
+                                        <a href={`/api/files/${userId}/${configId}/${file.path}`} download className="p-1.5 hover:bg-white/10 rounded-lg transition-colors" title="Download">
+                                            <Download size={14} className="text-white/40" />
+                                        </a>
+                                    )}
+                                    <button onClick={() => deleteFile(file.path)} className="p-1.5 hover:bg-red-500/20 rounded-lg transition-colors" title="Delete">
+                                        <Trash2 size={14} className="text-red-400/60" />
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            {/* New File Modal */}
+            {showNewFile && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100]" onClick={() => setShowNewFile(false)}>
+                    <div className="bg-[#161618] border border-white/10 rounded-2xl p-6 w-full max-w-lg mx-4 space-y-4" onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center justify-between">
+                            <h3 className="text-sm font-black text-white uppercase tracking-wider">Create File</h3>
+                            <button onClick={() => setShowNewFile(false)} className="text-white/30 hover:text-white"><X size={18} /></button>
+                        </div>
+                        <input
+                            value={newFileName}
+                            onChange={e => setNewFileName(e.target.value)}
+                            placeholder="filename.json"
+                            className="input-modern w-full text-sm"
+                            autoFocus
+                        />
+                        <textarea
+                            value={newFileContent}
+                            onChange={e => setNewFileContent(e.target.value)}
+                            placeholder="File content (optional)..."
+                            className="input-modern w-full text-sm font-mono h-40 resize-none"
+                        />
+                        <div className="flex justify-end gap-2">
+                            <button onClick={() => setShowNewFile(false)} className="text-white/40 hover:text-white text-[10px] font-bold uppercase px-4 py-2">Cancel</button>
+                            <button onClick={createFile} className="bg-green-600 hover:bg-green-500 text-white text-[10px] font-bold uppercase px-5 py-2 rounded-lg transition-all">Create</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Preview Modal */}
+            {preview && (
+                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[100]" onClick={() => setPreview(null)}>
+                    <div className="bg-[#161618] border border-white/10 rounded-2xl w-full max-w-2xl mx-4 max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center justify-between p-4 border-b border-white/5">
+                            <h3 className="text-sm font-black text-white uppercase tracking-wider truncate">{preview.name}</h3>
+                            <button onClick={() => setPreview(null)} className="text-white/30 hover:text-white"><X size={18} /></button>
+                        </div>
+                        <div className="flex-1 overflow-auto p-4">
+                            {preview.type === 'image' ? (
+                                <img src={preview.content} alt={preview.name} className="max-w-full rounded-lg" />
+                            ) : (
+                                <pre className="text-xs text-white/70 font-mono whitespace-pre-wrap break-all">{preview.content}</pre>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+        </Section>
     );
 }
 

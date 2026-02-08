@@ -530,6 +530,146 @@ app.get('/api/models', async (req: any, res: any) => {
     }
 });
 
+// --- Workspace File Manager API ---
+import multer from 'multer';
+const upload = multer({ dest: '/tmp/workspace-uploads', limits: { fileSize: 50 * 1024 * 1024 } }); // 50MB max
+
+// Helper: resolve workspace path safely
+function resolveWorkspace(userId: string, configId: string, filePath?: string) {
+    const workspaceRoot = path.resolve(path.join(process.cwd(), 'workspaces'));
+    const base = path.join(workspaceRoot, userId, configId);
+    if (filePath) {
+        const full = path.resolve(path.join(base, filePath));
+        if (!full.startsWith(workspaceRoot)) return null; // path traversal blocked
+        return { base, full };
+    }
+    return { base, full: base };
+}
+
+// List files in workspace
+app.get('/api/workspace/:configId', authenticateToken, async (req: any, res: any) => {
+    try {
+        const config = await prisma.botConfig.findUnique({ where: { id: req.params.configId } });
+        if (!config || config.userId !== req.user.id) return res.status(403).json({ error: 'Forbidden' });
+
+        const ws = resolveWorkspace(config.userId, config.id);
+        if (!ws) return res.status(403).json({ error: 'Forbidden' });
+
+        if (!fs.existsSync(ws.base)) {
+            fs.mkdirSync(ws.base, { recursive: true });
+            return res.json({ files: [], path: '/' });
+        }
+
+        const subPath = (req.query.path as string) || '';
+        const targetDir = subPath ? path.resolve(path.join(ws.base, subPath)) : ws.base;
+        if (!targetDir.startsWith(ws.base)) return res.status(403).json({ error: 'Forbidden' });
+        if (!fs.existsSync(targetDir) || !fs.statSync(targetDir).isDirectory()) {
+            return res.status(404).json({ error: 'Directory not found' });
+        }
+
+        const entries = fs.readdirSync(targetDir, { withFileTypes: true });
+        const files = entries.map(entry => {
+            const fullPath = path.join(targetDir, entry.name);
+            const stat = fs.statSync(fullPath);
+            const relPath = path.relative(ws.base, fullPath);
+            return {
+                name: entry.name,
+                path: relPath,
+                isDirectory: entry.isDirectory(),
+                size: stat.size,
+                modified: stat.mtime.toISOString(),
+                extension: entry.isFile() ? path.extname(entry.name).toLowerCase().slice(1) : null,
+            };
+        }).sort((a, b) => {
+            // Directories first, then alphabetical
+            if (a.isDirectory !== b.isDirectory) return a.isDirectory ? -1 : 1;
+            return a.name.localeCompare(b.name);
+        });
+
+        res.json({ files, path: subPath || '/' });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to list workspace' });
+    }
+});
+
+// Upload files to workspace
+app.post('/api/workspace/:configId/upload', authenticateToken, upload.array('files', 20), async (req: any, res: any) => {
+    try {
+        const config = await prisma.botConfig.findUnique({ where: { id: req.params.configId } });
+        if (!config || config.userId !== req.user.id) return res.status(403).json({ error: 'Forbidden' });
+
+        const subPath = req.body.path || '';
+        const ws = resolveWorkspace(config.userId, config.id, subPath);
+        if (!ws) return res.status(403).json({ error: 'Forbidden' });
+
+        const targetDir = subPath ? ws.full : ws.base;
+        if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
+
+        const uploaded: string[] = [];
+        for (const file of (req.files || [])) {
+            const dest = path.join(targetDir, file.originalname);
+            // Security check
+            if (!path.resolve(dest).startsWith(ws.base)) continue;
+            fs.renameSync(file.path, dest);
+            uploaded.push(file.originalname);
+        }
+
+        res.json({ success: true, uploaded });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to upload files' });
+    }
+});
+
+// Create a text file in workspace
+app.post('/api/workspace/:configId/create', authenticateToken, async (req: any, res: any) => {
+    try {
+        const config = await prisma.botConfig.findUnique({ where: { id: req.params.configId } });
+        if (!config || config.userId !== req.user.id) return res.status(403).json({ error: 'Forbidden' });
+
+        const { filename, content, directory } = req.body;
+        if (!filename) return res.status(400).json({ error: 'Filename required' });
+
+        const subPath = directory ? path.join(directory, filename) : filename;
+        const ws = resolveWorkspace(config.userId, config.id, subPath);
+        if (!ws) return res.status(403).json({ error: 'Forbidden' });
+
+        // Create parent directory if needed
+        const dir = path.dirname(ws.full);
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+
+        fs.writeFileSync(ws.full, content || '');
+        res.json({ success: true, path: subPath });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to create file' });
+    }
+});
+
+// Delete a file/folder from workspace
+app.delete('/api/workspace/:configId/*', authenticateToken, async (req: any, res: any) => {
+    try {
+        const config = await prisma.botConfig.findUnique({ where: { id: req.params.configId } });
+        if (!config || config.userId !== req.user.id) return res.status(403).json({ error: 'Forbidden' });
+
+        const filePath = req.params[0];
+        if (!filePath) return res.status(400).json({ error: 'File path required' });
+
+        const ws = resolveWorkspace(config.userId, config.id, filePath);
+        if (!ws) return res.status(403).json({ error: 'Forbidden' });
+
+        if (!fs.existsSync(ws.full)) return res.status(404).json({ error: 'File not found' });
+
+        const stat = fs.statSync(ws.full);
+        if (stat.isDirectory()) {
+            fs.rmSync(ws.full, { recursive: true, force: true });
+        } else {
+            fs.unlinkSync(ws.full);
+        }
+
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to delete' });
+    }
+});
 // --- Serve workspace files (screenshots, etc.) ---
 app.get('/api/files/:userId/:configId/*', async (req: any, res: any) => {
     try {

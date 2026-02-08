@@ -149,9 +149,7 @@ export default function Landing() {
             {/* Video Demo */}
             <section style={{ padding: 'var(--spacing-2xl) 0', background: 'rgba(255,255,255,0.02)', borderTop: '1px solid var(--color-border)', position: 'relative', zIndex: 1 }}>
                 <div className="container">
-                    <h2 className="text-center mb-xl" style={{ letterSpacing: '-0.02em', fontSize: '2.5rem' }}>
-                        Video Demo
-                    </h2>
+
                     <p className="text-center" style={{ color: 'var(--color-text-secondary)', maxWidth: '700px', margin: '0 auto var(--spacing-2xl)', fontSize: '1.1rem', lineHeight: 1.6 }}>
                         Watch how to deploy your OpenClaw agent in under 60 seconds.
                     </p>

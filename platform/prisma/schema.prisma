@@ -32,6 +32,8 @@ model Subscription {
   maxInstances       Int      @default(1)
   whopMembershipId   String?  @unique
   whopPlanId         String?
+  creemSubscriptionId String? @unique
+  creemProductId     String?
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 }
@@ -50,6 +52,16 @@ model WhopPlan {
   whopPlanId         String   @unique
   planName           String
   maxInstances       Int      @default(1)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+model CreemPlan {
+  id                 String   @id @default(cuid())
+  creemProductId     String   @unique
+  planName           String
+  maxInstances       Int      @default(1)
+  checkoutUrl        String?
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 }

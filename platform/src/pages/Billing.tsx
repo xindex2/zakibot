@@ -12,6 +12,8 @@ const PLAN_ORDER = ['Free', 'Starter', 'Pro', 'Elite', 'Enterprise'];
 export default function Billing() {
     const { user, token } = useAuth();
     const [subscription, setSubscription] = useState<any>(null);
+    const [provider, setProvider] = useState('whop');
+    const [creemPlans, setCreemPlans] = useState<any[]>([]);
 
     useEffect(() => {
         if (!token) return;
@@ -20,6 +22,18 @@ export default function Billing() {
         })
             .then(r => r.ok ? r.json() : null)
             .then(data => { if (data) setSubscription(data); })
+            .catch(() => { });
+
+        // Fetch active payment provider
+        fetch('/api/payment-provider')
+            .then(r => r.json())
+            .then(data => setProvider(data.provider || 'whop'))
+            .catch(() => { });
+
+        // Fetch Creem plans for checkout URLs
+        fetch('/api/creem-plans')
+            .then(r => r.json())
+            .then(data => { if (Array.isArray(data)) setCreemPlans(data); })
             .catch(() => { });
     }, [token]);
 
@@ -91,13 +105,24 @@ export default function Billing() {
         },
     ];
 
-    const checkoutLinks: Record<string, string> = {
+    // Whop checkout links (hardcoded fallback)
+    const whopLinks: Record<string, string> = {
         'Free': '#',
         'Starter': 'https://whop.com/checkout/plan_Ke7ZeyJO29DwZ',
         'Pro': 'https://whop.com/checkout/plan_9NRNdPMrVzwi8',
         'Elite': 'https://whop.com/checkout/plan_XXO2Ey0ki51AI',
         'Enterprise': 'mailto:support@openclaw-host.com'
     };
+
+    // Build Creem checkout links from plan records
+    const creemLinks: Record<string, string> = { 'Free': '#', 'Enterprise': 'mailto:support@openclaw-host.com' };
+    creemPlans.forEach(cp => {
+        if (cp.planName && cp.checkoutUrl) {
+            creemLinks[cp.planName] = cp.checkoutUrl;
+        }
+    });
+
+    const checkoutLinks = provider === 'creem' ? creemLinks : whopLinks;
 
     return (
         <div className="space-y-8 md:space-y-12 max-w-5xl mx-auto py-6 md:py-12 px-4">

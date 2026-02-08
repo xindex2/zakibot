@@ -5,6 +5,7 @@ import { PrismaClient } from '@prisma/client';
 import os from 'os';
 import { startBot, stopBot, getBotStatus, killAllUserProcesses } from './src/lib/bot-executor.js';
 import whopRoutes from './src/routes/webhooks/whop.js';
+import creemRoutes from './src/routes/webhooks/creem.js';
 import authRoutes from './src/routes/auth.js';
 import adminRoutes from './src/routes/admin.js';
 import jwt from 'jsonwebtoken';
@@ -293,7 +294,28 @@ app.use('/api/admin', authenticateToken, isAdmin, adminRoutes);
 // --- Bot Control Routes ---
 
 app.use('/api/webhooks/whop', whopRoutes);
+app.use('/api/webhooks/creem', creemRoutes);
 app.use('/api', authRoutes); // This handles /api/auth/google
+
+// --- Payment Provider ---
+app.get('/api/payment-provider', async (req: any, res: any) => {
+    try {
+        const config = await prisma.systemConfig.findUnique({ where: { key: 'PAYMENT_PROVIDER' } });
+        res.json({ provider: config?.value || 'whop' });
+    } catch (e: any) {
+        res.json({ provider: 'whop' });
+    }
+});
+
+// --- Creem Plans (public, for billing page) ---
+app.get('/api/creem-plans', async (req: any, res: any) => {
+    try {
+        const plans = await prisma.creemPlan.findMany({ orderBy: { maxInstances: 'asc' } });
+        res.json(plans);
+    } catch (e: any) {
+        res.json([]);
+    }
+});
 
 app.post('/api/bot/control', authenticateToken, async (req: any, res: any) => {
     const { action, configId } = req.body;

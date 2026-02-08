@@ -235,4 +235,54 @@ router.delete('/users/:id', async (req, res) => {
     }
 });
 
+// ========================
+// Creem Plans CRUD
+// ========================
+
+/**
+ * GET /api/admin/creem-plans
+ * List Creem Plan Mappings
+ */
+router.get('/creem-plans', async (req, res) => {
+    try {
+        const plans = await prisma.creemPlan.findMany({
+            orderBy: { maxInstances: 'asc' }
+        });
+        res.json(plans);
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+/**
+ * POST /api/admin/creem-plans
+ * Create or Update Creem Plan Mapping
+ */
+router.post('/creem-plans', async (req, res) => {
+    const { creemProductId, planName, maxInstances, checkoutUrl } = req.body;
+    try {
+        const plan = await prisma.creemPlan.upsert({
+            where: { creemProductId },
+            update: { planName, maxInstances: Number(maxInstances), checkoutUrl },
+            create: { creemProductId, planName, maxInstances: Number(maxInstances), checkoutUrl }
+        });
+        res.json(plan);
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+/**
+ * DELETE /api/admin/creem-plans/:id
+ * Delete a Creem Plan
+ */
+router.delete('/creem-plans/:id', async (req, res) => {
+    try {
+        await prisma.creemPlan.delete({ where: { id: req.params.id } });
+        res.json({ success: true });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 export default router;

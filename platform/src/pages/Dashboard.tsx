@@ -5,7 +5,7 @@ import {
     Trash2, Play, Square, Settings, LayoutDashboard, ChevronRight, CheckCircle, Plus, Rocket,
     Cloud, FileText, Lock, Sparkles, ChevronLeft, Edit3, Activity, Check, Info, Loader2, Zap, Layout, RefreshCw,
     MessageSquare, Smartphone, QrCode, ShieldAlert, Shield, Layers, Upload, FolderOpen, File, Image, Code,
-    Download, Eye, X, FilePlus, Video
+    Download, Eye, X, FilePlus, Video, Crown, ArrowUpRight
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { clsx, type ClassValue } from 'clsx';
@@ -166,6 +166,7 @@ export default function Dashboard() {
     const [qrCode, setQrCode] = useState<string | null>(null);
     const [waLinked, setWaLinked] = useState(false);
     const [subscription, setSubscription] = useState<any>(null);
+    const [showLimitModal, setShowLimitModal] = useState(false);
     const [fetchedModels, setFetchedModels] = useState<{ id: string; name: string }[]>([]);
     const [isFetchingModels, setIsFetchingModels] = useState(false);
     const [modelFetchError, setModelFetchError] = useState<string | null>(null);
@@ -287,9 +288,7 @@ export default function Dashboard() {
 
     const handleCreateAgent = () => {
         if (subscription && subscription.currentCount >= subscription.maxInstances) {
-            if (confirm(`Operational Capacity Reached: Your ${subscription.plan} plan is limited to ${subscription.maxInstances} active agent slot(s). Would you like to upgrade your fleet capacity?`)) {
-                navigate('/billing');
-            }
+            setShowLimitModal(true);
             return;
         }
 
@@ -343,9 +342,7 @@ export default function Dashboard() {
 
             if (!resp.ok) {
                 if (data.error?.startsWith('AGENT_LIMIT_REACHED')) {
-                    if (confirm('Operational Capacity Reached: You have reached your plan limit. Upgrade your account to create more agents?')) {
-                        navigate('/billing');
-                    }
+                    setShowLimitModal(true);
                 } else {
                     alert('Protocol Error: ' + (data.error || 'Failed to save config'));
                 }
@@ -447,6 +444,48 @@ export default function Dashboard() {
                             </div>
                         </header>
 
+                        {/* Subscription Info Bar */}
+                        {subscription && (
+                            <div className="glass-panel p-4 md:p-5 rounded-xl md:rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                                <div className="flex items-center gap-4 flex-1 w-full sm:w-auto">
+                                    <div className="flex items-center gap-2">
+                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${subscription.plan === 'Free' ? 'bg-white/5' : 'bg-yellow-500/10'}`}>
+                                            <Crown size={16} className={subscription.plan === 'Free' ? 'text-white/40' : 'text-yellow-400'} />
+                                        </div>
+                                        <div>
+                                            <span className="text-white text-sm font-bold">{subscription.plan} Plan</span>
+                                        </div>
+                                    </div>
+                                    <div className="flex-1 max-w-xs">
+                                        <div className="flex items-center justify-between mb-1">
+                                            <span className="text-white/40 text-xs">Agents</span>
+                                            <span className="text-white/60 text-xs font-bold">{subscription.currentCount} / {subscription.maxInstances}</span>
+                                        </div>
+                                        <div className="w-full bg-white/5 rounded-full h-1.5">
+                                            <div
+                                                className={`h-1.5 rounded-full transition-all ${subscription.currentCount >= subscription.maxInstances
+                                                        ? 'bg-red-500'
+                                                        : subscription.currentCount >= subscription.maxInstances * 0.8
+                                                            ? 'bg-yellow-500'
+                                                            : 'bg-green-500'
+                                                    }`}
+                                                style={{ width: `${Math.min(100, (subscription.currentCount / subscription.maxInstances) * 100)}%` }}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                                {(subscription.plan === 'Free' || subscription.currentCount >= subscription.maxInstances) && (
+                                    <button
+                                        onClick={() => navigate('/billing')}
+                                        className="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 text-black font-bold text-sm px-5 py-2.5 rounded-xl transition-all flex items-center gap-2 shadow-lg shadow-yellow-900/20 whitespace-nowrap"
+                                    >
+                                        <Zap size={14} strokeWidth={3} />
+                                        Upgrade Plan
+                                    </button>
+                                )}
+                            </div>
+                        )}
+
                         {agents.length === 0 ? (
                             <div className="flex flex-col items-center justify-center py-20 text-center">
                                 <div className="w-20 h-20 bg-white/5 rounded-3xl flex items-center justify-center mb-6 border border-white/5">
@@ -468,6 +507,69 @@ export default function Dashboard() {
                                 ))}
                             </div>
                         )}
+
+                        {/* Agent Limit Modal */}
+                        <AnimatePresence>
+                            {showLimitModal && (
+                                <motion.div
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    exit={{ opacity: 0 }}
+                                    className="fixed inset-0 z-50 flex items-center justify-center p-4"
+                                    style={{ backgroundColor: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)' }}
+                                    onClick={() => setShowLimitModal(false)}
+                                >
+                                    <motion.div
+                                        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                                        exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                                        className="glass-panel rounded-2xl md:rounded-3xl w-full max-w-md border border-white/10 overflow-hidden"
+                                        onClick={e => e.stopPropagation()}
+                                    >
+                                        <div className="bg-gradient-to-r from-red-500/20 to-orange-500/20 p-6 border-b border-white/5">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-12 h-12 rounded-2xl bg-red-500/20 flex items-center justify-center">
+                                                    <ShieldAlert size={24} className="text-red-400" />
+                                                </div>
+                                                <div>
+                                                    <h2 className="text-lg font-black uppercase italic tracking-tight text-white">Agent Limit Reached</h2>
+                                                    <p className="text-white/40 text-sm">Your plan capacity is full</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="p-6 space-y-4">
+                                            <p className="text-white/60 text-sm leading-relaxed">
+                                                Your <strong className="text-white">{subscription?.plan || 'Free'}</strong> plan supports up to <strong className="text-white">{subscription?.maxInstances || 1}</strong> agent{(subscription?.maxInstances || 1) > 1 ? 's' : ''}. Upgrade your plan to deploy more agents and unlock premium features.
+                                            </p>
+                                            <div className="bg-white/5 rounded-xl p-3 flex items-center justify-between border border-white/5">
+                                                <div>
+                                                    <span className="text-white/40 text-xs">Agents Used</span>
+                                                    <p className="text-white text-lg font-black">{subscription?.currentCount || 0} / {subscription?.maxInstances || 1}</p>
+                                                </div>
+                                                <div className="w-12 h-12 rounded-xl bg-red-500/10 flex items-center justify-center">
+                                                    <Bot size={20} className="text-red-400" />
+                                                </div>
+                                            </div>
+                                            <div className="flex gap-3">
+                                                <button
+                                                    onClick={() => setShowLimitModal(false)}
+                                                    className="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-white/60 hover:text-white font-bold py-3 rounded-xl transition-all text-sm"
+                                                >
+                                                    Close
+                                                </button>
+                                                <button
+                                                    onClick={() => { setShowLimitModal(false); navigate('/billing'); }}
+                                                    className="flex-1 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 text-black font-bold py-3 rounded-xl transition-all text-sm flex items-center justify-center gap-2 shadow-lg shadow-yellow-900/20"
+                                                >
+                                                    <Zap size={16} strokeWidth={3} />
+                                                    Upgrade Now
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </motion.div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
 
                         {/* Video Guide Popup */}
                         <AnimatePresence>

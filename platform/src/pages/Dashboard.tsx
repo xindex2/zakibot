@@ -282,14 +282,9 @@ export default function Dashboard() {
     }, [activeTab, editingAgent?.whatsappEnabled, editingAgent?.id]);
 
     const handleCreateAgent = () => {
-        // Free users must upgrade before creating agents
+        // Check max agent limit (for paid plans with caps) — free users can create freely
         const currentPlan = subscription?.plan || 'Free';
-        if (currentPlan === 'Free') {
-            setShowLimitModal(true);
-            return;
-        }
-
-        if (subscription && subscription.currentCount >= subscription.maxInstances) {
+        if (currentPlan !== 'Free' && subscription && subscription.currentCount >= subscription.maxInstances) {
             setShowLimitModal(true);
             return;
         }
@@ -355,7 +350,8 @@ export default function Dashboard() {
             if (resp.ok) {
                 // Auto-start the bot immediately after saving/deploying
                 const savedId = data.id || config.id;
-                if (savedId) {
+                const plan = subscription?.plan || 'Free';
+                if (savedId && plan !== 'Free') {
                     try {
                         await fetch('/api/bot/control', {
                             method: 'POST',
@@ -366,6 +362,9 @@ export default function Dashboard() {
                             body: JSON.stringify({ configId: savedId, action: 'start' })
                         });
                     } catch (e) { /* ignore start errors */ }
+                } else if (plan === 'Free') {
+                    // Free user — agent saved but needs upgrade to deploy
+                    setShowLimitModal(true);
                 }
                 await fetchAgents();
                 await fetchSubscription();
@@ -389,6 +388,11 @@ export default function Dashboard() {
 
     const toggleBot = async (configId: string, currentStatus: string) => {
         const action = currentStatus === 'running' ? 'stop' : 'start';
+        // Free users must upgrade before deploying
+        if (action === 'start' && (subscription?.plan || 'Free') === 'Free') {
+            setShowLimitModal(true);
+            return;
+        }
         const resp = await fetch('/api/bot/control', {
             method: 'POST',
             headers: {
@@ -494,22 +498,22 @@ export default function Dashboard() {
                                                     <ShieldAlert size={24} className="text-red-400" />
                                                 </div>
                                                 <div>
-                                                    <h2 className="text-lg font-black uppercase italic tracking-tight text-white">Agent Limit Reached</h2>
-                                                    <p className="text-white/40 text-sm">Your plan capacity is full</p>
+                                                    <h2 className="text-lg font-black uppercase italic tracking-tight text-white">Upgrade to Deploy</h2>
+                                                    <p className="text-white/40 text-sm">Pick a plan to run your agent</p>
                                                 </div>
                                             </div>
                                         </div>
                                         <div className="p-6 space-y-4">
                                             <p className="text-white/60 text-sm leading-relaxed">
-                                                Your <strong className="text-white">{subscription?.plan || 'Free'}</strong> plan supports up to <strong className="text-white">{subscription?.maxInstances || 1}</strong> agent{(subscription?.maxInstances || 1) > 1 ? 's' : ''}. Upgrade your plan to deploy more agents and unlock premium features.
+                                                Your agent has been saved! To <strong className="text-white">deploy and run</strong> it, choose a plan. Paid plans include more agents, unlimited messages, and priority support.
                                             </p>
                                             <div className="bg-white/5 rounded-xl p-3 flex items-center justify-between border border-white/5">
                                                 <div>
-                                                    <span className="text-white/40 text-xs">Agents Used</span>
-                                                    <p className="text-white text-lg font-black">{subscription?.currentCount || 0} / {subscription?.maxInstances || 1}</p>
+                                                    <span className="text-white/40 text-xs">Current Plan</span>
+                                                    <p className="text-white text-lg font-black">{subscription?.plan || 'Free'}</p>
                                                 </div>
-                                                <div className="w-12 h-12 rounded-xl bg-red-500/10 flex items-center justify-center">
-                                                    <Bot size={20} className="text-red-400" />
+                                                <div className="w-12 h-12 rounded-xl bg-orange-500/10 flex items-center justify-center">
+                                                    <Rocket size={20} className="text-orange-400" />
                                                 </div>
                                             </div>
                                             <div className="flex gap-3">
@@ -524,7 +528,7 @@ export default function Dashboard() {
                                                     className="flex-1 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 text-black font-bold py-3 rounded-xl transition-all text-sm flex items-center justify-center gap-2 shadow-lg shadow-yellow-900/20"
                                                 >
                                                     <Zap size={16} strokeWidth={3} />
-                                                    Upgrade Now
+                                                    Pick a Plan
                                                 </button>
                                             </div>
                                         </div>

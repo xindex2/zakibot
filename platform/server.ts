@@ -197,18 +197,8 @@ app.post('/api/config', async (req, res) => {
     if (!userId) return res.status(401).json({ error: 'userId is required' });
 
     try {
-        // Enforce plan limits for NEW configs
-        const isNew = !id || id.startsWith('temp-');
-
-        if (isNew) {
-            const sub = await prisma.subscription.findUnique({ where: { userId } });
-            const count = await prisma.botConfig.count({ where: { userId } });
-            const maxInstances = sub?.maxInstances || 1;
-
-            if (count >= maxInstances) {
-                return res.status(403).json({ error: 'AGENT_LIMIT_REACHED|You have reached your plan limit. Please upgrade to create more agents.' });
-            }
-        }
+        // Allow everyone to save configs (creation is free)
+        // Plan limits are enforced when starting/deploying the bot
 
         // Ensure user exists (demo-user fallback for dev)
         let user = await prisma.user.findUnique({ where: { id: userId } });
@@ -409,6 +399,12 @@ app.post('/api/bot/control', authenticateToken, async (req: any, res: any) => {
     try {
         let result;
         if (action === 'start') {
+            // Enforce plan limits: free users must upgrade to deploy
+            const config = await prisma.botConfig.findUnique({ where: { id: configId }, include: { user: { include: { subscription: true } } } });
+            const plan = (config as any)?.user?.subscription?.plan || 'Free';
+            if (plan === 'Free') {
+                return res.status(403).json({ error: 'UPGRADE_REQUIRED|Upgrade your plan to deploy and run agents.' });
+            }
             result = await startBot(configId);
         } else if (action === 'stop') {
             result = await stopBot(configId);

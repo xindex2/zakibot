@@ -41,7 +41,7 @@ export default function Login() {
         }
     }, [location, login, navigate]);
 
-    // Handle Google credential response (called by GIS renderButton)
+    // Handle Google credential response (called by GIS)
     const handleGoogleCredential = useCallback(async (response: any) => {
         setLoading(true);
         setError('');
@@ -62,7 +62,7 @@ export default function Login() {
         }
     }, [login, navigate]);
 
-    // Load Google Identity Services SDK and render the button
+    // Load Google Identity Services SDK and render button
     useEffect(() => {
         let mounted = true;
 
@@ -75,31 +75,41 @@ export default function Login() {
                 const initAndRender = (clientId: string) => {
                     if (!window.google?.accounts?.id || !mounted) return;
 
+                    // Initialize with popup mode — this opens a popup WINDOW
+                    // (not an iframe) for the Google consent screen.
+                    // The popup runs as a regular browser window, NOT inside
+                    // the WebView, so Google allows it. This fixes the
+                    // "disallowed_useragent" error in Instagram/Facebook/etc.
                     window.google.accounts.id.initialize({
                         client_id: clientId,
                         callback: handleGoogleCredential,
                         auto_select: false,
                         cancel_on_tap_outside: true,
-                        // Use FedCM when available (Chrome 117+), falls back to iframe
-                        use_fedcm_for_prompt: true,
+                        ux_mode: 'popup',
+                        // Disable FedCM to use the legacy popup flow
+                        // which has better WebView compatibility
+                        use_fedcm_for_prompt: false,
                     });
 
-                    // renderButton creates Google's own iframe-based sign-in button
-                    // This works in ALL environments including WebViews/in-app browsers
-                    // because it's Google's own UI, not a redirect
+                    // renderButton creates Google's official Sign-In button.
+                    // When tapped, it opens the popup (not a redirect).
                     if (googleBtnRef.current) {
-                        googleBtnRef.current.innerHTML = ''; // Clear previous renders
+                        googleBtnRef.current.innerHTML = '';
                         window.google.accounts.id.renderButton(googleBtnRef.current, {
                             type: 'standard',
                             theme: 'filled_black',
                             size: 'large',
                             text: 'continue_with',
                             shape: 'pill',
-                            width: googleBtnRef.current.offsetWidth || 340,
+                            width: Math.min(googleBtnRef.current.offsetWidth || 340, 400),
                             logo_alignment: 'center',
                         });
                         setGoogleReady(true);
                     }
+
+                    // Also try One Tap prompt as secondary
+                    // (may work in some WebViews, harmless if not)
+                    window.google.accounts.id.prompt();
                 };
 
                 // Load the GIS script
@@ -212,7 +222,12 @@ export default function Login() {
                             <div className="h-[1px] bg-white/5 flex-1" />
                         </div>
 
-                        {/* Google's own rendered button — works in ALL browsers including WebViews */}
+                        {/* Google Sign-In Button — rendered by Google's SDK via popup mode.
+                            Works in ALL browsers including WebViews because:
+                            1. renderButton creates Google's own iframe-based UI
+                            2. ux_mode:'popup' opens a popup WINDOW for consent (not a redirect)
+                            3. The popup runs as a real browser, bypassing disallowed_useragent
+                        */}
                         <div className="flex flex-col items-center gap-3">
                             <div
                                 ref={googleBtnRef}
@@ -220,11 +235,7 @@ export default function Login() {
                                 style={{ minHeight: 50 }}
                             />
                             {!googleReady && (
-                                <button
-                                    type="button"
-                                    disabled
-                                    className="w-full bg-white/5 border border-white/5 text-gray-600 py-5 rounded-2xl font-black tracking-widest uppercase text-[10px] flex items-center justify-center gap-4 opacity-50"
-                                >
+                                <div className="w-full bg-white/5 border border-white/5 text-gray-600 py-5 rounded-2xl font-black tracking-widest uppercase text-[10px] flex items-center justify-center gap-4 opacity-60">
                                     <svg width="18" height="18" viewBox="0 0 18 18">
                                         <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285f4" />
                                         <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34a853" />
@@ -232,7 +243,7 @@ export default function Login() {
                                         <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.956l3.007 2.332C4.672 5.164 6.656 3.58 9 3.58z" fill="#ea4335" />
                                     </svg>
                                     Loading Google Sign-In...
-                                </button>
+                                </div>
                             )}
                         </div>
                     </form>

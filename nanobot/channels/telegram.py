@@ -178,6 +178,21 @@ class TelegramChannel(BaseChannel):
             image_matches = image_pattern.findall(text_content)
             text_content = image_pattern.sub('', text_content)
             
+            # 1b) Detect markdown image syntax ![caption](path)
+            md_image_pattern = re.compile(r'!\[([^\]]*)\]\(([^)]+)\)')
+            md_image_matches = []
+            for m in md_image_pattern.finditer(text_content):
+                raw_path = m.group(2).strip()
+                candidate_paths = [P(raw_path)]
+                if self.workspace:
+                    candidate_paths.append(P(self.workspace) / raw_path)
+                for p in candidate_paths:
+                    if p.is_file():
+                        md_image_matches.append((m.group(0), str(p)))
+                        break
+            for (match_text, _) in md_image_matches:
+                text_content = text_content.replace(match_text, '')
+            
             # 2) Detect general file paths in the message text
             # Match absolute paths or relative workspace paths with file extensions
             file_pattern = re.compile(
@@ -215,6 +230,10 @@ class TelegramChannel(BaseChannel):
                     all_files.append(img_path)
                 elif self.workspace and (P(self.workspace) / img_path).is_file():
                     all_files.append(str(P(self.workspace) / img_path))
+            
+            for (_, file_path) in md_image_matches:
+                if file_path not in all_files:
+                    all_files.append(file_path)
                     
             for (_, file_path) in general_files:
                 if file_path not in all_files:

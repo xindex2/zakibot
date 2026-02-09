@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Trash2, Shield, Gem, ChevronLeft, ChevronRight, Edit2, Loader2, Save, X, ChevronDown, Bot, MessageSquare } from 'lucide-react';
+import { Search, Trash2, Shield, Gem, ChevronLeft, ChevronRight, Edit2, Loader2, Save, X, ChevronDown, Bot, MessageSquare, CreditCard, Plus } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -21,6 +21,7 @@ interface UserData {
     subscription?: {
         plan: string;
         maxInstances: number;
+        creditBalance?: number;
     };
     _count: {
         configs: number;
@@ -42,7 +43,7 @@ export default function UserManagement() {
 
     // Edit State
     const [editingUser, setEditingUser] = useState<UserData | null>(null);
-    const [editForm, setEditForm] = useState({ role: '', plan: '', maxInstances: 1 });
+    const [editForm, setEditForm] = useState({ role: '', plan: '', maxInstances: 1, creditGrant: 0 });
     const [isSaving, setIsSaving] = useState(false);
 
     useEffect(() => {
@@ -104,7 +105,8 @@ export default function UserManagement() {
         setEditForm({
             role: user.role,
             plan: user.subscription?.plan || 'Free',
-            maxInstances: user.subscription?.maxInstances || 1
+            maxInstances: user.subscription?.maxInstances || 1,
+            creditGrant: 0
         });
     };
 
@@ -120,6 +122,17 @@ export default function UserManagement() {
                 },
                 body: JSON.stringify(editForm)
             });
+            // If credit grant > 0, also add credits
+            if (editForm.creditGrant > 0) {
+                await fetch(`/api/admin/credits/add`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ userId: editingUser.id, amount: editForm.creditGrant })
+                });
+            }
             setEditingUser(null);
             loadUsers();
         } catch (e) {
@@ -169,6 +182,7 @@ export default function UserManagement() {
                                 <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-white/40">Role</th>
                                 <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-white/40">Plan Status</th>
                                 <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-white/40">Bots</th>
+                                <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-white/40">Credits</th>
                                 <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-white/40">Registered</th>
                                 <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-white/40 text-right">Control</th>
                             </tr>
@@ -242,6 +256,14 @@ export default function UserManagement() {
                                                     <span className="text-[11px] text-white/20 italic">No bots</span>
                                                 )}
                                             </td>
+                                            <td className="px-8 py-6">
+                                                <div className="flex items-center gap-2">
+                                                    <CreditCard size={12} className={u.subscription?.creditBalance ? 'text-emerald-400' : 'text-white/20'} />
+                                                    <span className={`text-xs font-bold ${u.subscription?.creditBalance ? 'text-emerald-400' : 'text-white/30'}`}>
+                                                        ${(u.subscription?.creditBalance ?? 0).toFixed(2)}
+                                                    </span>
+                                                </div>
+                                            </td>
                                             <td className="px-8 py-6 text-[11px] font-mono text-white/40">
                                                 {new Date(u.createdAt).toLocaleDateString()}
                                             </td>
@@ -266,7 +288,7 @@ export default function UserManagement() {
                                         <AnimatePresence>
                                             {isExpanded && (
                                                 <tr key={`${u.id}-bots`}>
-                                                    <td colSpan={6} className="px-8 py-4">
+                                                    <td colSpan={7} className="px-8 py-4">
                                                         <motion.div
                                                             initial={{ opacity: 0, height: 0 }}
                                                             animate={{ opacity: 1, height: 'auto' }}
@@ -297,8 +319,8 @@ export default function UserManagement() {
 
                                                                         {/* Status label */}
                                                                         <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border ${isRunning
-                                                                                ? 'text-green-400 bg-green-500/10 border-green-500/20'
-                                                                                : 'text-red-400 bg-red-500/10 border-red-500/20'
+                                                                            ? 'text-green-400 bg-green-500/10 border-green-500/20'
+                                                                            : 'text-red-400 bg-red-500/10 border-red-500/20'
                                                                             }`}>
                                                                             {isRunning ? 'Running' : 'Stopped'}
                                                                         </span>
@@ -435,6 +457,25 @@ export default function UserManagement() {
                                             onChange={e => setEditForm({ ...editForm, maxInstances: parseInt(e.target.value) })}
                                         />
                                     </div>
+                                </div>
+
+                                <div>
+                                    <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/40 block mb-2">Grant Credits ($)</label>
+                                    <div className="flex gap-3">
+                                        <input
+                                            type="number"
+                                            className="input-modern w-full"
+                                            value={editForm.creditGrant}
+                                            min={0}
+                                            onChange={e => setEditForm({ ...editForm, creditGrant: parseInt(e.target.value) || 0 })}
+                                            placeholder="0"
+                                        />
+                                        <div className="flex items-center gap-1 text-[10px] text-emerald-400 font-bold whitespace-nowrap">
+                                            <CreditCard size={12} />
+                                            Current: ${(editingUser.subscription?.creditBalance ?? 0).toFixed(2)}
+                                        </div>
+                                    </div>
+                                    <p className="text-[9px] text-white/30 mt-1">Enter amount to add to the user's credit balance. Leave 0 to skip.</p>
                                 </div>
 
                                 <div className="pt-6 flex gap-4">

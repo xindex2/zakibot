@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     Bot, Cpu, Share2, Terminal, Server, CreditCard, User, LogOut, Search, Globe, HardDrive, Clock,
@@ -112,6 +112,7 @@ interface AgentConfig {
     description: string;
     provider: string;
     apiKey: string;
+    apiKeyMode: string;
     apiBase: string;
     model: string;
     telegramEnabled: boolean;
@@ -171,6 +172,36 @@ export default function Dashboard() {
     const [isFetchingModels, setIsFetchingModels] = useState(false);
     const [modelFetchError, setModelFetchError] = useState<string | null>(null);
     const [showVideoGuide, setShowVideoGuide] = useState(false);
+    const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const lastSavedJson = useRef<string>('');
+
+    // Auto-save: debounce 2 seconds after any editingAgent change (only for existing agents)
+    useEffect(() => {
+        if (!editingAgent || !editingAgent.id || isSaving) return;
+        const currentJson = JSON.stringify(editingAgent);
+        if (currentJson === lastSavedJson.current) return;
+
+        if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+        autoSaveTimer.current = setTimeout(async () => {
+            lastSavedJson.current = currentJson;
+            if (!user || !token) return;
+            try {
+                await fetch('/api/config', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ userId: user.id, ...editingAgent })
+                });
+                fetchAgents();
+            } catch (e) { /* silent auto-save */ }
+        }, 2000);
+
+        return () => {
+            if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+        };
+    }, [editingAgent]);
 
     // Workspace state
     const [wsFiles, setWsFiles] = useState<any[]>([]);
@@ -287,6 +318,13 @@ export default function Dashboard() {
     }, [activeTab, editingAgent?.whatsappEnabled, editingAgent?.id]);
 
     const handleCreateAgent = () => {
+        // Free users must upgrade before creating agents
+        const currentPlan = subscription?.plan || 'Free';
+        if (currentPlan === 'Free') {
+            setShowLimitModal(true);
+            return;
+        }
+
         if (subscription && subscription.currentCount >= subscription.maxInstances) {
             setShowLimitModal(true);
             return;
@@ -298,6 +336,7 @@ export default function Dashboard() {
             provider: 'openrouter',
             model: 'anthropic/claude-3.5-sonnet',
             apiKey: '',
+            apiKeyMode: 'own_key',
             apiBase: '',
             telegramEnabled: false,
             discordEnabled: false,
@@ -676,148 +715,270 @@ export default function Dashboard() {
                             <div className="space-y-16 pb-32">
                                 {activeTab === 'provider' && (
                                     <Section icon={<Layers className="text-green-500" />} title="Model" desc="Configure the LLM engine.">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-10">
-                                            <InputWrapper label="Provider">
-                                                <select
-                                                    value={editingAgent.provider}
-                                                    onChange={e => setEditingAgent({ ...editingAgent, provider: e.target.value })}
-                                                    className="input-modern w-full"
-                                                >
-                                                    {PROVIDERS.map(p => (
-                                                        <option key={p.id} value={p.id}>{p.name}</option>
-                                                    ))}
-                                                </select>
-                                            </InputWrapper>
-                                            <InputWrapper label="Model" full>
-                                                <input
-                                                    value={editingAgent.model}
-                                                    onChange={e => setEditingAgent({ ...editingAgent, model: e.target.value })}
-                                                    className="input-modern w-full font-mono mb-3"
-                                                    placeholder="Type a custom model ID or select below..."
-                                                />
-                                                <div className="max-h-[300px] overflow-y-auto custom-scrollbar border border-white/5 rounded-2xl p-3">
-                                                    {(() => {
-                                                        const providerMap: Record<string, string> = {
-                                                            openrouter: '', anthropic: 'anthropic', openai: 'openai',
-                                                            deepseek: 'deepseek', groq: 'groq', gemini: 'google',
-                                                            google: 'google', xai: 'xai', moonshot: 'moonshot',
-                                                            zhipu: 'zhipu', vllm: '', ollama: '', venice: '',
-                                                            dashscope: 'qwen', aihubmix: ''
-                                                        };
-                                                        const selectedProvider = providerMap[editingAgent.provider] || '';
-                                                        const filtered = selectedProvider
-                                                            ? MODEL_CATALOG.filter(m => m.provider === selectedProvider)
-                                                            : MODEL_CATALOG;
-                                                        const groups = filtered.reduce((acc, m) => {
-                                                            if (!acc[m.provider]) acc[m.provider] = [];
-                                                            acc[m.provider].push(m);
-                                                            return acc;
-                                                        }, {} as Record<string, typeof MODEL_CATALOG>);
-                                                        return Object.entries(groups).map(([provider, models]) => (
-                                                            <div key={provider} className="mb-3">
-                                                                <div className="text-[9px] font-black uppercase tracking-[0.2em] text-white/20 px-3 py-2 sticky top-0 bg-[var(--bg-deep)]">
-                                                                    {provider}
-                                                                </div>
-                                                                <div className="space-y-0.5">
-                                                                    {models.map(m => (
-                                                                        <button
-                                                                            key={m.id}
-                                                                            onClick={() => setEditingAgent({ ...editingAgent, model: m.id })}
-                                                                            className={cn(
-                                                                                "w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-left transition-all text-xs",
-                                                                                editingAgent.model === m.id
-                                                                                    ? "bg-primary/10 border border-primary/30 text-white"
-                                                                                    : "hover:bg-white/5 text-white/60 hover:text-white"
-                                                                            )}
-                                                                        >
-                                                                            <div className="min-w-0">
-                                                                                <span className="font-bold">{m.name}</span>
-                                                                                <span className="text-white/30 ml-2 font-mono text-[10px] hidden sm:inline">{m.id}</span>
-                                                                            </div>
-                                                                            <span className="text-[9px] font-black uppercase tracking-widest text-cyan-400/60 bg-cyan-400/5 px-2 py-0.5 rounded-full shrink-0 ml-2">{m.ctx}</span>
-                                                                        </button>
-                                                                    ))}
-                                                                </div>
-                                                            </div>
-                                                        ));
-                                                    })()}
+                                        {/* API Key Mode Selector */}
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-8 mb-10">
+                                            <button
+                                                onClick={() => setEditingAgent({ ...editingAgent, apiKeyMode: 'platform_credits' })}
+                                                className={cn(
+                                                    "p-5 rounded-2xl border-2 transition-all text-left group",
+                                                    editingAgent.apiKeyMode === 'platform_credits'
+                                                        ? "border-emerald-500/50 bg-emerald-500/5"
+                                                        : "border-white/5 bg-white/2 hover:border-white/10"
+                                                )}
+                                            >
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <CreditCard size={16} className={editingAgent.apiKeyMode === 'platform_credits' ? 'text-emerald-400' : 'text-white/30'} />
+                                                        <span className="font-black uppercase text-xs tracking-tight">Use Platform Credits</span>
+                                                    </div>
+                                                    {editingAgent.apiKeyMode === 'platform_credits' && (
+                                                        <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 text-[8px] font-black uppercase rounded-full tracking-wider">Active</span>
+                                                    )}
                                                 </div>
-                                                {/* Show dynamically fetched models if available */}
-                                                {fetchedModels.length > 0 && (
-                                                    <div className="mb-4 border-b border-white/5 pb-4">
-                                                        <div className="text-[9px] font-black uppercase tracking-[0.2em] text-green-400/60 px-3 py-2 sticky top-0 bg-[var(--bg-deep)] flex items-center gap-2">
-                                                            <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
-                                                            Your Available Models ({fetchedModels.length})
+                                                <p className="text-[10px] text-white/40 leading-relaxed">We provide the API key. Your credits are deducted per usage. Top up anytime.</p>
+                                            </button>
+                                            <button
+                                                onClick={() => setEditingAgent({ ...editingAgent, apiKeyMode: 'own_key' })}
+                                                className={cn(
+                                                    "p-5 rounded-2xl border-2 transition-all text-left group",
+                                                    editingAgent.apiKeyMode === 'own_key'
+                                                        ? "border-blue-500/50 bg-blue-500/5"
+                                                        : "border-white/5 bg-white/2 hover:border-white/10"
+                                                )}
+                                            >
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <Lock size={16} className={editingAgent.apiKeyMode === 'own_key' ? 'text-blue-400' : 'text-white/30'} />
+                                                        <span className="font-black uppercase text-xs tracking-tight">Bring Your Own Key</span>
+                                                    </div>
+                                                    {editingAgent.apiKeyMode === 'own_key' && (
+                                                        <span className="px-2 py-0.5 bg-blue-500/20 text-blue-400 text-[8px] font-black uppercase rounded-full tracking-wider">Active</span>
+                                                    )}
+                                                </div>
+                                                <p className="text-[10px] text-white/40 leading-relaxed">Use your own API key from any supported provider. Unlimited usage.</p>
+                                            </button>
+                                        </div>
+
+                                        {/* Platform Credits Mode */}
+                                        {editingAgent.apiKeyMode === 'platform_credits' && (
+                                            <div className="space-y-6">
+                                                <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-2xl p-6">
+                                                    <div className="flex items-center justify-between mb-4">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+                                                                <Sparkles size={18} className="text-emerald-400" />
+                                                            </div>
+                                                            <div>
+                                                                <h4 className="font-black text-sm uppercase tracking-tight text-white">Credits Balance</h4>
+                                                                <p className="text-[10px] text-white/40">Powered by OpenRouter via platform</p>
+                                                            </div>
                                                         </div>
-                                                        <div className="space-y-0.5 max-h-[200px] overflow-y-auto">
-                                                            {fetchedModels.map(m => (
-                                                                <button
-                                                                    key={m.id}
-                                                                    onClick={() => setEditingAgent({ ...editingAgent, model: m.id })}
-                                                                    className={cn(
-                                                                        "w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-left transition-all text-xs",
-                                                                        editingAgent.model === m.id
-                                                                            ? "bg-green-500/10 border border-green-500/30 text-white"
-                                                                            : "hover:bg-white/5 text-white/60 hover:text-white"
-                                                                    )}
-                                                                >
-                                                                    <div className="min-w-0">
-                                                                        <span className="font-bold">{m.name}</span>
-                                                                        <span className="text-white/30 ml-2 font-mono text-[10px] hidden sm:inline">{m.id}</span>
-                                                                    </div>
-                                                                    <span className="text-[8px] font-black uppercase tracking-widest text-green-400/60 bg-green-400/5 px-2 py-0.5 rounded-full shrink-0 ml-2">LIVE</span>
-                                                                </button>
-                                                            ))}
+                                                        <div className="text-right">
+                                                            <span className="text-2xl font-black text-emerald-400">${subscription?.creditBalance?.toFixed(2) ?? '0.00'}</span>
+                                                            <p className="text-[9px] text-white/30 uppercase tracking-widest">Remaining</p>
                                                         </div>
                                                     </div>
-                                                )}
-                                                <p className="text-[10px] text-white/20 mt-2 font-medium">
-                                                    {fetchedModels.length > 0
-                                                        ? `Showing ${fetchedModels.length} live models + catalog fallbacks below.`
-                                                        : editingAgent.provider === 'openrouter' ? 'Showing all models (OpenRouter supports all providers).' : `Showing ${editingAgent.provider} models.`
-                                                    } You can also type any custom model ID.
-                                                </p>
-                                            </InputWrapper>
-                                            <InputWrapper label="API Secret Key" full>
-                                                <div className="flex gap-3">
-                                                    <input
-                                                        type="password"
-                                                        value={editingAgent.apiKey}
-                                                        onChange={e => setEditingAgent({ ...editingAgent, apiKey: e.target.value })}
-                                                        className="input-modern w-full font-mono"
-                                                        placeholder="Enter your API key here..."
-                                                    />
-                                                    <button
-                                                        onClick={fetchDynamicModels}
-                                                        disabled={isFetchingModels || !editingAgent.apiKey}
-                                                        className={cn(
-                                                            "shrink-0 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border",
-                                                            editingAgent.apiKey
-                                                                ? "bg-primary/10 border-primary/30 text-primary hover:bg-primary/20"
-                                                                : "bg-white/5 border-white/10 text-white/30 cursor-not-allowed"
-                                                        )}
-                                                    >
-                                                        {isFetchingModels ? <Loader2 size={14} className="animate-spin" /> : 'Fetch Models'}
-                                                    </button>
+                                                    <div className="flex gap-3">
+                                                        <button
+                                                            onClick={async () => {
+                                                                try {
+                                                                    const resp = await fetch('/api/credits/topup', {
+                                                                        method: 'POST',
+                                                                        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+                                                                    });
+                                                                    if (resp.ok) { fetchSubscription(); alert('$10 credits added!'); }
+                                                                } catch (e) { }
+                                                            }}
+                                                            className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl transition-all text-xs uppercase tracking-widest flex items-center justify-center gap-2"
+                                                        >
+                                                            <Plus size={14} /> Top Up $10
+                                                        </button>
+                                                        <button
+                                                            onClick={() => navigate('/billing')}
+                                                            className="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-white/60 hover:text-white font-bold py-3 rounded-xl transition-all text-xs uppercase tracking-widest"
+                                                        >
+                                                            View Plans
+                                                        </button>
+                                                    </div>
                                                 </div>
-                                                {modelFetchError && (
-                                                    <p className="text-[10px] text-red-400 mt-2">{modelFetchError}</p>
-                                                )}
-                                                {fetchedModels.length > 0 && (
-                                                    <p className="text-[10px] text-green-400 mt-2">✓ Found {fetchedModels.length} models from {editingAgent.provider}</p>
-                                                )}
-                                            </InputWrapper>
-                                            {editingAgent.provider === 'vllm' && (
-                                                <InputWrapper label="Base URL (vLLM / Local)" full>
+                                                {/* Model selector only (no provider/key needed) */}
+                                                <InputWrapper label="Model" full>
                                                     <input
-                                                        value={editingAgent.apiBase || ''}
-                                                        onChange={e => setEditingAgent({ ...editingAgent, apiBase: e.target.value })}
-                                                        className="input-modern w-full font-mono"
-                                                        placeholder="http://localhost:8000/v1"
+                                                        value={editingAgent.model}
+                                                        onChange={e => setEditingAgent({ ...editingAgent, model: e.target.value })}
+                                                        className="input-modern w-full font-mono mb-3"
+                                                        placeholder="Type a custom model ID or select below..."
                                                     />
+                                                    <div className="max-h-[300px] overflow-y-auto custom-scrollbar border border-white/5 rounded-2xl p-3">
+                                                        {MODEL_CATALOG.map(m => (
+                                                            <button
+                                                                key={m.id}
+                                                                onClick={() => setEditingAgent({ ...editingAgent, model: m.id })}
+                                                                className={cn(
+                                                                    "w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-left transition-all text-xs",
+                                                                    editingAgent.model === m.id
+                                                                        ? "bg-primary/10 border border-primary/30 text-white"
+                                                                        : "hover:bg-white/5 text-white/60 hover:text-white"
+                                                                )}
+                                                            >
+                                                                <div className="min-w-0">
+                                                                    <span className="font-bold">{m.name}</span>
+                                                                    <span className="text-white/30 ml-2 font-mono text-[10px] hidden sm:inline">{m.id}</span>
+                                                                </div>
+                                                                <span className="text-[9px] font-black uppercase tracking-widest text-cyan-400/60 bg-cyan-400/5 px-2 py-0.5 rounded-full shrink-0 ml-2">{m.ctx}</span>
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                    <p className="text-[10px] text-white/20 mt-2 font-medium">All models available via OpenRouter. Select any model above or type a custom ID.</p>
                                                 </InputWrapper>
-                                            )}
-                                        </div>
+                                            </div>
+                                        )}
+
+                                        {/* Own Key Mode — existing provider/key/model UI */}
+                                        {editingAgent.apiKeyMode === 'own_key' && (
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                                <InputWrapper label="Provider">
+                                                    <select
+                                                        value={editingAgent.provider}
+                                                        onChange={e => setEditingAgent({ ...editingAgent, provider: e.target.value })}
+                                                        className="input-modern w-full"
+                                                    >
+                                                        {PROVIDERS.map(p => (
+                                                            <option key={p.id} value={p.id}>{p.name}</option>
+                                                        ))}
+                                                    </select>
+                                                </InputWrapper>
+                                                <InputWrapper label="Model" full>
+                                                    <input
+                                                        value={editingAgent.model}
+                                                        onChange={e => setEditingAgent({ ...editingAgent, model: e.target.value })}
+                                                        className="input-modern w-full font-mono mb-3"
+                                                        placeholder="Type a custom model ID or select below..."
+                                                    />
+                                                    <div className="max-h-[300px] overflow-y-auto custom-scrollbar border border-white/5 rounded-2xl p-3">
+                                                        {(() => {
+                                                            const providerMap: Record<string, string> = {
+                                                                openrouter: '', anthropic: 'anthropic', openai: 'openai',
+                                                                deepseek: 'deepseek', groq: 'groq', gemini: 'google',
+                                                                google: 'google', xai: 'xai', moonshot: 'moonshot',
+                                                                zhipu: 'zhipu', vllm: '', ollama: '', venice: '',
+                                                                dashscope: 'qwen', aihubmix: ''
+                                                            };
+                                                            const selectedProvider = providerMap[editingAgent.provider] || '';
+                                                            const filtered = selectedProvider
+                                                                ? MODEL_CATALOG.filter(m => m.provider === selectedProvider)
+                                                                : MODEL_CATALOG;
+                                                            const groups = filtered.reduce((acc, m) => {
+                                                                if (!acc[m.provider]) acc[m.provider] = [];
+                                                                acc[m.provider].push(m);
+                                                                return acc;
+                                                            }, {} as Record<string, typeof MODEL_CATALOG>);
+                                                            return Object.entries(groups).map(([provider, models]) => (
+                                                                <div key={provider} className="mb-3">
+                                                                    <div className="text-[9px] font-black uppercase tracking-[0.2em] text-white/20 px-3 py-2 sticky top-0 bg-[var(--bg-deep)]">
+                                                                        {provider}
+                                                                    </div>
+                                                                    <div className="space-y-0.5">
+                                                                        {models.map(m => (
+                                                                            <button
+                                                                                key={m.id}
+                                                                                onClick={() => setEditingAgent({ ...editingAgent, model: m.id })}
+                                                                                className={cn(
+                                                                                    "w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-left transition-all text-xs",
+                                                                                    editingAgent.model === m.id
+                                                                                        ? "bg-primary/10 border border-primary/30 text-white"
+                                                                                        : "hover:bg-white/5 text-white/60 hover:text-white"
+                                                                                )}
+                                                                            >
+                                                                                <div className="min-w-0">
+                                                                                    <span className="font-bold">{m.name}</span>
+                                                                                    <span className="text-white/30 ml-2 font-mono text-[10px] hidden sm:inline">{m.id}</span>
+                                                                                </div>
+                                                                                <span className="text-[9px] font-black uppercase tracking-widest text-cyan-400/60 bg-cyan-400/5 px-2 py-0.5 rounded-full shrink-0 ml-2">{m.ctx}</span>
+                                                                            </button>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                            ));
+                                                        })()}
+                                                    </div>
+                                                    {/* Show dynamically fetched models if available */}
+                                                    {fetchedModels.length > 0 && (
+                                                        <div className="mb-4 border-b border-white/5 pb-4">
+                                                            <div className="text-[9px] font-black uppercase tracking-[0.2em] text-green-400/60 px-3 py-2 sticky top-0 bg-[var(--bg-deep)] flex items-center gap-2">
+                                                                <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                                                                Your Available Models ({fetchedModels.length})
+                                                            </div>
+                                                            <div className="space-y-0.5 max-h-[200px] overflow-y-auto">
+                                                                {fetchedModels.map(m => (
+                                                                    <button
+                                                                        key={m.id}
+                                                                        onClick={() => setEditingAgent({ ...editingAgent, model: m.id })}
+                                                                        className={cn(
+                                                                            "w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-left transition-all text-xs",
+                                                                            editingAgent.model === m.id
+                                                                                ? "bg-green-500/10 border border-green-500/30 text-white"
+                                                                                : "hover:bg-white/5 text-white/60 hover:text-white"
+                                                                        )}
+                                                                    >
+                                                                        <div className="min-w-0">
+                                                                            <span className="font-bold">{m.name}</span>
+                                                                            <span className="text-white/30 ml-2 font-mono text-[10px] hidden sm:inline">{m.id}</span>
+                                                                        </div>
+                                                                        <span className="text-[8px] font-black uppercase tracking-widest text-green-400/60 bg-green-400/5 px-2 py-0.5 rounded-full shrink-0 ml-2">LIVE</span>
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                    <p className="text-[10px] text-white/20 mt-2 font-medium">
+                                                        {fetchedModels.length > 0
+                                                            ? `Showing ${fetchedModels.length} live models + catalog fallbacks below.`
+                                                            : editingAgent.provider === 'openrouter' ? 'Showing all models (OpenRouter supports all providers).' : `Showing ${editingAgent.provider} models.`
+                                                        } You can also type any custom model ID.
+                                                    </p>
+                                                </InputWrapper>
+                                                <InputWrapper label="API Secret Key" full>
+                                                    <div className="flex gap-3">
+                                                        <input
+                                                            type="password"
+                                                            value={editingAgent.apiKey}
+                                                            onChange={e => setEditingAgent({ ...editingAgent, apiKey: e.target.value })}
+                                                            className="input-modern w-full font-mono"
+                                                            placeholder="Enter your API key here..."
+                                                        />
+                                                        <button
+                                                            onClick={fetchDynamicModels}
+                                                            disabled={isFetchingModels || !editingAgent.apiKey}
+                                                            className={cn(
+                                                                "shrink-0 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border",
+                                                                editingAgent.apiKey
+                                                                    ? "bg-primary/10 border-primary/30 text-primary hover:bg-primary/20"
+                                                                    : "bg-white/5 border-white/10 text-white/30 cursor-not-allowed"
+                                                            )}
+                                                        >
+                                                            {isFetchingModels ? <Loader2 size={14} className="animate-spin" /> : 'Fetch Models'}
+                                                        </button>
+                                                    </div>
+                                                    {modelFetchError && (
+                                                        <p className="text-[10px] text-red-400 mt-2">{modelFetchError}</p>
+                                                    )}
+                                                    {fetchedModels.length > 0 && (
+                                                        <p className="text-[10px] text-green-400 mt-2">✓ Found {fetchedModels.length} models from {editingAgent.provider}</p>
+                                                    )}
+                                                </InputWrapper>
+                                                {editingAgent.provider === 'vllm' && (
+                                                    <InputWrapper label="Base URL (vLLM / Local)" full>
+                                                        <input
+                                                            value={editingAgent.apiBase || ''}
+                                                            onChange={e => setEditingAgent({ ...editingAgent, apiBase: e.target.value })}
+                                                            className="input-modern w-full font-mono"
+                                                            placeholder="http://localhost:8000/v1"
+                                                        />
+                                                    </InputWrapper>
+                                                )}
+                                            </div>
+                                        )}
                                     </Section>
                                 )}
 

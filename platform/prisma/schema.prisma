@@ -30,6 +30,7 @@ model Subscription {
   plan               String   @default("Free")
   status             String   @default("active") // "active", "deactivated"
   maxInstances       Int      @default(1)
+  creditBalance      Float    @default(0)
   whopMembershipId   String?  @unique
   whopPlanId         String?
   creemSubscriptionId String? @unique
@@ -76,6 +77,7 @@ model BotConfig {
   // Model & Provider
   provider       String   @default("openrouter") // openrouter, openai, anthropic, deepseek, groq, zhipu, gemini, moonshot, vllm
   apiKey         String   @default("")
+  apiKeyMode     String   @default("own_key") // "own_key" | "platform_credits"
   apiBase        String?
   model          String   @default("anthropic/claude-opus-4-5")
   
@@ -151,4 +153,13 @@ model SystemConfig {
   value     String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model CreditTransaction {
+  id          String   @id @default(cuid())
+  userId      String
+  amount      Float           // positive = credit, negative = debit
+  type        String          // "topup", "subscription_grant", "usage"
+  description String?
+  createdAt   DateTime @default(now())
 }

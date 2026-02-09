@@ -164,6 +164,23 @@ export class WhopService {
             }
         });
 
+        // Grant $10 monthly API credits on activation/payment
+        if (status === 'active') {
+            await prisma.subscription.update({
+                where: { userId: user.id },
+                data: { creditBalance: { increment: 10 } }
+            });
+
+            await prisma.creditTransaction.create({
+                data: {
+                    userId: user.id,
+                    amount: 10,
+                    type: 'subscription_grant',
+                    description: `Monthly $10 credit grant — ${planName} plan`
+                }
+            });
+        }
+
 
     }
 }

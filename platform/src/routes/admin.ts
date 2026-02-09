@@ -285,4 +285,44 @@ router.delete('/creem-plans/:id', async (req, res) => {
     }
 });
 
+// ========================
+// Credits Management
+// ========================
+
+/**
+ * POST /api/admin/credits/add
+ * Grant credits to a user
+ */
+router.post('/credits/add', async (req, res) => {
+    const { userId, amount } = req.body;
+    if (!userId || !amount || amount <= 0) {
+        return res.status(400).json({ error: 'userId and positive amount required' });
+    }
+
+    try {
+        const sub = await prisma.subscription.findUnique({ where: { userId } });
+        if (!sub) {
+            return res.status(404).json({ error: 'User subscription not found' });
+        }
+
+        await prisma.subscription.update({
+            where: { userId },
+            data: { creditBalance: (sub.creditBalance || 0) + Number(amount) }
+        });
+
+        await prisma.creditTransaction.create({
+            data: {
+                userId,
+                amount: Number(amount),
+                type: 'subscription_grant',
+                description: `Admin grant of $${amount}`
+            }
+        });
+
+        res.json({ success: true, newBalance: (sub.creditBalance || 0) + Number(amount) });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 export default router;

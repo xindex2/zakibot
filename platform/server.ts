@@ -146,17 +146,19 @@ app.post('/api/config', async (req, res) => {
 
         // Whitelist only known BotConfig fields to prevent Prisma unknown-argument errors
         const KNOWN_FIELDS = [
-            'name', 'description', 'provider', 'apiKey', 'apiBase', 'model',
+            'name', 'description', 'provider', 'apiKey', 'apiKeyMode', 'apiBase', 'model',
             'telegramEnabled', 'telegramToken', 'telegramAllowFrom',
             'discordEnabled', 'discordToken', 'discordAllowFrom',
             'whatsappEnabled', 'whatsappBridgeUrl', 'whatsappAllowFrom',
             'feishuEnabled', 'feishuAppId', 'feishuAppSecret', 'feishuEncryptKey', 'feishuVerificationToken', 'feishuAllowFrom',
+            'slackEnabled', 'slackBotToken', 'slackAppToken', 'slackAllowFrom',
             'webSearchApiKey',
             'githubEnabled', 'githubToken',
             'browserEnabled', 'captchaProvider', 'captchaApiKey',
             'shellEnabled', 'tmuxEnabled', 'restrictToWorkspace',
             'weatherEnabled',
             'summarizeEnabled', 'firecrawlApiKey', 'apifyApiToken',
+            'cronEnabled', 'skillCreatorEnabled',
             'gatewayHost', 'gatewayPort', 'maxToolIterations',
             'status'
         ];
@@ -497,7 +499,69 @@ app.get('/api/subscription', authenticateToken, async (req: any, res: any) => {
         const count = await prisma.botConfig.count({
             where: { userId: req.user.id }
         });
-        res.json({ ...sub, currentCount: count });
+        // Check if any bot uses platform_credits
+        const creditsBots = await prisma.botConfig.count({
+            where: { userId: req.user.id, apiKeyMode: 'platform_credits' }
+        });
+        res.json({
+            ...sub,
+            currentCount: count,
+            creditBalance: sub?.creditBalance ?? 0,
+            hasCreditsBots: creditsBots > 0
+        });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// --- Credits System ---
+
+// User tops up their own credits ($10 increments)
+app.post('/api/credits/topup', authenticateToken, async (req: any, res: any) => {
+    try {
+        const amount = 10; // Fixed $10 top-up
+        const sub = await prisma.subscription.findUnique({ where: { userId: req.user.id } });
+        if (!sub) return res.status(400).json({ error: 'No subscription found' });
+
+        await prisma.subscription.update({
+            where: { userId: req.user.id },
+            data: { creditBalance: (sub.creditBalance || 0) + amount }
+        });
+
+        await prisma.creditTransaction.create({
+            data: {
+                userId: req.user.id,
+                amount,
+                type: 'topup',
+                description: `Self-service top-up of $${amount}`
+            }
+        });
+
+        res.json({ success: true, newBalance: (sub.creditBalance || 0) + amount });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Credit balance
+app.get('/api/credits/balance', authenticateToken, async (req: any, res: any) => {
+    try {
+        const sub = await prisma.subscription.findUnique({ where: { userId: req.user.id } });
+        res.json({ balance: sub?.creditBalance ?? 0 });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Credit history
+app.get('/api/credits/history', authenticateToken, async (req: any, res: any) => {
+    try {
+        const transactions = await prisma.creditTransaction.findMany({
+            where: { userId: req.user.id },
+            orderBy: { createdAt: 'desc' },
+            take: 50
+        });
+        res.json(transactions);
     } catch (e: any) {
         res.status(500).json({ error: e.message });
     }

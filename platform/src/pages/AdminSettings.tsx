@@ -11,6 +11,7 @@ export default function AdminSettings() {
         'CREEM_API_KEY': '',
         'CREEM_WEBHOOK_SECRET': '',
         'PAYMENT_PROVIDER': 'whop',
+        'OPENROUTER_API_KEY': '',
     });
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -97,8 +98,8 @@ export default function AdminSettings() {
                     <button
                         onClick={() => setConfig({ ...config, 'PAYMENT_PROVIDER': 'whop' })}
                         className={`p-6 rounded-2xl border-2 transition-all text-left ${activeProvider === 'whop'
-                                ? 'border-emerald-500/50 bg-emerald-500/5'
-                                : 'border-white/5 bg-white/2 opacity-50 hover:opacity-75'
+                            ? 'border-emerald-500/50 bg-emerald-500/5'
+                            : 'border-white/5 bg-white/2 opacity-50 hover:opacity-75'
                             }`}
                     >
                         <div className="flex items-center justify-between mb-3">
@@ -113,8 +114,8 @@ export default function AdminSettings() {
                     <button
                         onClick={() => setConfig({ ...config, 'PAYMENT_PROVIDER': 'creem' })}
                         className={`p-6 rounded-2xl border-2 transition-all text-left ${activeProvider === 'creem'
-                                ? 'border-emerald-500/50 bg-emerald-500/5'
-                                : 'border-white/5 bg-white/2 opacity-50 hover:opacity-75'
+                            ? 'border-emerald-500/50 bg-emerald-500/5'
+                            : 'border-white/5 bg-white/2 opacity-50 hover:opacity-75'
                             }`}
                     >
                         <div className="flex items-center justify-between mb-3">
@@ -125,6 +126,37 @@ export default function AdminSettings() {
                         </div>
                         <p className="text-[10px] text-gray-500 leading-relaxed">Creem.io checkout, subscriptions & global tax compliance</p>
                     </button>
+                </div>
+            </div>
+
+            {/* Platform API Key (for Credits Mode) */}
+            <div className="bg-white/2 border border-white/5 rounded-[3rem] p-10 md:p-12">
+                <div className="flex items-center gap-4 mb-8">
+                    <div className="w-12 h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center">
+                        <Key className="text-emerald-400" size={20} />
+                    </div>
+                    <div>
+                        <h3 className="text-xl font-black uppercase tracking-tighter">Platform API Key</h3>
+                        <p className="text-[10px] font-bold text-gray-600 uppercase tracking-[0.2em]">OpenRouter key used for users on Platform Credits mode</p>
+                    </div>
+                </div>
+
+                <div>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-emerald-500 mb-4 block opacity-60">OpenRouter API Key</label>
+                    <div className="relative">
+                        <Key className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
+                        <input
+                            type="password"
+                            className="w-full bg-black border border-white/5 rounded-2xl pl-16 pr-6 py-4 outline-none focus:border-emerald-500/50 transition-all font-mono text-xs"
+                            value={config['OPENROUTER_API_KEY']}
+                            onChange={(e) => setConfig({ ...config, 'OPENROUTER_API_KEY': e.target.value })}
+                            placeholder="sk-or-v1-..."
+                        />
+                    </div>
+                    <p className="text-[10px] text-gray-600 mt-3 flex items-center gap-2">
+                        <Info size={12} />
+                        This key is used when agents are set to "Platform Credits" mode. Get one at openrouter.ai
+                    </p>
                 </div>
             </div>
 

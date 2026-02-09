@@ -29,6 +29,23 @@ export async function startBot(configId: string) {
     });
     if (!config) throw new Error('Bot configuration not found.');
 
+    // Determine which API key to use based on apiKeyMode
+    const apiKeyMode = (config as any).apiKeyMode || 'own_key';
+    let effectiveProvider = config.provider;
+    let effectiveApiKey = config.apiKey;
+
+    if (apiKeyMode === 'platform_credits') {
+        // Fetch the admin's OpenRouter API key from SystemConfig
+        const platformKeyConfig = await prisma.systemConfig.findUnique({
+            where: { key: 'OPENROUTER_API_KEY' }
+        });
+        if (!platformKeyConfig?.value) {
+            throw new Error('Platform credits mode is enabled but no OpenRouter API key is configured by the admin.');
+        }
+        effectiveProvider = 'openrouter';
+        effectiveApiKey = platformKeyConfig.value;
+    }
+
     // Create temporary config file
     const configsDir = path.join(process.cwd(), 'configs');
     if (!fs.existsSync(configsDir)) fs.mkdirSync(configsDir, { recursive: true });
@@ -45,8 +62,8 @@ export async function startBot(configId: string) {
     // Build Nanobot configuration object
     const nanobotConfig: any = {
         providers: {
-            [config.provider]: {
-                api_key: config.apiKey,
+            [effectiveProvider]: {
+                api_key: effectiveApiKey,
                 api_base: config.apiBase
             }
         },

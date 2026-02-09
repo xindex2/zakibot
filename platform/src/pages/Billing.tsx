@@ -14,6 +14,7 @@ export default function Billing() {
     const [subscription, setSubscription] = useState<any>(null);
     const [provider, setProvider] = useState('whop');
     const [creemPlans, setCreemPlans] = useState<any[]>([]);
+    const [whopPlans, setWhopPlans] = useState<any[]>([]);
 
     useEffect(() => {
         if (!token) return;
@@ -35,6 +36,14 @@ export default function Billing() {
             .then(r => r.json())
             .then(data => { if (Array.isArray(data)) setCreemPlans(data); })
             .catch(() => { });
+
+        // Fetch Whop plans for checkout URLs
+        fetch('/api/admin/plans', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        })
+            .then(r => r.json())
+            .then(data => { if (Array.isArray(data)) setWhopPlans(data); })
+            .catch(() => { });
     }, [token]);
 
     const currentPlan = subscription?.plan || 'Free';
@@ -48,33 +57,40 @@ export default function Billing() {
         return 'Downgrade';
     };
 
-    const getButtonStyle = (planName: string, popular: boolean | undefined) => {
+    const getButtonStyle = (planName: string) => {
         if (planName === currentPlan) return 'bg-green-600/20 text-green-400 border border-green-500/30 cursor-default';
         if (planName === 'Enterprise') return 'bg-black text-zinc-400 hover:text-white border border-zinc-800';
-        if (popular) return 'bg-red-600 text-white shadow-red-600/20 hover:bg-red-700';
+        if (planName === 'Pro') return 'bg-red-600 text-white shadow-red-600/20 hover:bg-red-700';
         return 'bg-black text-zinc-400 hover:text-white border border-zinc-800';
     };
 
     const plans = [
         {
-            name: 'Starter',
-            price: '$29',
-            icon: <Zap size={24} />,
+            name: 'Free',
+            price: '$0',
+            icon: <Shield size={24} />,
             agents: 1,
-            features: ['1 Active Agent Slot', '$10 in API Credits Included', 'Standard Compute', 'Basic Connectors', 'Email Support'],
+            features: ['1 Active Agent', '50 Messages/Day', 'Community Support', 'Basic Skills'],
             color: 'text-zinc-400',
-            bg: 'bg-zinc-900/50'
+            bg: 'bg-zinc-900/30'
+        },
+        {
+            name: 'Starter',
+            price: '$9',
+            icon: <Rocket size={24} />,
+            agents: 2,
+            features: ['2 Active Agents', '$5 in API Credits Included', 'Priority Email Support', 'All Public Skills', 'Custom System Prompts'],
+            color: 'text-blue-500',
+            bg: 'bg-blue-950/20'
         },
         {
             name: 'Pro',
-            price: '$69',
-            icon: <Bot size={24} />,
+            price: '$29',
+            icon: <Zap size={24} />,
             agents: 5,
-            popular: true,
-            features: ['5 Active Agent Slots', '$10 in API Credits Included', 'High Priority Compute', 'All Connectors', '24/7 Priority Support', 'Advanced Skills Pack'],
-            color: 'text-red-500',
-            bg: 'bg-zinc-900/80',
-            border: 'border-red-600/30'
+            features: ['5 Active Agents', '$10 in API Credits Included', 'Priority Support', 'Advanced Skills', 'API Access', 'Custom Webhooks'],
+            color: 'text-purple-500',
+            bg: 'bg-purple-950/20'
         },
         {
             name: 'Elite',
@@ -96,14 +112,20 @@ export default function Billing() {
         },
     ];
 
-    // Whop checkout links (hardcoded fallback)
-    const whopLinks: Record<string, string> = {
+    // Build Whop checkout links — dynamic from DB, with hardcoded fallbacks
+    const whopFallbacks: Record<string, string> = {
         'Free': '#',
         'Starter': 'https://whop.com/checkout/plan_Ke7ZeyJO29DwZ',
         'Pro': 'https://whop.com/checkout/plan_9NRNdPMrVzwi8',
         'Elite': 'https://whop.com/checkout/plan_XXO2Ey0ki51AI',
         'Enterprise': 'mailto:support@openclaw-host.com'
     };
+    const whopLinks: Record<string, string> = { ...whopFallbacks };
+    whopPlans.forEach(wp => {
+        if (wp.planName && wp.checkoutUrl) {
+            whopLinks[wp.planName] = wp.checkoutUrl;
+        }
+    });
 
     // Build Creem checkout links from plan records
     const creemLinks: Record<string, string> = { 'Free': '#', 'Enterprise': 'mailto:support@openclaw-host.com' };
@@ -157,8 +179,8 @@ export default function Billing() {
                             className={cn(
                                 "p-6 md:p-8 rounded-2xl md:rounded-3xl border flex flex-col relative group overflow-hidden",
                                 plan.bg,
-                                isCurrent ? "border-green-500/30 ring-1 ring-green-500/20" : plan.border || "border-zinc-800",
-                                plan.popular && !isCurrent && "ring-1 ring-red-600/50"
+                                isCurrent ? "border-green-500/30 ring-1 ring-green-500/20" : "border-zinc-800",
+                                plan.name === 'Pro' && !isCurrent && "ring-1 ring-red-600/50"
                             )}
                         >
                             {isCurrent && (
@@ -166,7 +188,7 @@ export default function Billing() {
                                     ✓ Your Current Plan
                                 </div>
                             )}
-                            {plan.popular && !isCurrent && (
+                            {plan.name === 'Pro' && !isCurrent && (
                                 <div className="absolute top-0 right-0 bg-red-600 text-white text-[8px] font-black uppercase tracking-widest px-4 py-1.5 rounded-bl-xl">
                                     Recommended
                                 </div>
@@ -193,7 +215,7 @@ export default function Billing() {
                                 rel="noopener noreferrer"
                                 className={cn(
                                     "w-full py-3 md:py-4 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all transform active:scale-95 shadow-xl text-center block",
-                                    getButtonStyle(plan.name, plan.popular)
+                                    getButtonStyle(plan.name)
                                 )}
                                 onClick={e => { if (isCurrent || plan.name === 'Free') e.preventDefault(); }}
                             >

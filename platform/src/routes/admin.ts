@@ -43,14 +43,27 @@ router.get('/plans', async (req, res) => {
  * Create or Update Plan Mapping
  */
 router.post('/plans', async (req, res) => {
-    const { whopPlanId, planName, maxInstances } = req.body;
+    const { whopPlanId, planName, maxInstances, checkoutUrl } = req.body;
     try {
         const plan = await prisma.whopPlan.upsert({
             where: { whopPlanId },
-            update: { planName, maxInstances: Number(maxInstances) },
-            create: { whopPlanId, planName, maxInstances: Number(maxInstances) }
+            update: { planName, maxInstances: Number(maxInstances), checkoutUrl },
+            create: { whopPlanId, planName, maxInstances: Number(maxInstances), checkoutUrl }
         });
         res.json(plan);
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+/**
+ * DELETE /api/admin/plans/:id
+ * Delete a Whop Plan
+ */
+router.delete('/plans/:id', async (req, res) => {
+    try {
+        await prisma.whopPlan.delete({ where: { id: req.params.id } });
+        res.json({ success: true });
     } catch (e: any) {
         res.status(500).json({ error: e.message });
     }

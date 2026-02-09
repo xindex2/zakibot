@@ -425,72 +425,77 @@ export default function Dashboard() {
                         exit={{ opacity: 0, y: -10 }}
                         className="space-y-8"
                     >
-                        <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 glass-panel p-6 md:p-8 rounded-2xl md:rounded-3xl">
-                            <div className="space-y-1">
-                                <h1 className="text-2xl md:text-4xl font-black tracking-tighter text-white uppercase italic bg-clip-text text-transparent bg-gradient-to-r from-white to-white/60">
-                                    Dashboard
-                                </h1>
-                                <p className="text-white/40 text-sm font-medium">Manage your AI agents.</p>
-                            </div>
-                            <div className="flex items-center gap-3">
-                                <button
-                                    onClick={() => setShowVideoGuide(true)}
-                                    className="bg-white/5 hover:bg-white/10 border border-white/10 text-white font-bold px-4 md:px-6 py-3 md:py-4 rounded-xl transition-all flex items-center gap-2"
-                                >
-                                    <Play size={18} strokeWidth={3} className="text-red-500" fill="currentColor" />
-                                    <span className="hidden md:inline">How to Set Up Your First Agent?</span>
-                                    <span className="md:hidden">Setup Guide</span>
-                                </button>
-                                <button
-                                    onClick={handleCreateAgent}
-                                    className="bg-green-600 hover:bg-green-500 text-white font-bold px-6 md:px-8 py-3 md:py-4 rounded-xl transition-all shadow-lg shadow-green-900/20 flex items-center gap-2"
-                                >
-                                    <Plus size={20} strokeWidth={3} />
-                                    <span>New Agent</span>
-                                </button>
-                            </div>
-                        </header>
-
-                        {/* Credit Balance Tracker */}
-                        {subscription && (
-                            <div className="glass-panel rounded-2xl p-4 md:p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
-                                <div className="flex items-center gap-4 flex-1 w-full">
-                                    <div className="w-10 h-10 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center justify-center shrink-0">
-                                        <Sparkles size={18} className="text-emerald-400" />
+                        <header className="glass-panel rounded-2xl md:rounded-3xl overflow-hidden">
+                            {/* Top row: Title, Plan, Agent count, Buttons */}
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 md:p-6">
+                                <div className="flex items-center gap-4">
+                                    <div className="space-y-0.5">
+                                        <h1 className="text-xl md:text-2xl font-black tracking-tighter text-white uppercase italic">
+                                            Dashboard
+                                        </h1>
                                     </div>
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-center justify-between mb-1.5">
-                                            <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">AI Credits</span>
-                                            <span className="text-sm font-black text-emerald-400">${subscription?.creditBalance?.toFixed(2) ?? '0.00'}</span>
+                                    {subscription && (
+                                        <div className="flex items-center gap-2">
+                                            <span className="px-2.5 py-1 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[9px] font-black uppercase tracking-wider rounded-lg">
+                                                {subscription.plan || 'Free'}
+                                            </span>
+                                            <span className="px-2.5 py-1 bg-white/5 border border-white/5 text-white/50 text-[9px] font-black uppercase tracking-wider rounded-lg flex items-center gap-1">
+                                                <Bot size={10} /> {agents.length}/{subscription.maxInstances || 1}
+                                            </span>
                                         </div>
-                                        <div className="w-full h-2 bg-zinc-800 rounded-full overflow-hidden">
-                                            <div
-                                                className="h-full rounded-full transition-all duration-500"
-                                                style={{
-                                                    width: `${Math.min(100, ((subscription?.creditBalance || 0) / 50) * 100)}%`,
-                                                    background: (subscription?.creditBalance || 0) > 5
-                                                        ? 'linear-gradient(90deg, #10b981, #34d399)'
-                                                        : (subscription?.creditBalance || 0) > 0
-                                                            ? 'linear-gradient(90deg, #f59e0b, #fbbf24)'
-                                                            : '#ef4444'
-                                                }}
-                                            />
+                                    )}
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={() => setShowVideoGuide(true)}
+                                        className="bg-white/5 hover:bg-white/10 border border-white/5 text-white font-bold px-3 md:px-4 py-2.5 rounded-xl transition-all flex items-center gap-2 text-xs"
+                                    >
+                                        <Play size={14} strokeWidth={3} className="text-red-500" fill="currentColor" />
+                                        <span className="hidden md:inline">Setup Guide</span>
+                                    </button>
+                                    <button
+                                        onClick={handleCreateAgent}
+                                        className="bg-green-600 hover:bg-green-500 text-white font-bold px-4 md:px-6 py-2.5 rounded-xl transition-all shadow-lg shadow-green-900/20 flex items-center gap-2 text-xs"
+                                    >
+                                        <Plus size={16} strokeWidth={3} />
+                                        <span>New Agent</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Bottom row: Credit bar — compact inline */}
+                            {subscription && (
+                                <div className="px-5 md:px-6 pb-4 md:pb-5">
+                                    <div className="flex items-center gap-3">
+                                        <Sparkles size={14} className="text-emerald-400 shrink-0" />
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-3">
+                                                <div className="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
+                                                    <div
+                                                        className="h-full rounded-full transition-all duration-500"
+                                                        style={{
+                                                            width: `${Math.min(100, ((subscription?.creditBalance || 0) / 50) * 100)}%`,
+                                                            background: (subscription?.creditBalance || 0) > 5
+                                                                ? 'linear-gradient(90deg, #10b981, #34d399)'
+                                                                : (subscription?.creditBalance || 0) > 0
+                                                                    ? 'linear-gradient(90deg, #f59e0b, #fbbf24)'
+                                                                    : '#ef4444'
+                                                        }}
+                                                    />
+                                                </div>
+                                                <span className="text-xs font-black text-emerald-400 whitespace-nowrap">${subscription?.creditBalance?.toFixed(2) ?? '0.00'}</span>
+                                            </div>
                                         </div>
-                                        <p className="text-[9px] text-zinc-600 mt-1 font-medium">
-                                            {(subscription?.creditBalance || 0) <= 0 ? 'No credits remaining — add credits to use platform API keys' :
-                                                (subscription?.creditBalance || 0) < 5 ? 'Low balance — consider topping up' :
-                                                    'Credits available for platform-managed API calls'}
-                                        </p>
+                                        <button
+                                            onClick={() => navigate('/topup')}
+                                            className="bg-emerald-600/80 hover:bg-emerald-500 text-white font-black py-1.5 px-3.5 rounded-lg transition-all text-[9px] uppercase tracking-widest flex items-center gap-1.5 shrink-0"
+                                        >
+                                            <Plus size={10} /> Top Up
+                                        </button>
                                     </div>
                                 </div>
-                                <button
-                                    onClick={() => navigate('/topup')}
-                                    className="bg-emerald-600 hover:bg-emerald-500 text-white font-black py-2.5 px-5 rounded-xl transition-all text-[10px] uppercase tracking-widest flex items-center gap-2 shadow-lg shadow-emerald-900/20 shrink-0 whitespace-nowrap"
-                                >
-                                    <Plus size={14} /> Top Up
-                                </button>
-                            </div>
-                        )}
+                            )}
+                        </header>
 
                         {agents.length === 0 ? (
                             <div className="flex flex-col items-center justify-center py-20 text-center">

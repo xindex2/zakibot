@@ -8,6 +8,7 @@ export default function Login() {
     const [formData, setFormData] = useState({ email: '', password: '' });
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+    const [isInAppBrowser, setIsInAppBrowser] = useState(false);
     const navigate = useNavigate();
     const location = useLocation();
     const { login } = useAuth();
@@ -31,6 +32,13 @@ export default function Login() {
             setError('Google authentication failed. Please try again.');
         }
     }, [location, login, navigate]);
+
+    // Detect in-app browsers (Facebook, Instagram, LinkedIn, etc.)
+    useEffect(() => {
+        const ua = navigator.userAgent || '';
+        const inApp = /FBAN|FBAV|Instagram|LinkedIn|Twitter|Snapchat|Line\/|MicroMessenger|WeChat/i.test(ua);
+        setIsInAppBrowser(inApp);
+    }, []);
 
     const handleGoogleLogin = () => {
         setLoading(true);
@@ -80,6 +88,12 @@ export default function Login() {
                     </div>
 
                     <form onSubmit={handleSubmit} className="space-y-6">
+                        {isInAppBrowser && (
+                            <div className="bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 p-4 rounded-2xl text-sm font-bold space-y-2">
+                                <p>⚠️ You're using an in-app browser. Google Sign-In won't work here.</p>
+                                <p className="text-yellow-400/60 text-xs font-medium">Tap the <strong>⋮</strong> menu → <strong>"Open in Chrome"</strong> or <strong>"Open in Safari"</strong>, or use email login below.</p>
+                            </div>
+                        )}
                         {error && (
                             <div className="bg-red-500/10 border border-red-500/20 text-red-500 p-4 rounded-2xl text-sm font-bold">
                                 {error}
@@ -129,8 +143,8 @@ export default function Login() {
                         <button
                             type="button"
                             onClick={handleGoogleLogin}
-                            disabled={loading}
-                            className="w-full bg-white/5 border border-white/5 text-white py-5 rounded-2xl font-black tracking-widest uppercase text-[10px] hover:bg-white/10 active:scale-95 transition-all flex items-center justify-center gap-4"
+                            disabled={loading || isInAppBrowser}
+                            className={`w-full bg-white/5 border border-white/5 text-white py-5 rounded-2xl font-black tracking-widest uppercase text-[10px] hover:bg-white/10 active:scale-95 transition-all flex items-center justify-center gap-4 ${isInAppBrowser ? 'opacity-30 cursor-not-allowed' : ''}`}
                         >
                             <svg width="18" height="18" viewBox="0 0 18 18">
                                 <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285f4" />

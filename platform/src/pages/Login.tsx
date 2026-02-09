@@ -10,16 +10,53 @@ declare global {
     }
 }
 
+/** Detect in-app WebView browsers (Instagram, Facebook, TikTok, etc.) */
+function isWebView(): boolean {
+    const ua = navigator.userAgent || '';
+    return /FBAN|FBAV|Instagram|Line\/|Twitter|MicroMessenger|Snapchat|TikTok|BytedanceWebview|wv\)/i.test(ua);
+}
+
+/** Try to open the current page in the system browser, escaping the WebView */
+function openInSystemBrowser(): boolean {
+    const url = window.location.href;
+
+    // Android: intent:// URL opens the page in the default browser
+    if (/android/i.test(navigator.userAgent)) {
+        const host = window.location.host;
+        const path = window.location.pathname + window.location.search;
+        window.location.href = `intent://${host}${path}#Intent;scheme=https;end`;
+        return true;
+    }
+
+    // iOS & others: try window.open (some WebViews open system browser for _blank)
+    const w = window.open(url, '_blank');
+    if (w) return true;
+
+    // Fallback: copy URL to clipboard
+    try {
+        navigator.clipboard.writeText(url);
+    } catch { /* ignore */ }
+    return false;
+}
+
 export default function Login() {
     const [formData, setFormData] = useState({ email: '', password: '' });
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const [googleReady, setGoogleReady] = useState(false);
     const [googleFailed, setGoogleFailed] = useState(false);
+    const [urlCopied, setUrlCopied] = useState(false);
     const navigate = useNavigate();
     const location = useLocation();
     const { login } = useAuth();
     const googleBtnRef = useRef<HTMLDivElement>(null);
+
+    // On Android WebViews: auto-redirect to system browser immediately
+    useEffect(() => {
+        if (isWebView() && /android/i.test(navigator.userAgent)) {
+            openInSystemBrowser();
+        }
+    }, []);
 
     // Handle Google OAuth redirect callback (legacy desktop flow)
     useEffect(() => {
@@ -74,12 +111,12 @@ export default function Login() {
                 const cfg = await resp.json();
                 if (!cfg.googleClientId || !mounted) return;
 
-                // If Google doesn't load within 5 seconds, show fallback
+                // If Google doesn't load within 4 seconds, show fallback
                 timeoutId = setTimeout(() => {
                     if (mounted && !googleReady) {
                         setGoogleFailed(true);
                     }
-                }, 5000);
+                }, 4000);
 
                 const initAndRender = (clientId: string) => {
                     if (!window.google?.accounts?.id || !mounted) return;
@@ -164,6 +201,18 @@ export default function Login() {
         }
     };
 
+    const handleOpenInBrowser = () => {
+        const opened = openInSystemBrowser();
+        if (!opened) {
+            // Couldn't open — at least copy URL
+            try {
+                navigator.clipboard.writeText(window.location.href);
+                setUrlCopied(true);
+                setTimeout(() => setUrlCopied(false), 3000);
+            } catch { /* ignore */ }
+        }
+    };
+
     return (
         <div className="min-h-screen relative flex items-center justify-center p-8 bg-[#050505] text-white">
             <StarField />
@@ -244,13 +293,19 @@ export default function Login() {
                                 </div>
                             )}
                             {!googleReady && googleFailed && (
-                                <div className="w-full bg-amber-500/10 border border-amber-500/20 text-amber-300 py-5 px-6 rounded-2xl text-center space-y-2">
-                                    <p className="text-[11px] font-bold">Google Sign-In is not available in this browser.</p>
-                                    <p className="text-[10px] text-amber-300/70 leading-relaxed">
-                                        Tap <strong className="text-white">⋮</strong> → <strong className="text-white">"Open in Chrome"</strong> or <strong className="text-white">"Open in browser"</strong> to use Google login.
-                                    </p>
-                                    <p className="text-[9px] text-amber-300/50 mt-1">Or login with email & password above.</p>
-                                </div>
+                                <button
+                                    type="button"
+                                    onClick={handleOpenInBrowser}
+                                    className="w-full bg-white/5 border border-white/10 text-white py-5 rounded-2xl font-bold tracking-wide text-xs flex items-center justify-center gap-4 hover:bg-white/10 active:scale-95 transition-all"
+                                >
+                                    <svg width="18" height="18" viewBox="0 0 18 18">
+                                        <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285f4" />
+                                        <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34a853" />
+                                        <path d="M3.964 10.712c-.18-.54-.282-1.117-.282-1.712s.102-1.172.282-1.712V4.956H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.044l3.007-2.332z" fill="#fbbc05" />
+                                        <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.956l3.007 2.332C4.672 5.164 6.656 3.58 9 3.58z" fill="#ea4335" />
+                                    </svg>
+                                    {urlCopied ? '✓ Link Copied — Paste in Browser' : 'Open in Browser to Sign in with Google'}
+                                </button>
                             )}
                         </div>
                     </form>

@@ -501,7 +501,21 @@ app.post('/api/bot/qr-refresh/:configId', authenticateToken, async (req: any, re
 // Dynamic model fetching — proxy to provider APIs using user's API key
 app.post('/api/models/fetch', authenticateToken, async (req: any, res: any) => {
     try {
-        const { provider, apiKey } = req.body;
+        let { provider, apiKey, apiKeyMode } = req.body;
+
+        // If platform credits mode, use the admin's OpenRouter API key
+        if (apiKeyMode === 'platform_credits' || (!apiKey && !provider)) {
+            const platformKeyConfig = await prisma.systemConfig.findUnique({
+                where: { key: 'OPENROUTER_API_KEY' }
+            });
+            if (platformKeyConfig?.value) {
+                apiKey = decrypt(platformKeyConfig.value);
+                provider = 'openrouter';
+            } else {
+                return res.status(400).json({ error: 'Platform credits not configured. Contact admin.' });
+            }
+        }
+
         if (!apiKey) return res.status(400).json({ error: 'API key required' });
 
         // Map provider to their models endpoint

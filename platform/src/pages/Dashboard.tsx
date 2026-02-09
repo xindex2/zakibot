@@ -44,67 +44,7 @@ const PROVIDERS = [
     { id: 'aihubmix', name: 'AIHubMix', icon: 'https://aihubmix.com/favicon.ico' },
 ];
 
-const MODEL_CATALOG: { provider: string; name: string; id: string; ctx: string }[] = [
-    // Anthropic
-    { provider: 'anthropic', name: 'Claude Opus 4', id: 'anthropic/claude-opus-4', ctx: '200K' },
-    { provider: 'anthropic', name: 'Claude Sonnet 4', id: 'anthropic/claude-sonnet-4', ctx: '200K' },
-    { provider: 'anthropic', name: 'Claude 3.5 Sonnet', id: 'anthropic/claude-3.5-sonnet', ctx: '200K' },
-    { provider: 'anthropic', name: 'Claude 3.5 Haiku', id: 'anthropic/claude-3-5-haiku', ctx: '200K' },
-    { provider: 'anthropic', name: 'Claude 3 Opus', id: 'anthropic/claude-3-opus', ctx: '200K' },
-    // OpenAI
-    { provider: 'openai', name: 'GPT-4.1', id: 'openai/gpt-4.1', ctx: '1M' },
-    { provider: 'openai', name: 'GPT-4.1 Mini', id: 'openai/gpt-4.1-mini', ctx: '1M' },
-    { provider: 'openai', name: 'GPT-4.1 Nano', id: 'openai/gpt-4.1-nano', ctx: '1M' },
-    { provider: 'openai', name: 'GPT-4o', id: 'openai/gpt-4o', ctx: '128K' },
-    { provider: 'openai', name: 'GPT-4o Mini', id: 'openai/gpt-4o-mini', ctx: '128K' },
-    { provider: 'openai', name: 'o3', id: 'openai/o3', ctx: '200K' },
-    { provider: 'openai', name: 'o3 Mini', id: 'openai/o3-mini', ctx: '200K' },
-    { provider: 'openai', name: 'o4 Mini', id: 'openai/o4-mini', ctx: '200K' },
-    { provider: 'openai', name: 'o1', id: 'openai/o1', ctx: '200K' },
-    { provider: 'openai', name: 'o1 Mini', id: 'openai/o1-mini', ctx: '128K' },
-    // Google
-    { provider: 'google', name: 'Gemini 2.5 Pro', id: 'google/gemini-2.5-pro-preview', ctx: '1M' },
-    { provider: 'google', name: 'Gemini 2.5 Flash', id: 'google/gemini-2.5-flash-preview', ctx: '1M' },
-    { provider: 'google', name: 'Gemini 2.0 Flash', id: 'google/gemini-2.0-flash', ctx: '1M' },
-    { provider: 'google', name: 'Gemini 1.5 Pro', id: 'google/gemini-pro-1.5', ctx: '1M' },
-    // DeepSeek
-    { provider: 'deepseek', name: 'DeepSeek V3 0324', id: 'deepseek/deepseek-chat-v3-0324', ctx: '128K' },
-    { provider: 'deepseek', name: 'DeepSeek V3', id: 'deepseek/deepseek-chat', ctx: '128K' },
-    { provider: 'deepseek', name: 'DeepSeek R1', id: 'deepseek/deepseek-r1', ctx: '128K' },
-    { provider: 'deepseek', name: 'DeepSeek R1 0528', id: 'deepseek/deepseek-r1-0528', ctx: '128K' },
-    // xAI
-    { provider: 'xai', name: 'Grok 3', id: 'xai/grok-3', ctx: '131K' },
-    { provider: 'xai', name: 'Grok 3 Mini', id: 'xai/grok-3-mini', ctx: '131K' },
-    { provider: 'xai', name: 'Grok 2', id: 'xai/grok-2', ctx: '131K' },
-    // Meta
-    { provider: 'meta', name: 'Llama 4 Scout', id: 'meta-llama/llama-4-scout', ctx: '512K' },
-    { provider: 'meta', name: 'Llama 4 Maverick', id: 'meta-llama/llama-4-maverick', ctx: '256K' },
-    { provider: 'meta', name: 'Llama 3.3 70B', id: 'meta-llama/llama-3.3-70b', ctx: '128K' },
-    { provider: 'meta', name: 'Llama 3.1 405B', id: 'meta-llama/llama-3.1-405b', ctx: '128K' },
-    { provider: 'meta', name: 'Llama 3.1 70B', id: 'meta-llama/llama-3.1-70b', ctx: '128K' },
-    { provider: 'meta', name: 'Llama 3.1 8B', id: 'meta-llama/llama-3.1-8b', ctx: '128K' },
-    // Mistral
-    { provider: 'mistral', name: 'Mistral Medium 3', id: 'mistralai/mistral-medium-3', ctx: '128K' },
-    { provider: 'mistral', name: 'Mistral Large', id: 'mistralai/mistral-large', ctx: '128K' },
-    { provider: 'mistral', name: 'Mistral Small 3.1', id: 'mistralai/mistral-small-3.1', ctx: '128K' },
-    { provider: 'mistral', name: 'Codestral', id: 'mistralai/codestral', ctx: '256K' },
-    { provider: 'mistral', name: 'Pixtral Large', id: 'mistralai/pixtral-large', ctx: '128K' },
-    // Qwen
-    { provider: 'qwen', name: 'Qwen 3 235B', id: 'qwen/qwen3-235b', ctx: '128K' },
-    { provider: 'qwen', name: 'Qwen 3 32B', id: 'qwen/qwen3-32b', ctx: '128K' },
-    { provider: 'qwen', name: 'Qwen 2.5 72B', id: 'qwen/qwen-2.5-72b-instruct', ctx: '128K' },
-    { provider: 'qwen', name: 'QwQ 32B', id: 'qwen/qwq-32b', ctx: '128K' },
-    // Moonshot
-    { provider: 'moonshot', name: 'Moonshot V1 128K', id: 'moonshot/moonshot-v1-128k', ctx: '128K' },
-    { provider: 'moonshot', name: 'Moonshot V1 8K', id: 'moonshot/moonshot-v1-8k', ctx: '8K' },
-    // Zhipu
-    { provider: 'zhipu', name: 'GLM-4 Plus', id: 'zhipu/glm-4-plus', ctx: '128K' },
-    { provider: 'zhipu', name: 'GLM-4', id: 'zhipu/glm-4', ctx: '128K' },
-    // Groq (fast inference)
-    { provider: 'groq', name: 'Llama 3.3 70B (Groq)', id: 'groq/llama-3.3-70b', ctx: '128K' },
-    { provider: 'groq', name: 'Llama 4 Scout (Groq)', id: 'groq/llama-4-scout', ctx: '128K' },
-    { provider: 'groq', name: 'Mixtral 8x7B (Groq)', id: 'groq/mixtral-8x7b', ctx: '32K' },
-];
+// MODEL_CATALOG removed — models are fetched live from providers
 
 interface AgentConfig {
     id: string;
@@ -273,8 +213,11 @@ export default function Dashboard() {
         } catch (e) { }
     };
 
-    const fetchDynamicModels = async () => {
-        if (!editingAgent?.apiKey) {
+    const fetchDynamicModels = async (overrideMode?: string) => {
+        const mode = overrideMode || editingAgent?.apiKeyMode || 'own_key';
+        const isPlatformCredits = mode === 'platform_credits';
+
+        if (!isPlatformCredits && !editingAgent?.apiKey) {
             setModelFetchError('Enter your API key first');
             return;
         }
@@ -288,8 +231,9 @@ export default function Dashboard() {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    provider: editingAgent.provider,
-                    apiKey: editingAgent.apiKey
+                    provider: isPlatformCredits ? 'openrouter' : editingAgent!.provider,
+                    apiKey: isPlatformCredits ? undefined : editingAgent!.apiKey,
+                    apiKeyMode: mode
                 })
             });
             const data = await resp.json();
@@ -303,6 +247,26 @@ export default function Dashboard() {
             setIsFetchingModels(false);
         }
     };
+
+    // Auto-fetch models when API key, provider, or apiKeyMode changes
+    useEffect(() => {
+        if (!editingAgent) return;
+        const isPlatformCredits = editingAgent.apiKeyMode === 'platform_credits';
+
+        // For platform credits: auto-fetch immediately if no models loaded
+        if (isPlatformCredits && fetchedModels.length === 0) {
+            fetchDynamicModels('platform_credits');
+            return;
+        }
+
+        // For own key: auto-fetch when API key has enough characters
+        if (!isPlatformCredits && editingAgent.apiKey && editingAgent.apiKey.length >= 10) {
+            const timer = setTimeout(() => {
+                fetchDynamicModels();
+            }, 800);
+            return () => clearTimeout(timer);
+        }
+    }, [editingAgent?.apiKey, editingAgent?.provider, editingAgent?.apiKeyMode]);
 
     useEffect(() => {
         let interval: any;
@@ -810,26 +774,41 @@ export default function Dashboard() {
                                                         placeholder="Type a custom model ID or select below..."
                                                     />
                                                     <div className="max-h-[300px] overflow-y-auto custom-scrollbar border border-white/5 rounded-2xl p-3">
-                                                        {MODEL_CATALOG.map(m => (
-                                                            <button
-                                                                key={m.id}
-                                                                onClick={() => setEditingAgent({ ...editingAgent, model: m.id })}
-                                                                className={cn(
-                                                                    "w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-left transition-all text-xs",
-                                                                    editingAgent.model === m.id
-                                                                        ? "bg-primary/10 border border-primary/30 text-white"
-                                                                        : "hover:bg-white/5 text-white/60 hover:text-white"
-                                                                )}
-                                                            >
-                                                                <div className="min-w-0">
-                                                                    <span className="font-bold">{m.name}</span>
-                                                                    <span className="text-white/30 ml-2 font-mono text-[10px] hidden sm:inline">{m.id}</span>
-                                                                </div>
-                                                                <span className="text-[9px] font-black uppercase tracking-widest text-cyan-400/60 bg-cyan-400/5 px-2 py-0.5 rounded-full shrink-0 ml-2">{m.ctx}</span>
-                                                            </button>
-                                                        ))}
+                                                        {isFetchingModels ? (
+                                                            <div className="flex items-center justify-center py-8 gap-3 text-white/40">
+                                                                <Loader2 size={16} className="animate-spin" />
+                                                                <span className="text-xs font-medium">Loading available models...</span>
+                                                            </div>
+                                                        ) : fetchedModels.length > 0 ? (
+                                                            fetchedModels.map(m => (
+                                                                <button
+                                                                    key={m.id}
+                                                                    onClick={() => setEditingAgent({ ...editingAgent, model: m.id })}
+                                                                    className={cn(
+                                                                        "w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-left transition-all text-xs",
+                                                                        editingAgent.model === m.id
+                                                                            ? "bg-primary/10 border border-primary/30 text-white"
+                                                                            : "hover:bg-white/5 text-white/60 hover:text-white"
+                                                                    )}
+                                                                >
+                                                                    <div className="min-w-0">
+                                                                        <span className="font-bold">{m.name}</span>
+                                                                        <span className="text-white/30 ml-2 font-mono text-[10px] hidden sm:inline">{m.id}</span>
+                                                                    </div>
+                                                                    <span className="text-[8px] font-black uppercase tracking-widest text-green-400/60 bg-green-400/5 px-2 py-0.5 rounded-full shrink-0 ml-2">LIVE</span>
+                                                                </button>
+                                                            ))
+                                                        ) : (
+                                                            <div className="text-center py-8 text-white/30 text-xs">
+                                                                Models will load automatically via your platform credits.
+                                                            </div>
+                                                        )}
                                                     </div>
-                                                    <p className="text-[10px] text-white/20 mt-2 font-medium">All models available via OpenRouter. Select any model above or type a custom ID.</p>
+                                                    <p className="text-[10px] text-white/20 mt-2 font-medium">
+                                                        {fetchedModels.length > 0
+                                                            ? `Showing ${fetchedModels.length} available models via OpenRouter.`
+                                                            : 'Models auto-load from OpenRouter.'} You can also type any custom model ID.
+                                                    </p>
                                                 </InputWrapper>
                                             </div>
                                         )}
@@ -856,60 +835,17 @@ export default function Dashboard() {
                                                         placeholder="Type a custom model ID or select below..."
                                                     />
                                                     <div className="max-h-[300px] overflow-y-auto custom-scrollbar border border-white/5 rounded-2xl p-3">
-                                                        {(() => {
-                                                            const providerMap: Record<string, string> = {
-                                                                openrouter: '', anthropic: 'anthropic', openai: 'openai',
-                                                                deepseek: 'deepseek', groq: 'groq', gemini: 'google',
-                                                                google: 'google', xai: 'xai', moonshot: 'moonshot',
-                                                                zhipu: 'zhipu', vllm: '', ollama: '', venice: '',
-                                                                dashscope: 'qwen', aihubmix: ''
-                                                            };
-                                                            const selectedProvider = providerMap[editingAgent.provider] || '';
-                                                            const filtered = selectedProvider
-                                                                ? MODEL_CATALOG.filter(m => m.provider === selectedProvider)
-                                                                : MODEL_CATALOG;
-                                                            const groups = filtered.reduce((acc, m) => {
-                                                                if (!acc[m.provider]) acc[m.provider] = [];
-                                                                acc[m.provider].push(m);
-                                                                return acc;
-                                                            }, {} as Record<string, typeof MODEL_CATALOG>);
-                                                            return Object.entries(groups).map(([provider, models]) => (
-                                                                <div key={provider} className="mb-3">
-                                                                    <div className="text-[9px] font-black uppercase tracking-[0.2em] text-white/20 px-3 py-2 sticky top-0 bg-[var(--bg-deep)]">
-                                                                        {provider}
-                                                                    </div>
-                                                                    <div className="space-y-0.5">
-                                                                        {models.map(m => (
-                                                                            <button
-                                                                                key={m.id}
-                                                                                onClick={() => setEditingAgent({ ...editingAgent, model: m.id })}
-                                                                                className={cn(
-                                                                                    "w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-left transition-all text-xs",
-                                                                                    editingAgent.model === m.id
-                                                                                        ? "bg-primary/10 border border-primary/30 text-white"
-                                                                                        : "hover:bg-white/5 text-white/60 hover:text-white"
-                                                                                )}
-                                                                            >
-                                                                                <div className="min-w-0">
-                                                                                    <span className="font-bold">{m.name}</span>
-                                                                                    <span className="text-white/30 ml-2 font-mono text-[10px] hidden sm:inline">{m.id}</span>
-                                                                                </div>
-                                                                                <span className="text-[9px] font-black uppercase tracking-widest text-cyan-400/60 bg-cyan-400/5 px-2 py-0.5 rounded-full shrink-0 ml-2">{m.ctx}</span>
-                                                                            </button>
-                                                                        ))}
-                                                                    </div>
-                                                                </div>
-                                                            ));
-                                                        })()}
-                                                    </div>
-                                                    {/* Show dynamically fetched models if available */}
-                                                    {fetchedModels.length > 0 && (
-                                                        <div className="mb-4 border-b border-white/5 pb-4">
-                                                            <div className="text-[9px] font-black uppercase tracking-[0.2em] text-green-400/60 px-3 py-2 sticky top-0 bg-[var(--bg-deep)] flex items-center gap-2">
-                                                                <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
-                                                                Your Available Models ({fetchedModels.length})
+                                                        {isFetchingModels ? (
+                                                            <div className="flex items-center justify-center py-8 gap-3 text-white/40">
+                                                                <Loader2 size={16} className="animate-spin" />
+                                                                <span className="text-xs font-medium">Fetching models from {editingAgent.provider}...</span>
                                                             </div>
-                                                            <div className="space-y-0.5 max-h-[200px] overflow-y-auto">
+                                                        ) : fetchedModels.length > 0 ? (
+                                                            <div className="space-y-0.5">
+                                                                <div className="text-[9px] font-black uppercase tracking-[0.2em] text-green-400/60 px-3 py-2 sticky top-0 bg-[var(--bg-deep)] flex items-center gap-2">
+                                                                    <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                                                                    Available Models ({fetchedModels.length})
+                                                                </div>
                                                                 {fetchedModels.map(m => (
                                                                     <button
                                                                         key={m.id}
@@ -929,12 +865,18 @@ export default function Dashboard() {
                                                                     </button>
                                                                 ))}
                                                             </div>
-                                                        </div>
-                                                    )}
+                                                        ) : (
+                                                            <div className="text-center py-8 text-white/30 text-xs">
+                                                                {editingAgent.apiKey
+                                                                    ? 'No models found. Check your API key or try the Fetch button below.'
+                                                                    : 'Enter your API key to auto-load available models.'}
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                     <p className="text-[10px] text-white/20 mt-2 font-medium">
                                                         {fetchedModels.length > 0
-                                                            ? `Showing ${fetchedModels.length} live models + catalog fallbacks below.`
-                                                            : editingAgent.provider === 'openrouter' ? 'Showing all models (OpenRouter supports all providers).' : `Showing ${editingAgent.provider} models.`
+                                                            ? `Showing ${fetchedModels.length} live models from ${editingAgent.provider}.`
+                                                            : `Models auto-load when you enter your API key.`
                                                         } You can also type any custom model ID.
                                                     </p>
                                                 </InputWrapper>

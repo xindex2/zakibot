@@ -1,15 +1,23 @@
 import { useState, useEffect } from 'react';
-import { Sparkles, Zap, ArrowLeft, TrendingUp, CreditCard } from 'lucide-react';
+import { Sparkles, Zap, ArrowLeft, TrendingUp, CreditCard, AlertTriangle, ExternalLink } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
-const CREDIT_PACKS = [
-    { amount: 5, price: '$5', popular: false, label: 'Starter Pack' },
-    { amount: 10, price: '$10', popular: true, label: 'Standard Pack' },
-    { amount: 25, price: '$25', popular: false, label: 'Power Pack' },
-    { amount: 50, price: '$50', popular: false, label: 'Pro Pack' },
-    { amount: 100, price: '$100', popular: false, label: 'Enterprise Pack' },
+interface CreditPack {
+    amount: number;
+    price: string;
+    checkoutUrl: string;
+    productId: string;
+}
+
+// Fallback packs shown when no Creem/Whop credit products are configured yet
+const DEFAULT_PACKS = [
+    { amount: 5, price: '$5', label: 'Starter Pack' },
+    { amount: 10, price: '$10', label: 'Standard Pack', popular: true },
+    { amount: 25, price: '$25', label: 'Power Pack' },
+    { amount: 50, price: '$50', label: 'Pro Pack' },
+    { amount: 100, price: '$100', label: 'Enterprise Pack' },
 ];
 
 export default function TopUpCredits() {
@@ -17,8 +25,9 @@ export default function TopUpCredits() {
     const navigate = useNavigate();
     const [balance, setBalance] = useState(0);
     const [transactions, setTransactions] = useState<any[]>([]);
-    const [provider, setProvider] = useState('whop');
+    const [creditPacks, setCreditPacks] = useState<CreditPack[]>([]);
     const [loading, setLoading] = useState(true);
+    const [packsConfigured, setPacksConfigured] = useState(false);
 
     useEffect(() => {
         if (!token) return;
@@ -31,6 +40,17 @@ export default function TopUpCredits() {
             .then(data => setBalance(data.balance ?? 0))
             .catch(() => { });
 
+        // Fetch available credit packs from server
+        fetch('/api/credits/packs')
+            .then(r => r.json())
+            .then((data: CreditPack[]) => {
+                if (Array.isArray(data) && data.length > 0) {
+                    setCreditPacks(data);
+                    setPacksConfigured(true);
+                }
+            })
+            .catch(() => { });
+
         // Fetch recent transactions
         fetch('/api/credits/usage', {
             headers: { 'Authorization': `Bearer ${token}` }
@@ -39,27 +59,34 @@ export default function TopUpCredits() {
             .then(data => { if (Array.isArray(data)) setTransactions(data.slice(0, 10)); })
             .catch(() => { });
 
-        // Fetch active payment provider
-        fetch('/api/payment-provider')
-            .then(r => r.json())
-            .then(data => setProvider(data.provider || 'whop'))
-            .catch(() => { });
-
         setLoading(false);
     }, [token]);
 
-    const handlePurchase = (amount: number) => {
-        // Redirect to the Creem or Whop checkout for credit purchase
-        // The admin should configure credit pack checkout URLs
-        // For now, redirect to billing with amount param
-        if (provider === 'creem') {
-            // Use Creem checkout URL for credits
-            window.open(`https://creem.io/checkout?amount=${amount}&type=credits`, '_blank');
+    const handlePurchase = (pack: CreditPack | typeof DEFAULT_PACKS[0]) => {
+        if ('checkoutUrl' in pack && pack.checkoutUrl) {
+            // Open proper payment checkout in new tab
+            window.open(pack.checkoutUrl, '_blank');
         } else {
-            // Use Whop checkout URL for credits
-            window.open(`https://whop.com/openclaw-host/?credits=${amount}`, '_blank');
+            // No checkout URL configured — notify user
+            alert('Credit packs are not yet configured. Please contact support or ask your admin to set up credit products in the admin panel (Plans > Add Credit Pack).');
         }
     };
+
+    // Build display list from server packs or fallback defaults
+    const displayPacks = packsConfigured
+        ? creditPacks.map(p => ({
+            amount: p.amount,
+            price: p.price,
+            label: `$${p.amount} Credits`,
+            popular: p.amount === 10,
+            checkoutUrl: p.checkoutUrl,
+            productId: p.productId
+        }))
+        : DEFAULT_PACKS.map(p => ({
+            ...p,
+            checkoutUrl: '',
+            productId: ''
+        }));
 
     return (
         <div className="space-y-8 md:space-y-12 max-w-4xl mx-auto py-6 md:py-12 px-4">
@@ -102,16 +129,31 @@ export default function TopUpCredits() {
                     </div>
                     <div className="flex items-center gap-2 bg-emerald-500/10 px-4 py-2 rounded-xl">
                         <TrendingUp size={14} className="text-emerald-400" />
-                        <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-widest">Active</span>
+                        <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-widest">
+                            {balance > 0 ? 'Active' : 'Empty'}
+                        </span>
                     </div>
                 </div>
             </motion.div>
+
+            {/* Not configured warning */}
+            {!packsConfigured && (
+                <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4 flex items-start gap-3">
+                    <AlertTriangle size={18} className="text-amber-400 shrink-0 mt-0.5" />
+                    <div>
+                        <p className="text-xs text-amber-300 font-bold">Credit packs not yet configured</p>
+                        <p className="text-[10px] text-amber-400/60 mt-1">
+                            Admin: Go to Admin Panel → Plans → Add credit products with names like <code className="bg-black/30 px-1 rounded">Credits_5</code>, <code className="bg-black/30 px-1 rounded">Credits_10</code>, <code className="bg-black/30 px-1 rounded">Credits_25</code> etc. with their Creem checkout URLs.
+                        </p>
+                    </div>
+                </div>
+            )}
 
             {/* Credit Packs */}
             <div className="space-y-4">
                 <h2 className="text-sm font-black text-white uppercase italic tracking-wide">Choose Credit Amount</h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {CREDIT_PACKS.map((pack, i) => (
+                    {displayPacks.map((pack, i) => (
                         <motion.div
                             key={pack.amount}
                             initial={{ opacity: 0, y: 20 }}
@@ -121,7 +163,7 @@ export default function TopUpCredits() {
                                     ? 'bg-emerald-900/20 border-emerald-500/30 ring-1 ring-emerald-500/20'
                                     : 'bg-zinc-900/50 border-zinc-800 hover:border-zinc-700'
                                 }`}
-                            onClick={() => handlePurchase(pack.amount)}
+                            onClick={() => handlePurchase(pack)}
                         >
                             {pack.popular && (
                                 <div className="absolute -top-2.5 bg-emerald-600 text-white text-[8px] font-black uppercase tracking-widest px-3 py-1 rounded-full">
@@ -134,13 +176,14 @@ export default function TopUpCredits() {
                                 <p className="text-xs text-zinc-500 mt-1">${pack.amount} in AI credits</p>
                             </div>
                             <button
-                                className={`w-full py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${pack.popular
+                                className={`w-full py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${pack.popular
                                         ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/30 hover:bg-emerald-500'
                                         : 'bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700'
                                     }`}
                             >
-                                <CreditCard size={12} className="inline mr-2" />
+                                <CreditCard size={12} />
                                 Purchase
+                                <ExternalLink size={10} />
                             </button>
                         </motion.div>
                     ))}

@@ -35,6 +35,13 @@ export class CreemService {
 
         switch (eventType) {
             case 'checkout.completed':
+                // Check if this is a credit purchase (one-time) or a subscription
+                if (await this.isCreditPurchase(data)) {
+                    await this.handleCreditPurchase(data, eventType);
+                } else {
+                    await this.handleSubscriptionStatus(data, eventType, 'active');
+                }
+                break;
             case 'subscription.active':
             case 'subscription.paid':
             case 'subscription.update':
@@ -127,5 +134,96 @@ export class CreemService {
         });
 
         console.log(`[Creem] ${status === 'active' ? 'Activated' : 'Deactivated'} subscription for ${email} (plan: ${planName})`);
+    }
+
+    /**
+     * Check if a checkout event is for credits (one-time purchase) vs subscription
+     */
+    private static async isCreditPurchase(data: any): Promise<boolean> {
+        const productId = data?.product?.id;
+        if (!productId) return false;
+
+        const plan = await prisma.creemPlan.findUnique({
+            where: { creemProductId: productId }
+        });
+
+        // Credit packs use planName starting with "Credits_" (e.g. "Credits_10", "Credits_25")
+        return plan?.planName?.startsWith('Credits_') || false;
+    }
+
+    /**
+     * Handle a one-time credit purchase
+     */
+    private static async handleCreditPurchase(data: any, eventType: string) {
+        const customer = data?.customer;
+        const email = customer?.email;
+        const productId = data?.product?.id;
+
+        if (!email) {
+            console.error('[Creem] Credit purchase missing customer email:', data);
+            return;
+        }
+
+        // Look up the credit pack configuration
+        const creditPack = productId ? await prisma.creemPlan.findUnique({
+            where: { creemProductId: productId }
+        }) : null;
+
+        if (!creditPack || !creditPack.planName.startsWith('Credits_')) {
+            console.error('[Creem] Unknown credit product:', productId);
+            return;
+        }
+
+        // Extract credit amount from planName (e.g. "Credits_10" => 10)
+        const creditAmount = parseFloat(creditPack.planName.replace('Credits_', ''));
+        if (isNaN(creditAmount) || creditAmount <= 0) {
+            console.error('[Creem] Invalid credit amount from plan:', creditPack.planName);
+            return;
+        }
+
+        // Find user by email
+        let user = await prisma.user.findUnique({ where: { email } });
+        if (!user) {
+            user = await prisma.user.create({
+                data: {
+                    email,
+                    password: crypto.randomBytes(16).toString('hex'),
+                    full_name: customer?.name || 'Commander',
+                    acquisition_source: 'Creem Credits'
+                }
+            });
+        }
+
+        // Ensure subscription exists
+        let sub = await prisma.subscription.findUnique({ where: { userId: user.id } });
+        if (!sub) {
+            sub = await prisma.subscription.create({
+                data: { userId: user.id, plan: 'Free', maxInstances: 1 }
+            });
+        }
+
+        // Add credits to balance
+        try {
+            await prisma.subscription.update({
+                where: { userId: user.id },
+                data: { creditBalance: (sub.creditBalance || 0) + creditAmount }
+            });
+        } catch (e: any) {
+            // Fallback if creditBalance column doesn't exist yet
+            if (!e.message?.includes('creditBalance')) throw e;
+            console.warn('[Creem] creditBalance column not available, skipping credit add');
+        }
+
+        // Log the transaction
+        await prisma.creditTransaction.create({
+            data: {
+                userId: user.id,
+                amount: creditAmount,
+                type: 'topup',
+                description: `Credit purchase: $${creditAmount} via Creem`
+            }
+        });
+
+        console.log(`[Creem] Added $${creditAmount} credits for ${email}`);
     }
 }

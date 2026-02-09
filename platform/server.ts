@@ -659,6 +659,31 @@ app.post('/api/credits/topup', authenticateToken, async (req: any, res: any) => 
     res.status(400).json({ error: 'Credit top-ups require payment. Please visit the Top Up page to purchase credits.' });
 });
 
+// Get available credit packs (for TopUp page)
+app.get('/api/credits/packs', async (req: any, res: any) => {
+    try {
+        // Fetch credit packs from CreemPlan where planName starts with "Credits_"
+        const packs = await prisma.creemPlan.findMany({
+            where: { planName: { startsWith: 'Credits_' } },
+            orderBy: { maxInstances: 'asc' }
+        });
+
+        const formatted = packs.map((p: any) => {
+            const amount = parseFloat(p.planName.replace('Credits_', ''));
+            return {
+                amount,
+                price: `$${amount}`,
+                checkoutUrl: p.checkoutUrl || '',
+                productId: p.creemProductId
+            };
+        });
+
+        res.json(formatted);
+    } catch (e: any) {
+        res.json([]); // Return empty if table doesn't exist yet
+    }
+});
+
 // Credit balance
 app.get('/api/credits/balance', authenticateToken, async (req: any, res: any) => {
     try {

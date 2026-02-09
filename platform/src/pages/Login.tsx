@@ -51,13 +51,6 @@ export default function Login() {
     const { login } = useAuth();
     const googleBtnRef = useRef<HTMLDivElement>(null);
 
-    // On Android WebViews: auto-redirect to system browser immediately
-    useEffect(() => {
-        if (isWebView() && /android/i.test(navigator.userAgent)) {
-            openInSystemBrowser();
-        }
-    }, []);
-
     // Handle Google OAuth redirect callback (legacy desktop flow)
     useEffect(() => {
         const params = new URLSearchParams(location.search);

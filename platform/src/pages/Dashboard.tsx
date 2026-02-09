@@ -871,8 +871,8 @@ export default function Dashboard() {
                                                                                 {isFree ? (
                                                                                     <span className="text-[8px] font-black uppercase tracking-widest text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded-full">FREE</span>
                                                                                 ) : inputCost ? (
-                                                                                    <span className="text-[8px] font-bold text-white/40 bg-white/5 px-2 py-0.5 rounded-full" title={`Input: $${inputCost}/1M tokens | Output: $${outputCost}/1M tokens`}>
-                                                                                        ${inputCost}/1M
+                                                                                    <span className="text-[7px] font-bold text-white/40 bg-white/5 px-2 py-0.5 rounded-full whitespace-nowrap" title={`Input: $${inputCost}/1M tokens | Output: $${outputCost}/1M tokens`}>
+                                                                                        In ${inputCost} · Out ${outputCost || '?'}
                                                                                     </span>
                                                                                 ) : (
                                                                                     <span className="text-[8px] font-black uppercase tracking-widest text-green-400/60 bg-green-400/5 px-2 py-0.5 rounded-full">LIVE</span>

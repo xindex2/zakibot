@@ -4,6 +4,7 @@ import path from 'path';
 import fs from 'fs';
 import { PrismaClient } from '@prisma/client';
 import { decryptSensitiveFields, decrypt } from './crypto.js';
+import { deductCredits } from './usage-tracker.js';
 
 const prisma = new PrismaClient();
 // Process cache keyed by BOT CONFIG ID
@@ -241,6 +242,33 @@ export async function startBot(configId: string) {
         }
     });
 
+
+    // Parse stdout for [USAGE] lines to track platform credit consumption
+    child.stdout?.on('data', (data: any) => {
+        const lines = data.toString().split('\n');
+        for (const line of lines) {
+            if (line.startsWith('[USAGE]')) {
+                try {
+                    const usageJson = JSON.parse(line.substring(8));
+                    if (apiKeyMode === 'platform_credits' && config.userId) {
+                        // Estimate cost: fallback rates if no pricing available
+                        const promptRate = 0.000003;  // $3/1M tokens default
+                        const completionRate = 0.000006; // $6/1M tokens default
+                        const cost = (usageJson.prompt_tokens * promptRate) + (usageJson.completion_tokens * completionRate);
+                        if (cost > 0) {
+                            deductCredits(
+                                config.userId,
+                                cost,
+                                `${usageJson.model}: ${usageJson.prompt_tokens} in / ${usageJson.completion_tokens} out`
+                            ).catch((err: any) => {
+                                console.error(`[Credits ${config.name}]: Deduction failed:`, err.message);
+                            });
+                        }
+                    }
+                } catch (e) { /* skip malformed usage lines */ }
+            }
+        }
+    });
 
     child.stderr?.on('data', (data: any) => console.error(`[Bot error ${config.name}]: ${data}`));
 

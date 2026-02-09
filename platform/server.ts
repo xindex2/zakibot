@@ -14,6 +14,7 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 import bcrypt from 'bcryptjs';
 import { encryptSensitiveFields, decryptSensitiveFields, encrypt, decrypt } from './src/lib/crypto.js';
+import { getUsageHistory } from './src/lib/usage-tracker.js';
 
 // Fix for ESM/CJS interop (getting jwt.sign)
 const jwtSign = (jwt as any).default?.sign || (jwt as any).sign || jwt.sign;
@@ -560,7 +561,7 @@ app.post('/api/models/fetch', authenticateToken, async (req: any, res: any) => {
         const body = await response.json();
 
         // Normalize response — each provider returns data differently
-        let models: { id: string; name: string }[] = [];
+        let models: { id: string; name: string; promptPrice?: number; completionPrice?: number }[] = [];
         if (provider === 'gemini' || provider === 'google') {
             models = (body.models || []).map((m: any) => ({
                 id: m.name?.replace('models/', '') || m.name,
@@ -571,8 +572,16 @@ app.post('/api/models/fetch', authenticateToken, async (req: any, res: any) => {
                 id: m.id,
                 name: m.display_name || m.id,
             }));
+        } else if (provider === 'openrouter') {
+            // OpenRouter includes pricing data
+            models = (body.data || []).map((m: any) => ({
+                id: m.id,
+                name: m.name || m.id,
+                promptPrice: m.pricing?.prompt ? parseFloat(m.pricing.prompt) : undefined,
+                completionPrice: m.pricing?.completion ? parseFloat(m.pricing.completion) : undefined,
+            }));
         } else {
-            // OpenAI-compatible format (OpenRouter, OpenAI, DeepSeek, Groq, xAI, Mistral)
+            // OpenAI-compatible format (OpenAI, DeepSeek, Groq, xAI, Mistral)
             models = (body.data || []).map((m: any) => ({
                 id: m.id,
                 name: m.name || m.id,
@@ -583,6 +592,16 @@ app.post('/api/models/fetch', authenticateToken, async (req: any, res: any) => {
         res.json({ models });
     } catch (error: any) {
         res.json({ models: [], error: error.message || 'Failed to fetch models' });
+    }
+});
+
+// Credit usage history
+app.get('/api/credits/usage', authenticateToken, async (req: any, res: any) => {
+    try {
+        const history = await getUsageHistory(req.user.id, 100);
+        res.json({ transactions: history });
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
     }
 });
 

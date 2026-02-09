@@ -211,6 +211,8 @@ class AgentLoop:
         # Agent loop
         iteration = 0
         final_content = None
+        total_prompt_tokens = 0
+        total_completion_tokens = 0
         
         while iteration < self.max_iterations:
             iteration += 1
@@ -221,6 +223,11 @@ class AgentLoop:
                 tools=self.tools.get_definitions(),
                 model=self.model
             )
+            
+            # Accumulate token usage
+            if response.usage:
+                total_prompt_tokens += response.usage.get('prompt_tokens', 0)
+                total_completion_tokens += response.usage.get('completion_tokens', 0)
             
             # Handle tool calls
             if response.has_tool_calls:
@@ -286,6 +293,15 @@ class AgentLoop:
         session.add_message("user", msg.content)
         session.add_message("assistant", final_content)
         self.sessions.save(session)
+        
+        # Emit usage report for platform credits tracking
+        if total_prompt_tokens > 0 or total_completion_tokens > 0:
+            usage_data = json.dumps({
+                "prompt_tokens": total_prompt_tokens,
+                "completion_tokens": total_completion_tokens,
+                "model": self.model
+            })
+            print(f"[USAGE] {usage_data}", flush=True)
         
         return OutboundMessage(
             channel=msg.channel,

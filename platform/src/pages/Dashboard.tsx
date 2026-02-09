@@ -108,7 +108,7 @@ export default function Dashboard() {
     const [waLinked, setWaLinked] = useState(false);
     const [subscription, setSubscription] = useState<any>(null);
     const [showLimitModal, setShowLimitModal] = useState(false);
-    const [fetchedModels, setFetchedModels] = useState<{ id: string; name: string }[]>([]);
+    const [fetchedModels, setFetchedModels] = useState<{ id: string; name: string; promptPrice?: number; completionPrice?: number }[]>([]);
     const [isFetchingModels, setIsFetchingModels] = useState(false);
     const [modelFetchError, setModelFetchError] = useState<string | null>(null);
     const [showVideoGuide, setShowVideoGuide] = useState(false);
@@ -684,88 +684,97 @@ export default function Dashboard() {
                                             <button
                                                 onClick={() => setEditingAgent({ ...editingAgent, apiKeyMode: 'platform_credits' })}
                                                 className={cn(
-                                                    "p-5 rounded-2xl border-2 transition-all text-left group",
+                                                    "p-6 rounded-2xl border-2 transition-all text-left group relative",
                                                     editingAgent.apiKeyMode === 'platform_credits'
                                                         ? "border-emerald-500/50 bg-emerald-500/5"
                                                         : "border-white/5 bg-white/2 hover:border-white/10"
                                                 )}
                                             >
-                                                <div className="flex items-center justify-between mb-2">
-                                                    <div className="flex items-center gap-2">
-                                                        <CreditCard size={16} className={editingAgent.apiKeyMode === 'platform_credits' ? 'text-emerald-400' : 'text-white/30'} />
-                                                        <span className="font-black uppercase text-xs tracking-tight">Use Platform Credits</span>
+                                                {editingAgent.apiKeyMode === 'platform_credits' && (
+                                                    <span className="absolute -top-2.5 right-4 px-2.5 py-0.5 bg-emerald-500 text-white text-[8px] font-black uppercase rounded-full tracking-wider">Recommended</span>
+                                                )}
+                                                <div className="flex items-center gap-3 mb-3">
+                                                    <div className={cn(
+                                                        "w-10 h-10 rounded-xl flex items-center justify-center",
+                                                        editingAgent.apiKeyMode === 'platform_credits' ? "bg-emerald-500/15" : "bg-white/5"
+                                                    )}>
+                                                        <Sparkles size={18} className={editingAgent.apiKeyMode === 'platform_credits' ? 'text-emerald-400' : 'text-white/30'} />
                                                     </div>
-                                                    {editingAgent.apiKeyMode === 'platform_credits' && (
-                                                        <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 text-[8px] font-black uppercase rounded-full tracking-wider">Active</span>
-                                                    )}
+                                                    <div>
+                                                        <h4 className="font-black text-sm uppercase tracking-tight">Use Our AI Credits</h4>
+                                                        <p className="text-[10px] text-emerald-400/80 font-bold">$10 included with your plan</p>
+                                                    </div>
                                                 </div>
-                                                <p className="text-[10px] text-white/40 leading-relaxed">We provide the API key. Your credits are deducted per usage. Top up anytime.</p>
+                                                <p className="text-[11px] text-white/50 leading-relaxed">No API key needed — we handle everything. Credits deducted per message based on model cost.</p>
+                                                {editingAgent.apiKeyMode === 'platform_credits' && subscription && (
+                                                    <div className="mt-3 pt-3 border-t border-emerald-500/10 flex items-center justify-between">
+                                                        <span className="text-[10px] text-white/40 uppercase tracking-widest font-bold">Balance</span>
+                                                        <span className="text-lg font-black text-emerald-400">${subscription?.creditBalance?.toFixed(2) ?? '0.00'}</span>
+                                                    </div>
+                                                )}
                                             </button>
                                             <button
                                                 onClick={() => setEditingAgent({ ...editingAgent, apiKeyMode: 'own_key' })}
                                                 className={cn(
-                                                    "p-5 rounded-2xl border-2 transition-all text-left group",
+                                                    "p-6 rounded-2xl border-2 transition-all text-left group",
                                                     editingAgent.apiKeyMode === 'own_key'
                                                         ? "border-blue-500/50 bg-blue-500/5"
                                                         : "border-white/5 bg-white/2 hover:border-white/10"
                                                 )}
                                             >
-                                                <div className="flex items-center justify-between mb-2">
-                                                    <div className="flex items-center gap-2">
-                                                        <Lock size={16} className={editingAgent.apiKeyMode === 'own_key' ? 'text-blue-400' : 'text-white/30'} />
-                                                        <span className="font-black uppercase text-xs tracking-tight">Bring Your Own Key</span>
+                                                <div className="flex items-center gap-3 mb-3">
+                                                    <div className={cn(
+                                                        "w-10 h-10 rounded-xl flex items-center justify-center",
+                                                        editingAgent.apiKeyMode === 'own_key' ? "bg-blue-500/15" : "bg-white/5"
+                                                    )}>
+                                                        <Lock size={18} className={editingAgent.apiKeyMode === 'own_key' ? 'text-blue-400' : 'text-white/30'} />
                                                     </div>
-                                                    {editingAgent.apiKeyMode === 'own_key' && (
-                                                        <span className="px-2 py-0.5 bg-blue-500/20 text-blue-400 text-[8px] font-black uppercase rounded-full tracking-wider">Active</span>
-                                                    )}
+                                                    <div>
+                                                        <h4 className="font-black text-sm uppercase tracking-tight">Bring Your Own Key</h4>
+                                                        <p className="text-[10px] text-blue-400/80 font-bold">Any provider, unlimited usage</p>
+                                                    </div>
                                                 </div>
-                                                <p className="text-[10px] text-white/40 leading-relaxed">Use your own API key from any supported provider. Unlimited usage.</p>
+                                                <p className="text-[11px] text-white/50 leading-relaxed">Use your own API key from OpenRouter, OpenAI, Anthropic, or any supported provider. No credit tracking or limits.</p>
                                             </button>
                                         </div>
 
                                         {/* Platform Credits Mode */}
                                         {editingAgent.apiKeyMode === 'platform_credits' && (
                                             <div className="space-y-6">
-                                                <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-2xl p-6">
-                                                    <div className="flex items-center justify-between mb-4">
+                                                <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-2xl p-5">
+                                                    <div className="flex items-center justify-between">
                                                         <div className="flex items-center gap-3">
-                                                            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
-                                                                <Sparkles size={18} className="text-emerald-400" />
+                                                            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                                                                <Sparkles size={14} className="text-emerald-400" />
                                                             </div>
                                                             <div>
-                                                                <h4 className="font-black text-sm uppercase tracking-tight text-white">Credits Balance</h4>
-                                                                <p className="text-[10px] text-white/40">Powered by OpenRouter via platform</p>
+                                                                <p className="text-[10px] text-white/40">Powered by OpenRouter</p>
+                                                                <p className="text-xs text-emerald-400/80 font-bold">✨ AI credits included — no API key needed!</p>
                                                             </div>
                                                         </div>
-                                                        <div className="text-right">
-                                                            <span className="text-2xl font-black text-emerald-400">${subscription?.creditBalance?.toFixed(2) ?? '0.00'}</span>
-                                                            <p className="text-[9px] text-white/30 uppercase tracking-widest">Remaining</p>
+                                                        <div className="text-right flex items-center gap-3">
+                                                            <div>
+                                                                <span className="text-xl font-black text-emerald-400">${subscription?.creditBalance?.toFixed(2) ?? '0.00'}</span>
+                                                                <p className="text-[9px] text-white/30 uppercase tracking-widest">remaining</p>
+                                                            </div>
+                                                            <button
+                                                                onClick={async () => {
+                                                                    try {
+                                                                        const resp = await fetch('/api/credits/topup', {
+                                                                            method: 'POST',
+                                                                            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+                                                                        });
+                                                                        if (resp.ok) { fetchSubscription(); alert('$10 credits added!'); }
+                                                                    } catch (e) { }
+                                                                }}
+                                                                className="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl transition-all text-[10px] uppercase tracking-widest flex items-center gap-1.5"
+                                                            >
+                                                                <Plus size={12} /> Top Up
+                                                            </button>
                                                         </div>
                                                     </div>
-                                                    <div className="flex gap-3">
-                                                        <button
-                                                            onClick={async () => {
-                                                                try {
-                                                                    const resp = await fetch('/api/credits/topup', {
-                                                                        method: 'POST',
-                                                                        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
-                                                                    });
-                                                                    if (resp.ok) { fetchSubscription(); alert('$10 credits added!'); }
-                                                                } catch (e) { }
-                                                            }}
-                                                            className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl transition-all text-xs uppercase tracking-widest flex items-center justify-center gap-2"
-                                                        >
-                                                            <Plus size={14} /> Top Up $10
-                                                        </button>
-                                                        <button
-                                                            onClick={() => navigate('/billing')}
-                                                            className="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-white/60 hover:text-white font-bold py-3 rounded-xl transition-all text-xs uppercase tracking-widest"
-                                                        >
-                                                            View Plans
-                                                        </button>
-                                                    </div>
                                                 </div>
-                                                {/* Model selector only (no provider/key needed) */}
+                                                {/* Model selector with pricing */}
                                                 <InputWrapper label="Model" full>
                                                     <input
                                                         value={editingAgent.model}
@@ -780,24 +789,39 @@ export default function Dashboard() {
                                                                 <span className="text-xs font-medium">Loading available models...</span>
                                                             </div>
                                                         ) : fetchedModels.length > 0 ? (
-                                                            fetchedModels.map(m => (
-                                                                <button
-                                                                    key={m.id}
-                                                                    onClick={() => setEditingAgent({ ...editingAgent, model: m.id })}
-                                                                    className={cn(
-                                                                        "w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-left transition-all text-xs",
-                                                                        editingAgent.model === m.id
-                                                                            ? "bg-primary/10 border border-primary/30 text-white"
-                                                                            : "hover:bg-white/5 text-white/60 hover:text-white"
-                                                                    )}
-                                                                >
-                                                                    <div className="min-w-0">
-                                                                        <span className="font-bold">{m.name}</span>
-                                                                        <span className="text-white/30 ml-2 font-mono text-[10px] hidden sm:inline">{m.id}</span>
-                                                                    </div>
-                                                                    <span className="text-[8px] font-black uppercase tracking-widest text-green-400/60 bg-green-400/5 px-2 py-0.5 rounded-full shrink-0 ml-2">LIVE</span>
-                                                                </button>
-                                                            ))
+                                                            fetchedModels.map(m => {
+                                                                const inputCost = m.promptPrice ? (m.promptPrice * 1_000_000).toFixed(2) : null;
+                                                                const outputCost = m.completionPrice ? (m.completionPrice * 1_000_000).toFixed(2) : null;
+                                                                const isFree = inputCost === '0.00' && outputCost === '0.00';
+                                                                return (
+                                                                    <button
+                                                                        key={m.id}
+                                                                        onClick={() => setEditingAgent({ ...editingAgent, model: m.id })}
+                                                                        className={cn(
+                                                                            "w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-left transition-all text-xs",
+                                                                            editingAgent.model === m.id
+                                                                                ? "bg-emerald-500/10 border border-emerald-500/30 text-white"
+                                                                                : "hover:bg-white/5 text-white/60 hover:text-white"
+                                                                        )}
+                                                                    >
+                                                                        <div className="min-w-0">
+                                                                            <span className="font-bold">{m.name}</span>
+                                                                            <span className="text-white/30 ml-2 font-mono text-[10px] hidden sm:inline">{m.id}</span>
+                                                                        </div>
+                                                                        <div className="flex items-center gap-2 shrink-0 ml-2">
+                                                                            {isFree ? (
+                                                                                <span className="text-[8px] font-black uppercase tracking-widest text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded-full">FREE</span>
+                                                                            ) : inputCost ? (
+                                                                                <span className="text-[8px] font-bold text-white/40 bg-white/5 px-2 py-0.5 rounded-full" title={`Input: $${inputCost}/1M tokens | Output: $${outputCost}/1M tokens`}>
+                                                                                    ${inputCost}/1M
+                                                                                </span>
+                                                                            ) : (
+                                                                                <span className="text-[8px] font-black uppercase tracking-widest text-green-400/60 bg-green-400/5 px-2 py-0.5 rounded-full">LIVE</span>
+                                                                            )}
+                                                                        </div>
+                                                                    </button>
+                                                                );
+                                                            })
                                                         ) : (
                                                             <div className="text-center py-8 text-white/30 text-xs">
                                                                 Models will load automatically via your platform credits.
@@ -806,7 +830,7 @@ export default function Dashboard() {
                                                     </div>
                                                     <p className="text-[10px] text-white/20 mt-2 font-medium">
                                                         {fetchedModels.length > 0
-                                                            ? `Showing ${fetchedModels.length} available models via OpenRouter.`
+                                                            ? `Showing ${fetchedModels.length} models. Prices are per 1M input tokens. Hover for full pricing.`
                                                             : 'Models auto-load from OpenRouter.'} You can also type any custom model ID.
                                                     </p>
                                                 </InputWrapper>
@@ -890,7 +914,7 @@ export default function Dashboard() {
                                                             placeholder="Enter your API key here..."
                                                         />
                                                         <button
-                                                            onClick={fetchDynamicModels}
+                                                            onClick={() => fetchDynamicModels()}
                                                             disabled={isFetchingModels || !editingAgent.apiKey}
                                                             className={cn(
                                                                 "shrink-0 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border",

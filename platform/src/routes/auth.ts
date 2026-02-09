@@ -67,25 +67,48 @@ router.get('/auth/google/callback', async (req, res) => {
                         full_name: full_name || user.full_name
                     }
                 });
-            } else {
-                // 3. Create new user
-                user = await prisma.user.create({
-                    data: {
-                        full_name: full_name || 'Commander',
-                        email,
-                        password: crypto.randomBytes(16).toString('hex'), // Random password for OAuth users
-                        google_id: googleId,
-                        avatar_url,
-                        acquisition_source: 'Google Auth',
-                        subscription: {
-                            create: {
-                                plan: 'Free',
-                                maxInstances: 1,
-                                creditBalance: 10
+                // 3. Create new user with subscription
+                try {
+                    user = await prisma.user.create({
+                        data: {
+                            full_name: full_name || 'Commander',
+                            email,
+                            password: crypto.randomBytes(16).toString('hex'),
+                            google_id: googleId,
+                            avatar_url,
+                            acquisition_source: 'Google Auth',
+                            subscription: {
+                                create: {
+                                    plan: 'Free',
+                                    maxInstances: 1,
+                                    creditBalance: 10
+                                }
                             }
                         }
+                    });
+                } catch (createErr: any) {
+                    // Fallback if creditBalance column not yet migrated
+                    if (createErr.message?.includes('creditBalance')) {
+                        user = await prisma.user.create({
+                            data: {
+                                full_name: full_name || 'Commander',
+                                email,
+                                password: crypto.randomBytes(16).toString('hex'),
+                                google_id: googleId,
+                                avatar_url,
+                                acquisition_source: 'Google Auth',
+                                subscription: {
+                                    create: {
+                                        plan: 'Free',
+                                        maxInstances: 1
+                                    }
+                                }
+                            }
+                        });
+                    } else {
+                        throw createErr;
                     }
-                });
+                }
             }
         } else if (avatar_url && user.avatar_url !== avatar_url) {
             // Update avatar if it changed in Google
@@ -117,6 +140,101 @@ router.get('/auth/google/callback', async (req, res) => {
         console.error('Google Auth Error:', error);
         const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
         res.redirect(`${frontendUrl}/login?error=google_auth_failed`);
+    }
+});
+
+// Google Sign-In via client-side ID token (works in WebViews / mobile)
+router.post('/auth/google/token', async (req: any, res: any) => {
+    const { credential } = req.body;
+    if (!credential) return res.status(400).json({ error: 'Missing credential' });
+
+    try {
+        const ticket = await googleClient.verifyIdToken({
+            idToken: credential,
+            audience: process.env.GOOGLE_CLIENT_ID,
+        });
+
+        const payload = ticket.getPayload();
+        if (!payload) throw new Error('No payload from Google');
+
+        const { sub: googleId, email, name: full_name, picture: avatar_url } = payload;
+        if (!email) throw new Error('No email from Google');
+
+        // Find or create user (same logic as callback)
+        let user = await prisma.user.findUnique({ where: { google_id: googleId } });
+
+        if (!user) {
+            user = await prisma.user.findUnique({ where: { email } });
+            if (user) {
+                user = await prisma.user.update({
+                    where: { id: user.id },
+                    data: {
+                        google_id: googleId,
+                        avatar_url: avatar_url || user.avatar_url,
+                        full_name: full_name || user.full_name
+                    }
+                });
+            } else {
+                try {
+                    user = await prisma.user.create({
+                        data: {
+                            full_name: full_name || 'Commander',
+                            email,
+                            password: crypto.randomBytes(16).toString('hex'),
+                            google_id: googleId,
+                            avatar_url,
+                            acquisition_source: 'Google Auth',
+                            subscription: {
+                                create: { plan: 'Free', maxInstances: 1, creditBalance: 10 }
+                            }
+                        }
+                    });
+                } catch (createErr: any) {
+                    if (createErr.message?.includes('creditBalance')) {
+                        user = await prisma.user.create({
+                            data: {
+                                full_name: full_name || 'Commander',
+                                email,
+                                password: crypto.randomBytes(16).toString('hex'),
+                                google_id: googleId,
+                                avatar_url,
+                                acquisition_source: 'Google Auth',
+                                subscription: {
+                                    create: { plan: 'Free', maxInstances: 1 }
+                                }
+                            }
+                        });
+                    } else {
+                        throw createErr;
+                    }
+                }
+            }
+        } else if (avatar_url && user.avatar_url !== avatar_url) {
+            user = await prisma.user.update({
+                where: { id: user.id },
+                data: { avatar_url }
+            });
+        }
+
+        const token = jwtSign(
+            { userId: user.id, full_name: user.full_name, role: user.role },
+            JWT_SECRET,
+            { expiresIn: '7d' }
+        );
+
+        res.json({
+            token,
+            user: {
+                id: user.id,
+                full_name: user.full_name,
+                email: user.email,
+                avatar_url: user.avatar_url,
+                role: user.role
+            }
+        });
+    } catch (error) {
+        console.error('Google Token Auth Error:', error);
+        res.status(401).json({ error: 'Google authentication failed' });
     }
 });
 

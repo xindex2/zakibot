@@ -70,6 +70,11 @@ const isAdmin = (req: any, res: any, next: any) => {
     next();
 };
 
+// --- Public Config (expose Google Client ID to frontend) ---
+app.get('/api/auth/config', (req, res) => {
+    res.json({ googleClientId: process.env.GOOGLE_CLIENT_ID || '' });
+});
+
 // --- Auth Routes ---
 
 app.post('/api/register', async (req, res) => {
@@ -82,22 +87,42 @@ app.post('/api/register', async (req, res) => {
         // Hash password with bcrypt (10 salt rounds)
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        const user = await prisma.user.create({
-            data: {
-                email,
-                password: hashedPassword,
-                full_name: full_name || 'User',
-                acquisition_source: acquisition_source || 'Direct',
-                subscription: {
-                    create: {
-                        plan: 'Free',
-                        maxInstances: 1,
-                        creditBalance: 10
+        let user;
+        try {
+            user = await prisma.user.create({
+                data: {
+                    email,
+                    password: hashedPassword,
+                    full_name: full_name || 'User',
+                    acquisition_source: acquisition_source || 'Direct',
+                    subscription: {
+                        create: {
+                            plan: 'Free',
+                            maxInstances: 1,
+                            creditBalance: 10
+                        }
                     }
-                }
-            },
-            include: { subscription: true }
-        });
+                },
+                include: { subscription: true }
+            });
+        } catch (createErr: any) {
+            if (createErr.message?.includes('creditBalance')) {
+                user = await prisma.user.create({
+                    data: {
+                        email,
+                        password: hashedPassword,
+                        full_name: full_name || 'User',
+                        acquisition_source: acquisition_source || 'Direct',
+                        subscription: {
+                            create: { plan: 'Free', maxInstances: 1 }
+                        }
+                    },
+                    include: { subscription: true }
+                });
+            } else {
+                throw createErr;
+            }
+        }
 
         // Auto-login: generate JWT
         const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_key_change_this_openclaw_host';

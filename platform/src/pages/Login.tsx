@@ -1,18 +1,25 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Logo from '../components/Logo';
 import StarField from '../components/StarField';
 
+declare global {
+    interface Window {
+        google?: any;
+    }
+}
+
 export default function Login() {
     const [formData, setFormData] = useState({ email: '', password: '' });
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
-    const [isInAppBrowser, setIsInAppBrowser] = useState(false);
+    const [googleClientId, setGoogleClientId] = useState('');
     const navigate = useNavigate();
     const location = useLocation();
     const { login } = useAuth();
 
+    // Handle Google OAuth redirect callback (legacy flow — still works on desktop)
     useEffect(() => {
         const params = new URLSearchParams(location.search);
         const token = params.get('token');
@@ -33,16 +40,80 @@ export default function Login() {
         }
     }, [location, login, navigate]);
 
-    // Detect in-app browsers (Facebook, Instagram, LinkedIn, etc.)
+    // Handle Google credential response (client-side GIS flow)
+    const handleGoogleCredential = useCallback(async (response: any) => {
+        setLoading(true);
+        setError('');
+        try {
+            const resp = await fetch('/api/auth/google/token', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ credential: response.credential })
+            });
+            const data = await resp.json();
+            if (!resp.ok) throw new Error(data.error || 'Google login failed');
+            login(data.token, data.user);
+            navigate('/dashboard');
+        } catch (err: any) {
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    }, [login, navigate]);
+
+    // Load Google Identity Services SDK
     useEffect(() => {
-        const ua = navigator.userAgent || '';
-        const inApp = /FBAN|FBAV|Instagram|LinkedIn|Twitter|Snapchat|Line\/|MicroMessenger|WeChat/i.test(ua);
-        setIsInAppBrowser(inApp);
-    }, []);
+        const loadGoogleSDK = async () => {
+            try {
+                const resp = await fetch('/api/auth/config');
+                const cfg = await resp.json();
+                if (!cfg.googleClientId) return;
+                setGoogleClientId(cfg.googleClientId);
+
+                // Load the GIS script if not already loaded
+                if (!document.getElementById('google-gsi-script')) {
+                    const script = document.createElement('script');
+                    script.id = 'google-gsi-script';
+                    script.src = 'https://accounts.google.com/gsi/client';
+                    script.async = true;
+                    script.defer = true;
+                    script.onload = () => initGoogle(cfg.googleClientId);
+                    document.head.appendChild(script);
+                } else if (window.google) {
+                    initGoogle(cfg.googleClientId);
+                }
+            } catch (e) {
+                console.error('Failed to load Google config', e);
+            }
+        };
+
+        const initGoogle = (clientId: string) => {
+            if (!window.google?.accounts?.id) return;
+            window.google.accounts.id.initialize({
+                client_id: clientId,
+                callback: handleGoogleCredential,
+                auto_select: false,
+                cancel_on_tap_outside: true,
+            });
+        };
+
+        loadGoogleSDK();
+    }, [handleGoogleCredential]);
 
     const handleGoogleLogin = () => {
-        setLoading(true);
-        window.location.href = '/api/auth/google';
+        if (window.google?.accounts?.id) {
+            // Use the GIS popup flow (works everywhere including WebViews)
+            window.google.accounts.id.prompt((notification: any) => {
+                if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+                    // Fallback to redirect flow if GIS prompt is not available
+                    window.location.href = '/api/auth/google';
+                }
+            });
+        } else {
+            // GIS not loaded, use redirect flow
+            setLoading(true);
+            window.location.href = '/api/auth/google';
+        }
     };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -88,12 +159,6 @@ export default function Login() {
                     </div>
 
                     <form onSubmit={handleSubmit} className="space-y-6">
-                        {isInAppBrowser && (
-                            <div className="bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 p-4 rounded-2xl text-sm font-bold space-y-2">
-                                <p>⚠️ You're using an in-app browser. Google Sign-In won't work here.</p>
-                                <p className="text-yellow-400/60 text-xs font-medium">Tap the <strong>⋮</strong> menu → <strong>"Open in Chrome"</strong> or <strong>"Open in Safari"</strong>, or use email login below.</p>
-                            </div>
-                        )}
                         {error && (
                             <div className="bg-red-500/10 border border-red-500/20 text-red-500 p-4 rounded-2xl text-sm font-bold">
                                 {error}
@@ -143,8 +208,8 @@ export default function Login() {
                         <button
                             type="button"
                             onClick={handleGoogleLogin}
-                            disabled={loading || isInAppBrowser}
-                            className={`w-full bg-white/5 border border-white/5 text-white py-5 rounded-2xl font-black tracking-widest uppercase text-[10px] hover:bg-white/10 active:scale-95 transition-all flex items-center justify-center gap-4 ${isInAppBrowser ? 'opacity-30 cursor-not-allowed' : ''}`}
+                            disabled={loading}
+                            className="w-full bg-white/5 border border-white/5 text-white py-5 rounded-2xl font-black tracking-widest uppercase text-[10px] hover:bg-white/10 active:scale-95 transition-all flex items-center justify-center gap-4"
                         >
                             <svg width="18" height="18" viewBox="0 0 18 18">
                                 <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285f4" />

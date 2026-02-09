@@ -802,7 +802,7 @@ export default function Dashboard() {
                                                                 <p className="text-[9px] text-white/30 uppercase tracking-widest">remaining</p>
                                                             </div>
                                                             <button
-                                                                onClick={() => navigate('/billing')}
+                                                                onClick={() => navigate('/topup')}
                                                                 className="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl transition-all text-[10px] uppercase tracking-widest flex items-center gap-1.5"
                                                             >
                                                                 <Plus size={12} /> Top Up

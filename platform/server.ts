@@ -352,24 +352,46 @@ app.get('/api/admin/stats', authenticateToken, isAdmin, async (req: any, res: an
 
 app.get('/api/admin/users', authenticateToken, isAdmin, async (req: any, res: any) => {
     try {
-        const users = await prisma.user.findMany({
-            include: {
-                subscription: true as any,
-                _count: { select: { configs: true } },
-                configs: {
-                    select: {
-                        id: true,
-                        name: true,
-                        model: true,
-                        telegramEnabled: true,
-                        discordEnabled: true,
-                        whatsappEnabled: true,
+        const page = Math.max(1, parseInt(req.query.page as string) || 1);
+        const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 10));
+        const search = (req.query.search as string || '').trim();
+        const skip = (page - 1) * limit;
+
+        // Build where clause for search
+        const where: any = search ? {
+            OR: [
+                { email: { contains: search } },
+                { full_name: { contains: search } },
+                { id: { contains: search } },
+            ]
+        } : {};
+
+        const [users, total] = await Promise.all([
+            prisma.user.findMany({
+                where,
+                include: {
+                    subscription: true as any,
+                    _count: { select: { configs: true } },
+                    configs: {
+                        select: {
+                            id: true,
+                            name: true,
+                            model: true,
+                            telegramEnabled: true,
+                            discordEnabled: true,
+                            whatsappEnabled: true,
+                        }
                     }
-                }
-            },
-            orderBy: { createdAt: 'desc' }
-        });
-        res.json({ users });
+                },
+                orderBy: { createdAt: 'desc' },
+                skip,
+                take: limit,
+            }),
+            prisma.user.count({ where })
+        ]);
+
+        const totalPages = Math.ceil(total / limit);
+        res.json({ users, total, totalPages, page });
     } catch (error) {
         res.status(500).json({ error: 'Failed' });
     }

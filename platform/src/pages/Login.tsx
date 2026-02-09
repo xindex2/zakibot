@@ -105,14 +105,28 @@ export default function Login() {
             // Use the GIS popup flow (works everywhere including WebViews)
             window.google.accounts.id.prompt((notification: any) => {
                 if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-                    // Fallback to redirect flow if GIS prompt is not available
-                    window.location.href = '/api/auth/google';
+                    // Check if we're in an in-app browser (Facebook, Instagram, etc.)
+                    const ua = navigator.userAgent || '';
+                    const isInAppBrowser = /FBAN|FBAV|Instagram|Line|Twitter|MicroMessenger|Snapchat/i.test(ua);
+                    if (isInAppBrowser) {
+                        // In-app browsers block Google OAuth redirects — tell user to open in real browser
+                        setError('Google Sign-In is not available in this browser. Please open in Chrome, Safari, or your default browser (tap ⋮ → "Open in browser").');
+                    } else {
+                        // Desktop or real mobile browser — safe to redirect
+                        window.location.href = '/api/auth/google';
+                    }
                 }
             });
         } else {
-            // GIS not loaded, use redirect flow
-            setLoading(true);
-            window.location.href = '/api/auth/google';
+            // GIS not loaded — check if in-app browser
+            const ua = navigator.userAgent || '';
+            const isInAppBrowser = /FBAN|FBAV|Instagram|Line|Twitter|MicroMessenger|Snapchat/i.test(ua);
+            if (isInAppBrowser) {
+                setError('Google Sign-In is not available in this browser. Please open in Chrome, Safari, or your default browser (tap ⋮ → "Open in browser").');
+            } else {
+                setLoading(true);
+                window.location.href = '/api/auth/google';
+            }
         }
     };
 

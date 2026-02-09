@@ -654,29 +654,9 @@ app.get('/api/subscription', authenticateToken, async (req: any, res: any) => {
 
 // User tops up their own credits ($10 increments)
 app.post('/api/credits/topup', authenticateToken, async (req: any, res: any) => {
-    try {
-        const amount = 10; // Fixed $10 top-up
-        const sub = await prisma.subscription.findUnique({ where: { userId: req.user.id } });
-        if (!sub) return res.status(400).json({ error: 'No subscription found' });
-
-        await prisma.subscription.update({
-            where: { userId: req.user.id },
-            data: { creditBalance: (sub.creditBalance || 0) + amount }
-        });
-
-        await prisma.creditTransaction.create({
-            data: {
-                userId: req.user.id,
-                amount,
-                type: 'topup',
-                description: `Self-service top-up of $${amount}`
-            }
-        });
-
-        res.json({ success: true, newBalance: (sub.creditBalance || 0) + amount });
-    } catch (e: any) {
-        res.status(500).json({ error: e.message });
-    }
+    // Credit top-ups must go through the payment provider (Creem/Whop)
+    // This endpoint is disabled — use /topup page to purchase credits
+    res.status(400).json({ error: 'Credit top-ups require payment. Please visit the Top Up page to purchase credits.' });
 });
 
 // Credit balance

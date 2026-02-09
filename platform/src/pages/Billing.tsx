@@ -204,46 +204,7 @@ export default function Billing() {
                 })}
             </div>
 
-            {/* Credits Top-Up Section */}
-            <div className="bg-zinc-900 border border-zinc-800 rounded-2xl md:rounded-3xl p-6 md:p-8 shadow-2xl">
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
-                    <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl flex items-center justify-center shrink-0">
-                            <Sparkles size={20} className="text-emerald-400" />
-                        </div>
-                        <div>
-                            <h4 className="text-white font-black text-sm uppercase italic tracking-wide">API Credits</h4>
-                            <p className="text-zinc-500 text-[10px] font-medium uppercase tracking-widest">Use platform-managed API keys instead of your own</p>
-                        </div>
-                    </div>
-                    <div className="flex items-center gap-6">
-                        <div className="text-center">
-                            <span className="text-2xl font-black text-emerald-400">${subscription?.creditBalance?.toFixed(2) ?? '0.00'}</span>
-                            <p className="text-[9px] text-zinc-500 uppercase tracking-widest font-bold">Balance</p>
-                        </div>
-                        <button
-                            onClick={async () => {
-                                if (!token) return;
-                                try {
-                                    const resp = await fetch('/api/credits/topup', {
-                                        method: 'POST',
-                                        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
-                                    });
-                                    if (resp.ok) {
-                                        const data = await resp.json();
-                                        setSubscription((prev: any) => ({ ...prev, creditBalance: data.newBalance }));
-                                        alert('$10 credits added successfully!');
-                                    }
-                                } catch (e) { }
-                            }}
-                            className="bg-emerald-600 hover:bg-emerald-500 text-white font-black py-3 px-6 rounded-xl transition-all text-[10px] uppercase tracking-widest flex items-center gap-2 shadow-xl shadow-emerald-600/20"
-                        >
-                            <Plus size={14} /> Top Up $10
-                        </button>
-                    </div>
-                </div>
-                <p className="text-[10px] text-zinc-600 mt-4 text-center sm:text-left">Or bring your own API key for unlimited usage — configure per-agent in the Dashboard.</p>
-            </div>
+            {/* Credits are managed on the /topup page */}
 
             <footer className="bg-zinc-900 border border-zinc-800 p-6 md:p-8 rounded-2xl md:rounded-3xl flex flex-col sm:flex-row items-center justify-between gap-4 shadow-2xl">
                 <div className="flex items-center gap-4 md:gap-6">

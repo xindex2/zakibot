@@ -12,6 +12,7 @@ import AdminSettings from './pages/AdminSettings';
 import ThankYou from './pages/ThankYou';
 import Profile from './pages/Profile';
 import Billing from './pages/Billing';
+import TopUpCredits from './pages/TopUpCredits';
 import Hosting from './pages/seo/Hosting';
 import VPS from './pages/seo/VPS';
 import Deploy from './pages/seo/Deploy';
@@ -71,6 +72,11 @@ function AppRoutes() {
             <Route path="/billing" element={
                 <ProtectedRoute>
                     <Billing />
+                </ProtectedRoute>
+            } />
+            <Route path="/topup" element={
+                <ProtectedRoute>
+                    <TopUpCredits />
                 </ProtectedRoute>
             } />
 

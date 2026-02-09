@@ -451,6 +451,46 @@ export default function Dashboard() {
                             </div>
                         </header>
 
+                        {/* Credit Balance Tracker */}
+                        {subscription && (
+                            <div className="glass-panel rounded-2xl p-4 md:p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
+                                <div className="flex items-center gap-4 flex-1 w-full">
+                                    <div className="w-10 h-10 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center justify-center shrink-0">
+                                        <Sparkles size={18} className="text-emerald-400" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center justify-between mb-1.5">
+                                            <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">AI Credits</span>
+                                            <span className="text-sm font-black text-emerald-400">${subscription?.creditBalance?.toFixed(2) ?? '0.00'}</span>
+                                        </div>
+                                        <div className="w-full h-2 bg-zinc-800 rounded-full overflow-hidden">
+                                            <div
+                                                className="h-full rounded-full transition-all duration-500"
+                                                style={{
+                                                    width: `${Math.min(100, ((subscription?.creditBalance || 0) / 50) * 100)}%`,
+                                                    background: (subscription?.creditBalance || 0) > 5
+                                                        ? 'linear-gradient(90deg, #10b981, #34d399)'
+                                                        : (subscription?.creditBalance || 0) > 0
+                                                            ? 'linear-gradient(90deg, #f59e0b, #fbbf24)'
+                                                            : '#ef4444'
+                                                }}
+                                            />
+                                        </div>
+                                        <p className="text-[9px] text-zinc-600 mt-1 font-medium">
+                                            {(subscription?.creditBalance || 0) <= 0 ? 'No credits remaining — add credits to use platform API keys' :
+                                                (subscription?.creditBalance || 0) < 5 ? 'Low balance — consider topping up' :
+                                                    'Credits available for platform-managed API calls'}
+                                        </p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => navigate('/topup')}
+                                    className="bg-emerald-600 hover:bg-emerald-500 text-white font-black py-2.5 px-5 rounded-xl transition-all text-[10px] uppercase tracking-widest flex items-center gap-2 shadow-lg shadow-emerald-900/20 shrink-0 whitespace-nowrap"
+                                >
+                                    <Plus size={14} /> Top Up
+                                </button>
+                            </div>
+                        )}
 
                         {agents.length === 0 ? (
                             <div className="flex flex-col items-center justify-center py-20 text-center">

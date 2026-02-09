@@ -224,7 +224,7 @@ export default function Login() {
                     <div className="mt-12 pt-8 border-t border-white/5 text-center">
                         <p className="text-gray-500 text-sm font-medium">
                             Don't have access?{' '}
-                            <Link to="/register" className="text-[#ff6b6b] font-bold hover:underline">Recruit Now</Link>
+                            <Link to="/register" className="text-[#ff6b6b] font-bold hover:underline">Register Now!</Link>
                         </p>
                         <Link to="/" className="inline-block mt-4 text-[10px] font-black uppercase tracking-widest text-gray-600 hover:text-white transition-colors">
                             ← BACK TO BASE

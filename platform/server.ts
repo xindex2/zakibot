@@ -12,6 +12,8 @@ import jwt from 'jsonwebtoken';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
+import bcrypt from 'bcryptjs';
+import { encryptSensitiveFields, decryptSensitiveFields, encrypt, decrypt } from './src/lib/crypto.js';
 
 // Fix for ESM/CJS interop (getting jwt.sign)
 const jwtSign = (jwt as any).default?.sign || (jwt as any).sign || jwt.sign;
@@ -76,10 +78,13 @@ app.post('/api/register', async (req, res) => {
         const existingUser = await prisma.user.findUnique({ where: { email } });
         if (existingUser) return res.status(400).json({ error: 'User already exists' });
 
+        // Hash password with bcrypt (10 salt rounds)
+        const hashedPassword = await bcrypt.hash(password, 10);
+
         const user = await prisma.user.create({
             data: {
                 email,
-                password, // Hash password in production
+                password: hashedPassword,
                 full_name: full_name || 'User',
                 acquisition_source: acquisition_source || 'Direct',
                 subscription: {
@@ -91,7 +96,77 @@ app.post('/api/register', async (req, res) => {
             },
             include: { subscription: true }
         });
-        res.json(user);
+
+        // Auto-login: generate JWT
+        const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_key_change_this_openclaw_host';
+        const token = jwtSign(
+            { userId: user.id, full_name: user.full_name, role: user.role },
+            JWT_SECRET,
+            { expiresIn: '7d' }
+        );
+
+        res.json({
+            token,
+            user: {
+                id: user.id,
+                full_name: user.full_name,
+                email: user.email,
+                role: user.role,
+                avatar_url: (user as any).avatar_url
+            }
+        });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// --- Login Route ---
+
+app.post('/api/login', async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        if (!email || !password) return res.status(400).json({ error: 'Email and password are required' });
+
+        const user = await prisma.user.findUnique({ where: { email } });
+        if (!user) return res.status(401).json({ error: 'Invalid email or password' });
+
+        // Compare password with bcrypt hash
+        // Also support legacy plain-text passwords (auto-migrate on login)
+        let passwordMatch = false;
+        if (user.password.startsWith('$2a$') || user.password.startsWith('$2b$')) {
+            // Already hashed
+            passwordMatch = await bcrypt.compare(password, user.password);
+        } else {
+            // Legacy plain-text comparison — migrate to hash
+            passwordMatch = (password === user.password);
+            if (passwordMatch) {
+                const hashedPassword = await bcrypt.hash(password, 10);
+                await prisma.user.update({
+                    where: { id: user.id },
+                    data: { password: hashedPassword }
+                });
+            }
+        }
+
+        if (!passwordMatch) return res.status(401).json({ error: 'Invalid email or password' });
+
+        const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_key_change_this_openclaw_host';
+        const token = jwtSign(
+            { userId: user.id, full_name: user.full_name, role: user.role },
+            JWT_SECRET,
+            { expiresIn: '7d' }
+        );
+
+        res.json({
+            token,
+            user: {
+                id: user.id,
+                full_name: user.full_name,
+                email: user.email,
+                role: user.role,
+                avatar_url: (user as any).avatar_url
+            }
+        });
     } catch (e: any) {
         res.status(500).json({ error: e.message });
     }
@@ -107,7 +182,9 @@ app.get('/api/config', async (req, res) => {
         const configs = await prisma.botConfig.findMany({
             where: { userId: String(userId) }
         });
-        res.json(configs);
+        // Decrypt sensitive fields before returning to frontend
+        const decryptedConfigs = configs.map((c: any) => decryptSensitiveFields(c));
+        res.json(decryptedConfigs);
     } catch (e: any) {
         res.status(500).json({ error: e.message });
     }
@@ -173,13 +250,17 @@ app.post('/api/config', async (req, res) => {
         if (data.gatewayPort) data.gatewayPort = parseInt(data.gatewayPort);
         if (data.maxToolIterations) data.maxToolIterations = parseInt(data.maxToolIterations);
 
+        // Encrypt sensitive fields before saving to database
+        const encryptedData = encryptSensitiveFields(data);
+
         const config = await prisma.botConfig.upsert({
             where: { id: (id && !id.startsWith('temp-')) ? id : 'new-' + Date.now() },
-            update: data,
-            create: data
+            update: encryptedData,
+            create: encryptedData
         });
 
-        res.json(config);
+        // Return decrypted version to frontend
+        res.json(decryptSensitiveFields(config as any));
     } catch (e: any) {
         res.status(500).json({ error: e.message });
     }

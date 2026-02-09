@@ -132,7 +132,10 @@ router.put('/profile', async (req: any, res: any) => {
         const data: any = {};
         if (full_name) data.full_name = full_name;
         if (avatar_url) data.avatar_url = avatar_url;
-        if (password) data.password = password; // Should hash ideally
+        if (password) {
+            const bcrypt = await import('bcryptjs');
+            data.password = await bcrypt.hash(password, 10);
+        }
 
         const user = await prisma.user.update({
             where: { id: userId },

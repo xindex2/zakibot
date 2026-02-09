@@ -1,5 +1,6 @@
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
+import { encrypt, decrypt } from '../lib/crypto.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -106,7 +107,12 @@ router.get('/stats', async (req, res) => {
 router.get('/config', async (req, res) => {
     try {
         const configs = await prisma.systemConfig.findMany();
-        const configMap = configs.reduce((acc: any, curr: any) => ({ ...acc, [curr.key]: curr.value }), {});
+        // Decrypt sensitive config values before returning
+        const SENSITIVE_KEYS = ['OPENROUTER_API_KEY', 'WHOP_API_KEY', 'CREEM_API_KEY'];
+        const configMap = configs.reduce((acc: any, curr: any) => {
+            acc[curr.key] = SENSITIVE_KEYS.includes(curr.key) ? decrypt(curr.value) : curr.value;
+            return acc;
+        }, {});
         res.json(configMap);
     } catch (e: any) {
         res.status(500).json({ error: e.message });
@@ -120,11 +126,14 @@ router.get('/config', async (req, res) => {
 router.post('/config', async (req, res) => {
     const data = req.body;
     try {
+        // Encrypt sensitive keys before storing
+        const SENSITIVE_KEYS = ['OPENROUTER_API_KEY', 'WHOP_API_KEY', 'CREEM_API_KEY'];
         const operations = Object.entries(data).map(([key, value]) => {
+            const storedValue = SENSITIVE_KEYS.includes(key) ? encrypt(String(value)) : String(value);
             return prisma.systemConfig.upsert({
                 where: { key },
-                update: { value: String(value) },
-                create: { key, value: String(value) }
+                update: { value: storedValue },
+                create: { key, value: storedValue }
             });
         });
         await Promise.all(operations);

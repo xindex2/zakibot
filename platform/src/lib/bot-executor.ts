@@ -3,6 +3,7 @@ import { spawn, ChildProcess, execSync } from 'child_process';
 import path from 'path';
 import fs from 'fs';
 import { PrismaClient } from '@prisma/client';
+import { decryptSensitiveFields, decrypt } from './crypto.js';
 
 const prisma = new PrismaClient();
 // Process cache keyed by BOT CONFIG ID
@@ -29,10 +30,13 @@ export async function startBot(configId: string) {
     });
     if (!config) throw new Error('Bot configuration not found.');
 
+    // Decrypt all sensitive fields from database
+    const decryptedConfig = decryptSensitiveFields(config as any) as typeof config;
+
     // Determine which API key to use based on apiKeyMode
-    const apiKeyMode = (config as any).apiKeyMode || 'own_key';
-    let effectiveProvider = config.provider;
-    let effectiveApiKey = config.apiKey;
+    const apiKeyMode = (decryptedConfig as any).apiKeyMode || 'own_key';
+    let effectiveProvider = decryptedConfig.provider;
+    let effectiveApiKey = decryptedConfig.apiKey;
 
     if (apiKeyMode === 'platform_credits') {
         // Fetch the admin's OpenRouter API key from SystemConfig
@@ -43,19 +47,19 @@ export async function startBot(configId: string) {
             throw new Error('Platform credits mode is enabled but no OpenRouter API key is configured by the admin.');
         }
         effectiveProvider = 'openrouter';
-        effectiveApiKey = platformKeyConfig.value;
+        effectiveApiKey = decrypt(platformKeyConfig.value);
     }
 
     // Create temporary config file
     const configsDir = path.join(process.cwd(), 'configs');
     if (!fs.existsSync(configsDir)) fs.mkdirSync(configsDir, { recursive: true });
 
-    const configPath = path.join(configsDir, `${config.id}.json`);
-    const workspacePath = path.join(process.cwd(), 'workspaces', config.userId, config.id);
+    const configPath = path.join(configsDir, `${decryptedConfig.id}.json`);
+    const workspacePath = path.join(process.cwd(), 'workspaces', decryptedConfig.userId, decryptedConfig.id);
     if (!fs.existsSync(workspacePath)) fs.mkdirSync(workspacePath, { recursive: true });
 
     // Assign bridge port based on gateway port
-    const gatewayPort = config.gatewayPort || 18790;
+    const gatewayPort = decryptedConfig.gatewayPort || 18790;
     const bridgePort = gatewayPort + 1;
     const bridgeUrl = `ws://localhost:${bridgePort}`;
 
@@ -69,64 +73,64 @@ export async function startBot(configId: string) {
         },
         agents: {
             defaults: {
-                model: config.model,
+                model: decryptedConfig.model,
                 workspace: workspacePath,
-                max_tool_iterations: config.maxToolIterations || 20,
-                plan: (config as any).user?.subscription?.plan?.toLowerCase() || "free"
+                max_tool_iterations: decryptedConfig.maxToolIterations || 20,
+                plan: (decryptedConfig as any).user?.subscription?.plan?.toLowerCase() || "free"
             }
         },
         channels: {
             telegram: {
-                enabled: config.telegramEnabled,
-                token: config.telegramToken || "",
-                allow_from: (config as any).telegramAllowFrom ? (config as any).telegramAllowFrom.split(',').map((s: string) => s.trim()) : []
+                enabled: decryptedConfig.telegramEnabled,
+                token: decryptedConfig.telegramToken || "",
+                allow_from: (decryptedConfig as any).telegramAllowFrom ? (decryptedConfig as any).telegramAllowFrom.split(',').map((s: string) => s.trim()) : []
             },
             discord: {
-                enabled: config.discordEnabled,
-                token: config.discordToken || "",
-                allow_from: (config as any).discordAllowFrom ? (config as any).discordAllowFrom.split(',').map((s: string) => s.trim()) : [],
+                enabled: decryptedConfig.discordEnabled,
+                token: decryptedConfig.discordToken || "",
+                allow_from: (decryptedConfig as any).discordAllowFrom ? (decryptedConfig as any).discordAllowFrom.split(',').map((s: string) => s.trim()) : [],
                 gateway_url: "wss://gateway.discord.gg/?v=10&encoding=json",
                 intents: 37377
             },
             whatsapp: {
-                enabled: config.whatsappEnabled,
+                enabled: decryptedConfig.whatsappEnabled,
                 bridge_url: bridgeUrl,
-                allow_from: (config as any).whatsappAllowFrom ? (config as any).whatsappAllowFrom.split(',').map((s: string) => s.trim()) : []
+                allow_from: (decryptedConfig as any).whatsappAllowFrom ? (decryptedConfig as any).whatsappAllowFrom.split(',').map((s: string) => s.trim()) : []
             },
             feishu: {
-                enabled: config.feishuEnabled,
-                app_id: config.feishuAppId || "",
-                app_secret: config.feishuAppSecret || "",
-                encrypt_key: config.feishuEncryptKey || "",
-                verification_token: config.feishuVerificationToken || "",
-                allow_from: (config as any).feishuAllowFrom ? (config as any).feishuAllowFrom.split(',').map((s: string) => s.trim()) : []
+                enabled: decryptedConfig.feishuEnabled,
+                app_id: decryptedConfig.feishuAppId || "",
+                app_secret: decryptedConfig.feishuAppSecret || "",
+                encrypt_key: decryptedConfig.feishuEncryptKey || "",
+                verification_token: decryptedConfig.feishuVerificationToken || "",
+                allow_from: (decryptedConfig as any).feishuAllowFrom ? (decryptedConfig as any).feishuAllowFrom.split(',').map((s: string) => s.trim()) : []
             },
             slack: {
-                enabled: (config as any).slackEnabled || false,
-                bot_token: (config as any).slackBotToken || "",
-                app_token: (config as any).slackAppToken || "",
-                allow_from: (config as any).slackAllowFrom ? (config as any).slackAllowFrom.split(',').map((s: string) => s.trim()) : []
+                enabled: (decryptedConfig as any).slackEnabled || false,
+                bot_token: (decryptedConfig as any).slackBotToken || "",
+                app_token: (decryptedConfig as any).slackAppToken || "",
+                allow_from: (decryptedConfig as any).slackAllowFrom ? (decryptedConfig as any).slackAllowFrom.split(',').map((s: string) => s.trim()) : []
             }
         },
         tools: {
             web: {
                 search: {
-                    api_key: config.webSearchApiKey || process.env.BRAVE_API_KEY || ""
+                    api_key: decryptedConfig.webSearchApiKey || process.env.BRAVE_API_KEY || ""
                 }
             },
             browser: {
-                enabled: config.browserEnabled,
+                enabled: decryptedConfig.browserEnabled,
                 max_tool_retries: 3,
-                captcha_provider: (config as any).captchaProvider || "",
-                captcha_api_key: (config as any).captchaApiKey || ""
+                captcha_provider: (decryptedConfig as any).captchaProvider || "",
+                captcha_api_key: (decryptedConfig as any).captchaApiKey || ""
             },
             exec: {
-                enabled: config.shellEnabled
+                enabled: decryptedConfig.shellEnabled
             },
-            restrict_to_workspace: config.restrictToWorkspace || false
+            restrict_to_workspace: decryptedConfig.restrictToWorkspace || false
         },
         gateway: {
-            host: config.gatewayHost || "0.0.0.0",
+            host: decryptedConfig.gatewayHost || "0.0.0.0",
             port: gatewayPort
         }
     };

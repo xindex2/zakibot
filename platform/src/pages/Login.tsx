@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Logo from '../components/Logo';
@@ -14,12 +14,13 @@ export default function Login() {
     const [formData, setFormData] = useState({ email: '', password: '' });
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
-    const [googleClientId, setGoogleClientId] = useState('');
+    const [googleReady, setGoogleReady] = useState(false);
     const navigate = useNavigate();
     const location = useLocation();
     const { login } = useAuth();
+    const googleBtnRef = useRef<HTMLDivElement>(null);
 
-    // Handle Google OAuth redirect callback (legacy flow — still works on desktop)
+    // Handle Google OAuth redirect callback (legacy desktop flow)
     useEffect(() => {
         const params = new URLSearchParams(location.search);
         const token = params.get('token');
@@ -40,7 +41,7 @@ export default function Login() {
         }
     }, [location, login, navigate]);
 
-    // Handle Google credential response (client-side GIS flow)
+    // Handle Google credential response (called by GIS renderButton)
     const handleGoogleCredential = useCallback(async (response: any) => {
         setLoading(true);
         setError('');
@@ -61,74 +62,66 @@ export default function Login() {
         }
     }, [login, navigate]);
 
-    // Load Google Identity Services SDK
+    // Load Google Identity Services SDK and render the button
     useEffect(() => {
+        let mounted = true;
+
         const loadGoogleSDK = async () => {
             try {
                 const resp = await fetch('/api/auth/config');
                 const cfg = await resp.json();
-                if (!cfg.googleClientId) return;
-                setGoogleClientId(cfg.googleClientId);
+                if (!cfg.googleClientId || !mounted) return;
 
-                // Load the GIS script if not already loaded
+                const initAndRender = (clientId: string) => {
+                    if (!window.google?.accounts?.id || !mounted) return;
+
+                    window.google.accounts.id.initialize({
+                        client_id: clientId,
+                        callback: handleGoogleCredential,
+                        auto_select: false,
+                        cancel_on_tap_outside: true,
+                        // Use FedCM when available (Chrome 117+), falls back to iframe
+                        use_fedcm_for_prompt: true,
+                    });
+
+                    // renderButton creates Google's own iframe-based sign-in button
+                    // This works in ALL environments including WebViews/in-app browsers
+                    // because it's Google's own UI, not a redirect
+                    if (googleBtnRef.current) {
+                        googleBtnRef.current.innerHTML = ''; // Clear previous renders
+                        window.google.accounts.id.renderButton(googleBtnRef.current, {
+                            type: 'standard',
+                            theme: 'filled_black',
+                            size: 'large',
+                            text: 'continue_with',
+                            shape: 'pill',
+                            width: googleBtnRef.current.offsetWidth || 340,
+                            logo_alignment: 'center',
+                        });
+                        setGoogleReady(true);
+                    }
+                };
+
+                // Load the GIS script
                 if (!document.getElementById('google-gsi-script')) {
                     const script = document.createElement('script');
                     script.id = 'google-gsi-script';
                     script.src = 'https://accounts.google.com/gsi/client';
                     script.async = true;
                     script.defer = true;
-                    script.onload = () => initGoogle(cfg.googleClientId);
+                    script.onload = () => initAndRender(cfg.googleClientId);
                     document.head.appendChild(script);
                 } else if (window.google) {
-                    initGoogle(cfg.googleClientId);
+                    initAndRender(cfg.googleClientId);
                 }
             } catch (e) {
                 console.error('Failed to load Google config', e);
             }
         };
 
-        const initGoogle = (clientId: string) => {
-            if (!window.google?.accounts?.id) return;
-            window.google.accounts.id.initialize({
-                client_id: clientId,
-                callback: handleGoogleCredential,
-                auto_select: false,
-                cancel_on_tap_outside: true,
-            });
-        };
-
         loadGoogleSDK();
+        return () => { mounted = false; };
     }, [handleGoogleCredential]);
-
-    const handleGoogleLogin = () => {
-        if (window.google?.accounts?.id) {
-            // Use the GIS popup flow (works everywhere including WebViews)
-            window.google.accounts.id.prompt((notification: any) => {
-                if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-                    // Check if we're in an in-app browser (Facebook, Instagram, etc.)
-                    const ua = navigator.userAgent || '';
-                    const isInAppBrowser = /FBAN|FBAV|Instagram|Line|Twitter|MicroMessenger|Snapchat/i.test(ua);
-                    if (isInAppBrowser) {
-                        // In-app browsers block Google OAuth redirects — tell user to open in real browser
-                        setError('Google Sign-In is not available in this browser. Please open in Chrome, Safari, or your default browser (tap ⋮ → "Open in browser").');
-                    } else {
-                        // Desktop or real mobile browser — safe to redirect
-                        window.location.href = '/api/auth/google';
-                    }
-                }
-            });
-        } else {
-            // GIS not loaded — check if in-app browser
-            const ua = navigator.userAgent || '';
-            const isInAppBrowser = /FBAN|FBAV|Instagram|Line|Twitter|MicroMessenger|Snapchat/i.test(ua);
-            if (isInAppBrowser) {
-                setError('Google Sign-In is not available in this browser. Please open in Chrome, Safari, or your default browser (tap ⋮ → "Open in browser").');
-            } else {
-                setLoading(true);
-                window.location.href = '/api/auth/google';
-            }
-        }
-    };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -219,20 +212,29 @@ export default function Login() {
                             <div className="h-[1px] bg-white/5 flex-1" />
                         </div>
 
-                        <button
-                            type="button"
-                            onClick={handleGoogleLogin}
-                            disabled={loading}
-                            className="w-full bg-white/5 border border-white/5 text-white py-5 rounded-2xl font-black tracking-widest uppercase text-[10px] hover:bg-white/10 active:scale-95 transition-all flex items-center justify-center gap-4"
-                        >
-                            <svg width="18" height="18" viewBox="0 0 18 18">
-                                <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285f4" />
-                                <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34a853" />
-                                <path d="M3.964 10.712c-.18-.54-.282-1.117-.282-1.712s.102-1.172.282-1.712V4.956H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.044l3.007-2.332z" fill="#fbbc05" />
-                                <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.956l3.007 2.332C4.672 5.164 6.656 3.58 9 3.58z" fill="#ea4335" />
-                            </svg>
-                            CONTINUE WITH GOOGLE
-                        </button>
+                        {/* Google's own rendered button — works in ALL browsers including WebViews */}
+                        <div className="flex flex-col items-center gap-3">
+                            <div
+                                ref={googleBtnRef}
+                                className="w-full flex items-center justify-center"
+                                style={{ minHeight: 50 }}
+                            />
+                            {!googleReady && (
+                                <button
+                                    type="button"
+                                    disabled
+                                    className="w-full bg-white/5 border border-white/5 text-gray-600 py-5 rounded-2xl font-black tracking-widest uppercase text-[10px] flex items-center justify-center gap-4 opacity-50"
+                                >
+                                    <svg width="18" height="18" viewBox="0 0 18 18">
+                                        <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285f4" />
+                                        <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34a853" />
+                                        <path d="M3.964 10.712c-.18-.54-.282-1.117-.282-1.712s.102-1.172.282-1.712V4.956H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.044l3.007-2.332z" fill="#fbbc05" />
+                                        <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.956l3.007 2.332C4.672 5.164 6.656 3.58 9 3.58z" fill="#ea4335" />
+                                    </svg>
+                                    Loading Google Sign-In...
+                                </button>
+                            )}
+                        </div>
                     </form>
 
                     <div className="mt-12 pt-8 border-t border-white/5 text-center">

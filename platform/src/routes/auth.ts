@@ -76,7 +76,14 @@ router.get('/auth/google/callback', async (req, res) => {
                         password: crypto.randomBytes(16).toString('hex'), // Random password for OAuth users
                         google_id: googleId,
                         avatar_url,
-                        acquisition_source: 'Google Auth'
+                        acquisition_source: 'Google Auth',
+                        subscription: {
+                            create: {
+                                plan: 'Free',
+                                maxInstances: 1,
+                                creditBalance: 10
+                            }
+                        }
                     }
                 });
             }

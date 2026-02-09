@@ -91,7 +91,8 @@ app.post('/api/register', async (req, res) => {
                 subscription: {
                     create: {
                         plan: 'Free',
-                        maxInstances: 1
+                        maxInstances: 1,
+                        creditBalance: 10
                     }
                 }
             },
@@ -217,7 +218,7 @@ app.post('/api/config', async (req, res) => {
                     id: 'demo-user',
                     email: 'demo@openclaw.ai',
                     password: 'demo_password_hash',
-                    subscription: { create: { plan: 'Free', maxInstances: 1 } }
+                    subscription: { create: { plan: 'Free', maxInstances: 1, creditBalance: 10 } }
                 }
             });
         }

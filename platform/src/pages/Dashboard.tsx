@@ -758,15 +758,7 @@ export default function Dashboard() {
                                                                 <p className="text-[9px] text-white/30 uppercase tracking-widest">remaining</p>
                                                             </div>
                                                             <button
-                                                                onClick={async () => {
-                                                                    try {
-                                                                        const resp = await fetch('/api/credits/topup', {
-                                                                            method: 'POST',
-                                                                            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
-                                                                        });
-                                                                        if (resp.ok) { fetchSubscription(); alert('$10 credits added!'); }
-                                                                    } catch (e) { }
-                                                                }}
+                                                                onClick={() => navigate('/billing')}
                                                                 className="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl transition-all text-[10px] uppercase tracking-widest flex items-center gap-1.5"
                                                             >
                                                                 <Plus size={12} /> Top Up

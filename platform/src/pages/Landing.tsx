@@ -71,8 +71,14 @@ export default function Landing() {
                     </div>
                     <div className="flex gap-lg" style={{ alignItems: 'center' }}>
                         <a href="#pricing" className="btn btn-ghost" style={{ fontSize: '0.95rem' }}>Pricing</a>
-                        <Link to="/login" className="btn btn-ghost" style={{ fontSize: '0.95rem' }}>Login</Link>
-                        <Link to="/register" className="btn btn-primary" style={{ padding: '0.6rem 1.5rem', fontSize: '0.95rem' }}>Get Started</Link>
+                        {isAuthenticated ? (
+                            <Link to="/dashboard" className="btn btn-primary" style={{ padding: '0.6rem 1.5rem', fontSize: '0.95rem' }}>Dashboard</Link>
+                        ) : (
+                            <>
+                                <Link to="/login" className="btn btn-ghost" style={{ fontSize: '0.95rem' }}>Login</Link>
+                                <Link to="/register" className="btn btn-primary" style={{ padding: '0.6rem 1.5rem', fontSize: '0.95rem' }}>Get Started</Link>
+                            </>
+                        )}
                     </div>
                 </div>
             </nav>

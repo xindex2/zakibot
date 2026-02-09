@@ -111,6 +111,7 @@ export default function Dashboard() {
     const [fetchedModels, setFetchedModels] = useState<{ id: string; name: string; promptPrice?: number; completionPrice?: number }[]>([]);
     const [isFetchingModels, setIsFetchingModels] = useState(false);
     const [modelFetchError, setModelFetchError] = useState<string | null>(null);
+    const [modelSearch, setModelSearch] = useState('');
     const [showVideoGuide, setShowVideoGuide] = useState(false);
     const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const lastSavedJson = useRef<string>('');
@@ -293,7 +294,7 @@ export default function Dashboard() {
             name: 'New Agent',
             description: 'A helpful AI assistant.',
             provider: 'openrouter',
-            model: 'anthropic/claude-3.5-sonnet',
+            model: 'google/gemini-3-flash-preview',
             apiKey: '',
             apiKeyMode: 'own_key',
             apiBase: '',
@@ -823,6 +824,17 @@ export default function Dashboard() {
                                                         className="input-modern w-full font-mono mb-3"
                                                         placeholder="Type a custom model ID or select below..."
                                                     />
+                                                    {fetchedModels.length > 0 && (
+                                                        <div className="relative mb-3">
+                                                            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+                                                            <input
+                                                                value={modelSearch}
+                                                                onChange={e => setModelSearch(e.target.value)}
+                                                                className="input-modern w-full pl-9 py-2.5 text-xs"
+                                                                placeholder="Search models..."
+                                                            />
+                                                        </div>
+                                                    )}
                                                     <div className="max-h-[300px] overflow-y-auto custom-scrollbar border border-white/5 rounded-2xl p-3">
                                                         {isFetchingModels ? (
                                                             <div className="flex items-center justify-center py-8 gap-3 text-white/40">
@@ -830,39 +842,45 @@ export default function Dashboard() {
                                                                 <span className="text-xs font-medium">Loading available models...</span>
                                                             </div>
                                                         ) : fetchedModels.length > 0 ? (
-                                                            fetchedModels.map(m => {
-                                                                const inputCost = m.promptPrice ? (m.promptPrice * 1_000_000).toFixed(2) : null;
-                                                                const outputCost = m.completionPrice ? (m.completionPrice * 1_000_000).toFixed(2) : null;
-                                                                const isFree = inputCost === '0.00' && outputCost === '0.00';
-                                                                return (
-                                                                    <button
-                                                                        key={m.id}
-                                                                        onClick={() => setEditingAgent({ ...editingAgent, model: m.id })}
-                                                                        className={cn(
-                                                                            "w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-left transition-all text-xs",
-                                                                            editingAgent.model === m.id
-                                                                                ? "bg-emerald-500/10 border border-emerald-500/30 text-white"
-                                                                                : "hover:bg-white/5 text-white/60 hover:text-white"
-                                                                        )}
-                                                                    >
-                                                                        <div className="min-w-0">
-                                                                            <span className="font-bold">{m.name}</span>
-                                                                            <span className="text-white/30 ml-2 font-mono text-[10px] hidden sm:inline">{m.id}</span>
-                                                                        </div>
-                                                                        <div className="flex items-center gap-2 shrink-0 ml-2">
-                                                                            {isFree ? (
-                                                                                <span className="text-[8px] font-black uppercase tracking-widest text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded-full">FREE</span>
-                                                                            ) : inputCost ? (
-                                                                                <span className="text-[8px] font-bold text-white/40 bg-white/5 px-2 py-0.5 rounded-full" title={`Input: $${inputCost}/1M tokens | Output: $${outputCost}/1M tokens`}>
-                                                                                    ${inputCost}/1M
-                                                                                </span>
-                                                                            ) : (
-                                                                                <span className="text-[8px] font-black uppercase tracking-widest text-green-400/60 bg-green-400/5 px-2 py-0.5 rounded-full">LIVE</span>
+                                                            fetchedModels
+                                                                .filter(m => {
+                                                                    if (!modelSearch.trim()) return true;
+                                                                    const q = modelSearch.toLowerCase();
+                                                                    return m.name?.toLowerCase().includes(q) || m.id?.toLowerCase().includes(q);
+                                                                })
+                                                                .map(m => {
+                                                                    const inputCost = m.promptPrice ? (m.promptPrice * 1_000_000).toFixed(2) : null;
+                                                                    const outputCost = m.completionPrice ? (m.completionPrice * 1_000_000).toFixed(2) : null;
+                                                                    const isFree = inputCost === '0.00' && outputCost === '0.00';
+                                                                    return (
+                                                                        <button
+                                                                            key={m.id}
+                                                                            onClick={() => { setEditingAgent({ ...editingAgent, model: m.id }); setModelSearch(''); }}
+                                                                            className={cn(
+                                                                                "w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-left transition-all text-xs",
+                                                                                editingAgent.model === m.id
+                                                                                    ? "bg-emerald-500/10 border border-emerald-500/30 text-white"
+                                                                                    : "hover:bg-white/5 text-white/60 hover:text-white"
                                                                             )}
-                                                                        </div>
-                                                                    </button>
-                                                                );
-                                                            })
+                                                                        >
+                                                                            <div className="min-w-0">
+                                                                                <span className="font-bold">{m.name}</span>
+                                                                                <span className="text-white/30 ml-2 font-mono text-[10px] hidden sm:inline">{m.id}</span>
+                                                                            </div>
+                                                                            <div className="flex items-center gap-2 shrink-0 ml-2">
+                                                                                {isFree ? (
+                                                                                    <span className="text-[8px] font-black uppercase tracking-widest text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded-full">FREE</span>
+                                                                                ) : inputCost ? (
+                                                                                    <span className="text-[8px] font-bold text-white/40 bg-white/5 px-2 py-0.5 rounded-full" title={`Input: $${inputCost}/1M tokens | Output: $${outputCost}/1M tokens`}>
+                                                                                        ${inputCost}/1M
+                                                                                    </span>
+                                                                                ) : (
+                                                                                    <span className="text-[8px] font-black uppercase tracking-widest text-green-400/60 bg-green-400/5 px-2 py-0.5 rounded-full">LIVE</span>
+                                                                                )}
+                                                                            </div>
+                                                                        </button>
+                                                                    );
+                                                                })
                                                         ) : (
                                                             <div className="text-center py-8 text-white/30 text-xs">
                                                                 Models will load automatically via your platform credits.
@@ -899,6 +917,17 @@ export default function Dashboard() {
                                                         className="input-modern w-full font-mono mb-3"
                                                         placeholder="Type a custom model ID or select below..."
                                                     />
+                                                    {fetchedModels.length > 0 && (
+                                                        <div className="relative mb-3">
+                                                            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+                                                            <input
+                                                                value={modelSearch}
+                                                                onChange={e => setModelSearch(e.target.value)}
+                                                                className="input-modern w-full pl-9 py-2.5 text-xs"
+                                                                placeholder="Search models..."
+                                                            />
+                                                        </div>
+                                                    )}
                                                     <div className="max-h-[300px] overflow-y-auto custom-scrollbar border border-white/5 rounded-2xl p-3">
                                                         {isFetchingModels ? (
                                                             <div className="flex items-center justify-center py-8 gap-3 text-white/40">
@@ -909,26 +938,32 @@ export default function Dashboard() {
                                                             <div className="space-y-0.5">
                                                                 <div className="text-[9px] font-black uppercase tracking-[0.2em] text-green-400/60 px-3 py-2 sticky top-0 bg-[var(--bg-deep)] flex items-center gap-2">
                                                                     <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
-                                                                    Available Models ({fetchedModels.length})
+                                                                    Available Models ({fetchedModels.filter(m => { if (!modelSearch.trim()) return true; const q = modelSearch.toLowerCase(); return m.name?.toLowerCase().includes(q) || m.id?.toLowerCase().includes(q); }).length})
                                                                 </div>
-                                                                {fetchedModels.map(m => (
-                                                                    <button
-                                                                        key={m.id}
-                                                                        onClick={() => setEditingAgent({ ...editingAgent, model: m.id })}
-                                                                        className={cn(
-                                                                            "w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-left transition-all text-xs",
-                                                                            editingAgent.model === m.id
-                                                                                ? "bg-green-500/10 border border-green-500/30 text-white"
-                                                                                : "hover:bg-white/5 text-white/60 hover:text-white"
-                                                                        )}
-                                                                    >
-                                                                        <div className="min-w-0">
-                                                                            <span className="font-bold">{m.name}</span>
-                                                                            <span className="text-white/30 ml-2 font-mono text-[10px] hidden sm:inline">{m.id}</span>
-                                                                        </div>
-                                                                        <span className="text-[8px] font-black uppercase tracking-widest text-green-400/60 bg-green-400/5 px-2 py-0.5 rounded-full shrink-0 ml-2">LIVE</span>
-                                                                    </button>
-                                                                ))}
+                                                                {fetchedModels
+                                                                    .filter(m => {
+                                                                        if (!modelSearch.trim()) return true;
+                                                                        const q = modelSearch.toLowerCase();
+                                                                        return m.name?.toLowerCase().includes(q) || m.id?.toLowerCase().includes(q);
+                                                                    })
+                                                                    .map(m => (
+                                                                        <button
+                                                                            key={m.id}
+                                                                            onClick={() => { setEditingAgent({ ...editingAgent, model: m.id }); setModelSearch(''); }}
+                                                                            className={cn(
+                                                                                "w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-left transition-all text-xs",
+                                                                                editingAgent.model === m.id
+                                                                                    ? "bg-green-500/10 border border-green-500/30 text-white"
+                                                                                    : "hover:bg-white/5 text-white/60 hover:text-white"
+                                                                            )}
+                                                                        >
+                                                                            <div className="min-w-0">
+                                                                                <span className="font-bold">{m.name}</span>
+                                                                                <span className="text-white/30 ml-2 font-mono text-[10px] hidden sm:inline">{m.id}</span>
+                                                                            </div>
+                                                                            <span className="text-[8px] font-black uppercase tracking-widest text-green-400/60 bg-green-400/5 px-2 py-0.5 rounded-full shrink-0 ml-2">LIVE</span>
+                                                                        </button>
+                                                                    ))}
                                                             </div>
                                                         ) : (
                                                             <div className="text-center py-8 text-white/30 text-xs">

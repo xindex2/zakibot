@@ -142,6 +142,85 @@ export default function Landing() {
                             Get your dedicated AI agent in under 60 seconds.
                         </p>
 
+                        {/* Providers & Channels Showcase */}
+                        <div style={{ maxWidth: '700px', margin: '0 auto var(--spacing-2xl)', display: 'flex', flexDirection: 'column', gap: 'var(--spacing-lg)' }}>
+                            {/* AI Providers */}
+                            <div style={{ textAlign: 'center' }}>
+                                <p style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.15em', fontWeight: 'bold', marginBottom: '0.75rem' }}>Supported AI Models</p>
+                                <div className="flex-center" style={{ gap: '0.75rem', flexWrap: 'wrap' }}>
+                                    {[
+                                        { name: 'Anthropic', icon: 'https://www.anthropic.com/favicon.ico' },
+                                        { name: 'OpenAI', icon: 'https://openai.com/favicon.ico' },
+                                        { name: 'Google', icon: 'https://www.google.com/favicon.ico' },
+                                        { name: 'DeepSeek', icon: 'https://www.deepseek.com/favicon.ico' },
+                                        { name: 'xAI', icon: 'https://x.ai/favicon.ico' },
+                                        { name: 'Groq', icon: 'https://groq.com/favicon.ico' },
+                                        { name: 'OpenRouter', icon: 'https://openrouter.ai/favicon.ico' },
+                                    ].map((p) => (
+                                        <div key={p.name} style={{
+                                            display: 'flex', alignItems: 'center', gap: '6px',
+                                            padding: '0.4rem 0.75rem',
+                                            background: 'rgba(255,255,255,0.04)',
+                                            border: '1px solid rgba(255,255,255,0.08)',
+                                            borderRadius: '999px',
+                                            fontSize: '0.8rem',
+                                            color: 'var(--color-text-secondary)',
+                                            fontWeight: '600'
+                                        }}>
+                                            <img src={p.icon} alt={p.name} style={{ width: 16, height: 16, borderRadius: '4px' }} />
+                                            {p.name}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Channels */}
+                            <div style={{ textAlign: 'center' }}>
+                                <p style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.15em', fontWeight: 'bold', marginBottom: '0.75rem' }}>Channels & Integrations</p>
+                                <div className="flex-center" style={{ gap: '0.75rem', flexWrap: 'wrap' }}>
+                                    {[
+                                        { name: 'Telegram', icon: 'https://cdn-icons-png.flaticon.com/512/2111/2111646.png' },
+                                        { name: 'Discord', icon: 'https://favicon.im/discord.com?t=1770422839363' },
+                                        { name: 'WhatsApp', icon: 'https://favicon.im/whatsapp.com?larger=true' },
+                                        { name: 'Slack', icon: 'https://a.slack-edge.com/80588/marketing/img/meta/favicon-32.png' },
+                                    ].map((ch) => (
+                                        <div key={ch.name} style={{
+                                            display: 'flex', alignItems: 'center', gap: '6px',
+                                            padding: '0.4rem 0.75rem',
+                                            background: 'rgba(255,255,255,0.04)',
+                                            border: '1px solid rgba(255,255,255,0.08)',
+                                            borderRadius: '999px',
+                                            fontSize: '0.8rem',
+                                            color: 'var(--color-text-secondary)',
+                                            fontWeight: '600'
+                                        }}>
+                                            <img src={ch.icon} alt={ch.name} style={{ width: 16, height: 16, borderRadius: '4px' }} />
+                                            {ch.name}
+                                        </div>
+                                    ))}
+                                    {/* Google Login badge */}
+                                    <div style={{
+                                        display: 'flex', alignItems: 'center', gap: '6px',
+                                        padding: '0.4rem 0.75rem',
+                                        background: 'rgba(255,255,255,0.04)',
+                                        border: '1px solid rgba(255,255,255,0.08)',
+                                        borderRadius: '999px',
+                                        fontSize: '0.8rem',
+                                        color: 'var(--color-text-secondary)',
+                                        fontWeight: '600'
+                                    }}>
+                                        <svg width="14" height="14" viewBox="0 0 18 18">
+                                            <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285f4" />
+                                            <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34a853" />
+                                            <path d="M3.964 10.712c-.18-.54-.282-1.117-.282-1.712s.102-1.172.282-1.712V4.956H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.044l3.007-2.332z" fill="#fbbc05" />
+                                            <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.956l3.007 2.332C4.672 5.164 6.656 3.58 9 3.58z" fill="#ea4335" />
+                                        </svg>
+                                        Login with Google
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <div className="flex-center gap-md" style={{ flexWrap: 'wrap' }}>
                             <Link to="/register" className="btn btn-primary" style={{ fontSize: '1.125rem', padding: '1rem 2.5rem' }}>
                                 Deploy Your Agent Now

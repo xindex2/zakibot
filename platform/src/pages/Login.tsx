@@ -118,7 +118,7 @@ export default function Login() {
                             disabled={loading}
                             className="w-full bg-[#ff6b6b] text-white py-5 rounded-2xl font-black tracking-widest uppercase text-sm hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-[#ff6b6b]/20 disabled:opacity-50"
                         >
-                            {loading ? 'AUTHENTICATING...' : 'ENTER HUB'}
+                            {loading ? 'AUTHENTICATING...' : 'LOGIN'}
                         </button>
 
                         <div className="flex items-center gap-6 my-10">

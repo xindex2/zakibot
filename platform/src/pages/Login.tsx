@@ -10,34 +10,19 @@ declare global {
     }
 }
 
-/** Detect in-app WebView browsers (Instagram, Facebook, TikTok, etc.) */
-function isWebView(): boolean {
+/** Detect if running inside a mobile WebView (custom app, or in-app browser) */
+function isMobileWebView(): boolean {
     const ua = navigator.userAgent || '';
-    return /FBAN|FBAV|Instagram|Line\/|Twitter|MicroMessenger|Snapchat|TikTok|BytedanceWebview|wv\)/i.test(ua);
-}
-
-/** Try to open the current page in the system browser, escaping the WebView */
-function openInSystemBrowser(): boolean {
-    const url = window.location.href;
-
-    // Android: intent:// URL opens the page in the default browser
-    if (/android/i.test(navigator.userAgent)) {
-        const host = window.location.host;
-        const path = window.location.pathname + window.location.search;
-        window.location.href = `intent://${host}${path}#Intent;scheme=https;end`;
-        return true;
-    }
-
-    // iOS & others: try window.open (some WebViews open system browser for _blank)
-    const w = window.open(url, '_blank');
-    if (w) return true;
-
-    // Fallback: copy URL to clipboard
-    try {
-        navigator.clipboard.writeText(url);
-    } catch { /* ignore */ }
+    // Android WebView includes "; wv)" in the UA
+    if (/; wv\)/i.test(ua)) return true;
+    // iOS WKWebView: has AppleWebKit but no Safari token
+    if (/iPhone|iPad|iPod/i.test(ua) && /AppleWebKit/i.test(ua) && !/Safari/i.test(ua)) return true;
+    // Common in-app browsers (Instagram, Facebook, TikTok, etc.)
+    if (/FBAN|FBAV|Instagram|Line\/|Twitter|MicroMessenger|Snapchat|TikTok|BytedanceWebview/i.test(ua)) return true;
     return false;
 }
+
+const IN_WEBVIEW = isMobileWebView();
 
 export default function Login() {
     const [formData, setFormData] = useState({ email: '', password: '' });
@@ -45,7 +30,6 @@ export default function Login() {
     const [loading, setLoading] = useState(false);
     const [googleReady, setGoogleReady] = useState(false);
     const [googleFailed, setGoogleFailed] = useState(false);
-    const [urlCopied, setUrlCopied] = useState(false);
     const navigate = useNavigate();
     const location = useLocation();
     const { login } = useAuth();
@@ -94,7 +78,10 @@ export default function Login() {
     }, [login, navigate]);
 
     // Load Google Identity Services SDK and render button
+    // Skip GSI in WebViews — use server-side redirect flow instead
     useEffect(() => {
+        if (IN_WEBVIEW) return; // WebView uses redirect flow, no GSI needed
+
         let mounted = true;
         let timeoutId: ReturnType<typeof setTimeout>;
 
@@ -194,16 +181,9 @@ export default function Login() {
         }
     };
 
-    const handleOpenInBrowser = () => {
-        const opened = openInSystemBrowser();
-        if (!opened) {
-            // Couldn't open — at least copy URL
-            try {
-                navigator.clipboard.writeText(window.location.href);
-                setUrlCopied(true);
-                setTimeout(() => setUrlCopied(false), 3000);
-            } catch { /* ignore */ }
-        }
+    /** In WebView: use server-side redirect OAuth (no popup needed) */
+    const handleGoogleRedirect = () => {
+        window.location.href = '/api/auth/google';
     };
 
     return (
@@ -269,26 +249,11 @@ export default function Login() {
 
                         {/* Google Sign-In Button */}
                         <div className="flex flex-col items-center gap-3">
-                            <div
-                                ref={googleBtnRef}
-                                className="w-full flex items-center justify-center"
-                                style={{ minHeight: 50, display: googleReady ? 'flex' : 'none' }}
-                            />
-                            {!googleReady && !googleFailed && (
-                                <div className="w-full bg-white/5 border border-white/5 text-gray-600 py-5 rounded-2xl font-black tracking-widest uppercase text-[10px] flex items-center justify-center gap-4 opacity-60">
-                                    <svg width="18" height="18" viewBox="0 0 18 18">
-                                        <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285f4" />
-                                        <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34a853" />
-                                        <path d="M3.964 10.712c-.18-.54-.282-1.117-.282-1.712s.102-1.172.282-1.712V4.956H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.044l3.007-2.332z" fill="#fbbc05" />
-                                        <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.956l3.007 2.332C4.672 5.164 6.656 3.58 9 3.58z" fill="#ea4335" />
-                                    </svg>
-                                    Loading Google Sign-In...
-                                </div>
-                            )}
-                            {!googleReady && googleFailed && (
+                            {/* WebView: always show redirect-based Google button */}
+                            {IN_WEBVIEW ? (
                                 <button
                                     type="button"
-                                    onClick={handleOpenInBrowser}
+                                    onClick={handleGoogleRedirect}
                                     className="w-full bg-white/5 border border-white/10 text-white py-5 rounded-2xl font-bold tracking-wide text-xs flex items-center justify-center gap-4 hover:bg-white/10 active:scale-95 transition-all"
                                 >
                                     <svg width="18" height="18" viewBox="0 0 18 18">
@@ -297,8 +262,43 @@ export default function Login() {
                                         <path d="M3.964 10.712c-.18-.54-.282-1.117-.282-1.712s.102-1.172.282-1.712V4.956H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.044l3.007-2.332z" fill="#fbbc05" />
                                         <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.956l3.007 2.332C4.672 5.164 6.656 3.58 9 3.58z" fill="#ea4335" />
                                     </svg>
-                                    {urlCopied ? '✓ Link Copied — Paste in Browser' : 'Open in Browser to Sign in with Google'}
+                                    Continue with Google
                                 </button>
+                            ) : (
+                                <>
+                                    {/* Desktop/browser: use GSI rendered button */}
+                                    <div
+                                        ref={googleBtnRef}
+                                        className="w-full flex items-center justify-center"
+                                        style={{ minHeight: 50, display: googleReady ? 'flex' : 'none' }}
+                                    />
+                                    {!googleReady && !googleFailed && (
+                                        <div className="w-full bg-white/5 border border-white/5 text-gray-600 py-5 rounded-2xl font-black tracking-widest uppercase text-[10px] flex items-center justify-center gap-4 opacity-60">
+                                            <svg width="18" height="18" viewBox="0 0 18 18">
+                                                <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285f4" />
+                                                <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34a853" />
+                                                <path d="M3.964 10.712c-.18-.54-.282-1.117-.282-1.712s.102-1.172.282-1.712V4.956H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.044l3.007-2.332z" fill="#fbbc05" />
+                                                <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.956l3.007 2.332C4.672 5.164 6.656 3.58 9 3.58z" fill="#ea4335" />
+                                            </svg>
+                                            Loading Google Sign-In...
+                                        </div>
+                                    )}
+                                    {!googleReady && googleFailed && (
+                                        <button
+                                            type="button"
+                                            onClick={handleGoogleRedirect}
+                                            className="w-full bg-white/5 border border-white/10 text-white py-5 rounded-2xl font-bold tracking-wide text-xs flex items-center justify-center gap-4 hover:bg-white/10 active:scale-95 transition-all"
+                                        >
+                                            <svg width="18" height="18" viewBox="0 0 18 18">
+                                                <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285f4" />
+                                                <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34a853" />
+                                                <path d="M3.964 10.712c-.18-.54-.282-1.117-.282-1.712s.102-1.172.282-1.712V4.956H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.044l3.007-2.332z" fill="#fbbc05" />
+                                                <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.956l3.007 2.332C4.672 5.164 6.656 3.58 9 3.58z" fill="#ea4335" />
+                                            </svg>
+                                            Continue with Google
+                                        </button>
+                                    )}
+                                </>
                             )}
                         </div>
                     </form>

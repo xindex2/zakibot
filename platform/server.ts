@@ -386,20 +386,23 @@ app.post('/api/config', async (req, res) => {
     if (!userId) return res.status(401).json({ error: 'userId is required' });
 
     try {
-        // Allow everyone to save configs (creation is free)
-        // Plan limits are enforced when starting/deploying the bot
+        // Enforce bot name length
+        if (configData.name && configData.name.length > 50) {
+            configData.name = configData.name.substring(0, 50);
+        }
 
-        // Ensure user exists (demo-user fallback for dev)
-        let user = await prisma.user.findUnique({ where: { id: userId } });
-        if (!user && userId === 'demo-user') {
-            user = await prisma.user.create({
-                data: {
-                    id: 'demo-user',
-                    email: 'demo@openclaw.ai',
-                    password: 'demo_password_hash',
-                    subscription: { create: { plan: 'Free', maxInstances: 1, creditBalance: 10 } }
-                }
-            });
+        // --- Agent creation limit enforcement ---
+        const isNewAgent = !id || id.startsWith('temp-');
+        if (isNewAgent) {
+            const userSub = await prisma.subscription.findUnique({ where: { userId } });
+            const plan = userSub?.plan || 'Free';
+            const maxAgents = plan === 'Free' ? 1 : (userSub?.maxInstances || 1);
+            const currentCount = await prisma.botConfig.count({ where: { userId } });
+            if (currentCount >= maxAgents) {
+                return res.status(403).json({
+                    error: `Agent limit reached. Your ${plan} plan allows ${maxAgents} agent(s). Upgrade to create more.`
+                });
+            }
         }
 
         // Whitelist only known BotConfig fields to prevent Prisma unknown-argument errors

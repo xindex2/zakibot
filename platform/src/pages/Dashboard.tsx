@@ -290,9 +290,12 @@ export default function Dashboard() {
     }, [activeTab, editingAgent?.whatsappEnabled, editingAgent?.id]);
 
     const handleCreateAgent = () => {
-        // Check max agent limit (for paid plans with caps) — free users can create freely
+        // Enforce agent creation limit
         const currentPlan = subscription?.plan || 'Free';
-        if (currentPlan !== 'Free' && subscription && subscription.currentCount >= subscription.maxInstances) {
+        const maxAgents = currentPlan === 'Free' ? 1 : (subscription?.maxInstances || 1);
+        const currentCount = agents.length;
+
+        if (currentCount >= maxAgents) {
             setShowLimitModal(true);
             return;
         }
@@ -690,6 +693,7 @@ export default function Dashboard() {
                                     <input
                                         value={editingAgent.name}
                                         onChange={e => setEditingAgent({ ...editingAgent, name: e.target.value })}
+                                        maxLength={50}
                                         className="bg-transparent text-2xl md:text-4xl lg:text-5xl font-black text-white outline-none w-full placeholder:text-white/10 uppercase italic tracking-tighter mb-4"
                                         placeholder="AGENT NAME"
                                     />

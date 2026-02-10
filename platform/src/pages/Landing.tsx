@@ -330,7 +330,7 @@ export default function Landing() {
                         <div className="md:hidden card-glass" style={{ padding: 'var(--spacing-lg)', borderRadius: 'var(--radius-xl)' }}>
                             <div style={{ position: 'relative', paddingBottom: '177.78%', height: 0, borderRadius: 'var(--radius-lg)', overflow: 'hidden', maxWidth: '350px', margin: '0 auto' }}>
                                 <iframe
-                                    src="https://www.youtube.com/embed/BoQAmvbViAg"
+                                    src="https://www.youtube.com/embed/HW83uf-BvBk"
                                     title="OpenClaw Demo"
                                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                                     allowFullScreen

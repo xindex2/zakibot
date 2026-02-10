@@ -601,7 +601,7 @@ export default function Dashboard() {
                                             <div className="md:hidden">
                                                 <div style={{ position: 'relative', paddingBottom: '177.78%', height: 0, borderRadius: '12px', overflow: 'hidden', maxWidth: '280px', margin: '0 auto' }}>
                                                     <iframe
-                                                        src="https://www.youtube.com/embed/BoQAmvbViAg"
+                                                        src="https://www.youtube.com/embed/HW83uf-BvBk"
                                                         title="OpenClaw Setup Guide"
                                                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                                                         allowFullScreen

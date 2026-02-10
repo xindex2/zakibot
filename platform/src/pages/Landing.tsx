@@ -1,7 +1,13 @@
-import { useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useState, useCallback } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+
+declare global {
+    interface Window {
+        google?: any;
+    }
+}
 import {
     faServer,
     faTerminal,
@@ -17,7 +23,70 @@ import StarField from '../components/StarField';
 import Footer from '../components/Footer';
 
 export default function Landing() {
-    const { isAuthenticated } = useAuth();
+    const { isAuthenticated, login } = useAuth();
+    const navigate = useNavigate();
+    const [oneTapLoading, setOneTapLoading] = useState(false);
+
+    // Handle Google One Tap credential
+    const handleGoogleCredential = useCallback(async (response: any) => {
+        setOneTapLoading(true);
+        try {
+            const resp = await fetch('/api/auth/google/token', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ credential: response.credential })
+            });
+            const data = await resp.json();
+            if (resp.ok && data.token) {
+                login(data.token, data.user);
+                navigate('/dashboard');
+            }
+        } catch (e) {
+            console.error('Google One Tap login failed:', e);
+        } finally {
+            setOneTapLoading(false);
+        }
+    }, [login, navigate]);
+
+    // Google One Tap initialization
+    useEffect(() => {
+        if (isAuthenticated) return;
+
+        const initOneTap = async () => {
+            try {
+                const resp = await fetch('/api/auth/config');
+                const cfg = await resp.json();
+                if (!cfg.googleClientId) return;
+
+                const loadAndInit = (clientId: string) => {
+                    if (!window.google?.accounts?.id) return;
+                    window.google.accounts.id.initialize({
+                        client_id: clientId,
+                        callback: handleGoogleCredential,
+                        auto_select: false,
+                        cancel_on_tap_outside: true,
+                    });
+                    window.google.accounts.id.prompt();
+                };
+
+                if (!document.getElementById('google-gsi-script')) {
+                    const script = document.createElement('script');
+                    script.id = 'google-gsi-script';
+                    script.src = 'https://accounts.google.com/gsi/client';
+                    script.async = true;
+                    script.defer = true;
+                    script.onload = () => loadAndInit(cfg.googleClientId);
+                    document.head.appendChild(script);
+                } else if (window.google) {
+                    loadAndInit(cfg.googleClientId);
+                }
+            } catch (e) {
+                console.error('Failed to load Google One Tap:', e);
+            }
+        };
+
+        initOneTap();
+    }, [isAuthenticated, handleGoogleCredential]);
     useEffect(() => {
         document.title = "OpenClaw Hosting, OpenClaw VPS, Install OpenClaw, Deploy OpenClaw - OpenClaw Host";
         const metaDesc = document.querySelector('meta[name="description"]');
@@ -198,25 +267,6 @@ export default function Landing() {
                                             {ch.name}
                                         </div>
                                     ))}
-                                    {/* Google Login badge */}
-                                    <div style={{
-                                        display: 'flex', alignItems: 'center', gap: '6px',
-                                        padding: '0.4rem 0.75rem',
-                                        background: 'rgba(255,255,255,0.04)',
-                                        border: '1px solid rgba(255,255,255,0.08)',
-                                        borderRadius: '999px',
-                                        fontSize: '0.8rem',
-                                        color: 'var(--color-text-secondary)',
-                                        fontWeight: '600'
-                                    }}>
-                                        <svg width="14" height="14" viewBox="0 0 18 18">
-                                            <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285f4" />
-                                            <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34a853" />
-                                            <path d="M3.964 10.712c-.18-.54-.282-1.117-.282-1.712s.102-1.172.282-1.712V4.956H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.044l3.007-2.332z" fill="#fbbc05" />
-                                            <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.956l3.007 2.332C4.672 5.164 6.656 3.58 9 3.58z" fill="#ea4335" />
-                                        </svg>
-                                        Login with Google
-                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -225,6 +275,29 @@ export default function Landing() {
                             <Link to="/register" className="btn btn-primary" style={{ fontSize: '1.125rem', padding: '1rem 2.5rem' }}>
                                 Deploy Your Agent Now
                             </Link>
+                            {!isAuthenticated && (
+                                <a
+                                    href="/api/auth/google"
+                                    className="btn btn-ghost"
+                                    style={{
+                                        fontSize: '1rem',
+                                        padding: '0.85rem 2rem',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '10px',
+                                        border: '1px solid rgba(255,255,255,0.12)',
+                                        borderRadius: 'var(--radius-lg)',
+                                    }}
+                                >
+                                    <svg width="18" height="18" viewBox="0 0 18 18">
+                                        <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285f4" />
+                                        <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34a853" />
+                                        <path d="M3.964 10.712c-.18-.54-.282-1.117-.282-1.712s.102-1.172.282-1.712V4.956H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.044l3.007-2.332z" fill="#fbbc05" />
+                                        <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.956l3.007 2.332C4.672 5.164 6.656 3.58 9 3.58z" fill="#ea4335" />
+                                    </svg>
+                                    Login with Google
+                                </a>
+                            )}
                         </div>
 
                     </div>

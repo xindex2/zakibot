@@ -203,63 +203,83 @@ tar -czf ~/zakibot-full-backup-$(date +%Y%m%d).tar.gz \
 
 ## 4. Database Restore / Server Migration
 
-### Migrating to a New Server
+> **Scenario:** You have Zakibot running on `OLD SERVER (1.2.3.4)` and you want to move everything to `NEW SERVER (5.6.7.8)`. Both are cloud VPS machines.
 
-**On the old server** — create a full backup:
+### Step 1: Set up Zakibot on the NEW server first
+
+SSH into your **new server** and do a fresh install (follow Sections 1.1 → 1.8 above). At this point the new server has Zakibot running but with an **empty database** — no users, no bots, no data.
 
 ```bash
-tar -czf ~/zakibot-migration.tar.gz \
-  ~/zakibot/platform/prisma/dev.db \
-  ~/zakibot/platform/workspaces/ \
-  ~/zakibot/platform/uploads/ \
-  ~/zakibot/platform/.env
+ssh root@5.6.7.8
+# ... follow the fresh install steps ...
 ```
 
-**Transfer to the new server:**
+### Step 2: Stop the app on BOTH servers
 
+**On the OLD server:**
 ```bash
-scp root@OLD_SERVER:~/zakibot-migration.tar.gz ~/
-```
-
-**On the new server** — do a fresh install first (steps 1.1–1.6), then restore:
-
-```bash
-# Stop the platform
+ssh root@1.2.3.4
 pm2 stop zakibot-platform
+```
 
-# Extract the backup
-cd /
-tar -xzf ~/zakibot-migration.tar.gz
+**On the NEW server:**
+```bash
+ssh root@5.6.7.8
+pm2 stop zakibot-platform
+```
 
-# Regenerate Prisma client for the restored DB
+### Step 3: Copy the database from OLD → NEW
+
+You do this **from the OLD server**. This one command sends the database file directly to the new server:
+
+```bash
+# Run this ON THE OLD SERVER
+scp ~/zakibot/platform/prisma/dev.db root@5.6.7.8:~/zakibot/platform/prisma/dev.db
+```
+
+> **What this does:** It copies the file `dev.db` (which contains all your users, bots, subscriptions, orders, credits, settings) from the old server and overwrites the empty one on the new server.
+
+### Step 4: (Optional) Copy workspaces and uploads too
+
+If your bots have workspace files (documents, screenshots, etc.) and user avatars:
+
+```bash
+# Run this ON THE OLD SERVER
+scp -r ~/zakibot/platform/workspaces/ root@5.6.7.8:~/zakibot/platform/workspaces/
+scp -r ~/zakibot/platform/uploads/ root@5.6.7.8:~/zakibot/platform/uploads/
+```
+
+### Step 5: Start the app on the NEW server
+
+```bash
+ssh root@5.6.7.8
 cd ~/zakibot/platform
-npx prisma generate
-
-# Restart
+npx prisma generate    # make sure Prisma knows about the database
 pm2 restart zakibot-platform
 ```
 
-### Restoring Just the Database (Quickest Method)
-
-If you just need to move the database to a new server (after doing a fresh install):
+### Step 6: Verify it works
 
 ```bash
-# From your local machine — download the DB from old server
-scp root@OLD_SERVER_IP:~/zakibot/platform/prisma/dev.db ./backup.db
-
-# Upload the DB to the new server
-scp ./backup.db root@NEW_SERVER_IP:~/zakibot/platform/prisma/dev.db
-
-# SSH into new server and restart
-ssh root@NEW_SERVER_IP
-pm2 restart zakibot-platform
+pm2 logs zakibot-platform --lines 10
+curl http://localhost:3000
 ```
 
-Or restore from a local backup file:
+Open `http://5.6.7.8:3000` in your browser — you should see all your old users, bots, and data.
+
+### Step 7: Point your domain to the new server
+
+If you have a domain (e.g. `openclaw-host.com`), update the DNS A record to point to `5.6.7.8` instead of `1.2.3.4`.
+
+---
+
+### Quick: Just restoring a backup file
+
+If you already have a backup `.db` file and just want to restore it:
 
 ```bash
 pm2 stop zakibot-platform
-cp ~/zakibot-backup-20260211.db ~/zakibot/platform/prisma/dev.db
+cp /path/to/your/backup.db ~/zakibot/platform/prisma/dev.db
 pm2 restart zakibot-platform
 ```
 

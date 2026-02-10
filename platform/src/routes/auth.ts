@@ -67,6 +67,7 @@ router.get('/auth/google/callback', async (req, res) => {
                         full_name: full_name || user.full_name
                     }
                 });
+            } else {
                 // 3. Create new user with subscription
                 try {
                     user = await prisma.user.create({

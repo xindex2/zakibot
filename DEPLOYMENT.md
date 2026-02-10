@@ -1,186 +1,402 @@
-# Deploying openclaw-host on Ubuntu 22.04
+# Zakibot Deployment Guide
 
-This guide provides a step-by-step walkthrough for setting up **openclaw-host** (Nanobot + SaaS Platform) on a fresh Ubuntu 22.04 server.
+Complete guide for deploying, updating, backing up, and migrating the **Zakibot** platform (Express + Vite + SQLite + Python nanobot).
 
-## 1. Prerequisites & System Update
+---
 
-First, update your system and install essential build tools.
+## Table of Contents
+
+1. [Fresh Server Install](#1-fresh-server-install)
+2. [Updating an Existing Server](#2-updating-an-existing-server)
+3. [Database Backup](#3-database-backup)
+4. [Database Restore / Server Migration](#4-database-restore--server-migration)
+5. [Database Reset](#5-database-reset)
+6. [Caddy (SSL / Reverse Proxy)](#6-caddy-ssl--reverse-proxy)
+7. [Firewall & Ports](#7-firewall--ports)
+8. [Troubleshooting](#8-troubleshooting)
+
+---
+
+## 1. Fresh Server Install
+
+### 1.1 System Prerequisites (Ubuntu 22.04+)
 
 ```bash
 sudo apt update && sudo apt upgrade -y
 sudo apt install -y git curl build-essential python3-pip python3-venv
 ```
 
-## 2. Install Node.js (v18+)
-
-The SaaS platform requires Node.js. We recommend using NodeSource for the latest LTS.
+### 1.2 Install Node.js (v18+)
 
 ```bash
 curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
 sudo apt install -y nodejs
 ```
 
-## 3. Clone the Repository
+### 1.3 Clone the Repository
 
 ```bash
-git clone https://github.com/xindex2/openclaw-host.git
-cd openclaw-host
+cd ~
+git clone https://github.com/xindex2/zakibot.git
+cd zakibot
 ```
 
-## 4. Setup Nanobot (Python Backend)
-
-Create a virtual environment and install the dependencies, including Playwright for Browser Skills.
+### 1.4 Setup Nanobot (Python Backend)
 
 ```bash
-# Create and activate virtual environment
 python3 -m venv venv
 source venv/bin/activate
 
-# Install nanobot in editable mode
+# Install nanobot
 pip install -e .
 
-# Install Browser Skill dependencies
+# Install browser automation (optional)
 pip install playwright
 playwright install-deps
 playwright install chromium
 ```
 
-## 5. Setup the SaaS Platform (Next.js)
-
-Navigate to the platform directory and install the web dependencies.
+### 1.5 Setup the Platform (Express + Vite)
 
 ```bash
-cd platform
+cd ~/zakibot/platform
 npm install
 
-# Initialize the database
-npx prisma migrate dev --name init
+# Generate Prisma client & create the database
+npx prisma generate
+npx prisma db push
 ```
 
-## 6. Configure Environment Variables
+This creates the SQLite database at `platform/prisma/dev.db`.
 
-Create a `.env` file for the platform. This is required for Prisma to find the database.
+### 1.6 Build the Frontend
 
 ```bash
-# Make sure you are in the platform directory
-cd ~/openclaw-host/platform
-
-# Create the .env file
-echo 'DATABASE_URL="file:./dev.db"' > .env
+npm run build
 ```
 
-> **Troubleshooting**: If you see "Missing required environment variable: DATABASE_URL", double check that the `.env` file exists in `platform/.env` and contains the line above.
+### 1.7 Configure Environment
 
-## 7. Launching the Services
-
-For production, we recommend using **PM2** to keep your services running.
+Create `platform/.env` if needed:
 
 ```bash
-# Install PM2
+cat > ~/zakibot/platform/.env << 'EOF'
+DATABASE_URL="file:./dev.db"
+JWT_SECRET="your_secret_key_change_this"
+GOOGLE_CLIENT_ID=""
+GOOGLE_CLIENT_SECRET=""
+EOF
+```
+
+> **Note**: The `DATABASE_URL` is already hardcoded in `prisma/schema.prisma`, but Prisma CLI may need the `.env` file.
+
+### 1.8 Start with PM2
+
+```bash
+# Install PM2 globally
 sudo npm install -g pm2
 
-# Start the SaaS Platform
-pm2 start npm --name "openclaw-host-platform" -- run dev -- --port 3000
+# Start the platform (serves both API + built frontend)
+cd ~/zakibot/platform
+pm2 start "npx tsx server.ts" --name zakibot-platform
 
-# Verify status
-pm2 status
+# Save PM2 config so it survives reboots
+pm2 save
+pm2 startup
 ```
 
-## 8. Nginx Reverse Proxy (Optional but Recommended)
-
-To access your platform via a domain on port 80/443:
+### 1.9 Verify
 
 ```bash
-sudo apt install -y nginx
+pm2 status
+pm2 logs zakibot-platform --lines 20
+curl http://localhost:3000
 ```
 
-Create a configuration: `/etc/nginx/sites-available/openclaw-host`
-```nginx
-server {
-    listen 80;
-    server_name yourdomain.com;
+---
 
-    location / {
-        proxy_pass http://localhost:3000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_cache_bypass $http_upgrade;
-    }
+## 2. Updating an Existing Server
+
+Run this whenever you push new changes to GitHub:
+
+```bash
+cd ~/zakibot
+git stash                 # stash any local changes
+git pull origin main      # pull latest code
+
+cd platform
+npm install               # install any new dependencies
+npx prisma generate       # regenerate Prisma client
+npx prisma db push        # apply schema changes (safe, non-destructive)
+npm run build             # rebuild frontend
+pm2 restart zakibot-platform
+```
+
+### One-liner version:
+
+```bash
+cd ~/zakibot && git stash && git pull && cd platform && npm install && npx prisma generate && npx prisma db push && npm run build && pm2 restart zakibot-platform
+```
+
+---
+
+## 3. Database Backup
+
+The database is a single SQLite file: `~/zakibot/platform/prisma/dev.db`
+
+### Manual Backup
+
+```bash
+# Create a timestamped backup
+cp ~/zakibot/platform/prisma/dev.db ~/zakibot-db-backup-$(date +%Y%m%d-%H%M%S).db
+```
+
+### Download to Local Machine
+
+From your local machine:
+
+```bash
+scp root@YOUR_SERVER_IP:~/zakibot/platform/prisma/dev.db ./zakibot-backup-$(date +%Y%m%d).db
+```
+
+### Automated Daily Backup (cron)
+
+```bash
+# Open crontab
+crontab -e
+
+# Add this line (backs up daily at 3 AM)
+0 3 * * * cp ~/zakibot/platform/prisma/dev.db ~/backups/zakibot-$(date +\%Y\%m\%d).db
+```
+
+```bash
+# Create the backups directory
+mkdir -p ~/backups
+```
+
+### What's in the Database
+
+The SQLite database contains **everything**:
+- Users, passwords, roles
+- Subscriptions & plans
+- Bot configurations (API keys are encrypted)
+- Orders & payment history
+- Credit balances & transactions
+- Webhook event logs
+- System config (Creem API key, payment provider, etc.)
+
+### What's NOT in the Database
+
+- **Bot workspaces** — stored in `~/zakibot/platform/workspaces/`
+- **User avatars** — stored in `~/zakibot/platform/uploads/`
+
+To do a **full backup** including workspaces:
+
+```bash
+tar -czf ~/zakibot-full-backup-$(date +%Y%m%d).tar.gz \
+  ~/zakibot/platform/prisma/dev.db \
+  ~/zakibot/platform/workspaces/ \
+  ~/zakibot/platform/uploads/
+```
+
+---
+
+## 4. Database Restore / Server Migration
+
+### Migrating to a New Server
+
+**On the old server** — create a full backup:
+
+```bash
+tar -czf ~/zakibot-migration.tar.gz \
+  ~/zakibot/platform/prisma/dev.db \
+  ~/zakibot/platform/workspaces/ \
+  ~/zakibot/platform/uploads/ \
+  ~/zakibot/platform/.env
+```
+
+**Transfer to the new server:**
+
+```bash
+scp root@OLD_SERVER:~/zakibot-migration.tar.gz ~/
+```
+
+**On the new server** — do a fresh install first (steps 1.1–1.6), then restore:
+
+```bash
+# Stop the platform
+pm2 stop zakibot-platform
+
+# Extract the backup
+cd /
+tar -xzf ~/zakibot-migration.tar.gz
+
+# Regenerate Prisma client for the restored DB
+cd ~/zakibot/platform
+npx prisma generate
+
+# Restart
+pm2 restart zakibot-platform
+```
+
+### Restoring Just the Database
+
+```bash
+pm2 stop zakibot-platform
+cp ~/zakibot-backup-20260211.db ~/zakibot/platform/prisma/dev.db
+pm2 restart zakibot-platform
+```
+
+---
+
+## 5. Database Reset
+
+> ⚠️ **WARNING**: This deletes ALL data (users, bots, subscriptions, orders, etc.)
+
+### Full Reset (wipe everything)
+
+```bash
+pm2 stop zakibot-platform
+
+# Delete the database
+rm ~/zakibot/platform/prisma/dev.db
+
+# Recreate from schema
+cd ~/zakibot/platform
+npx prisma db push
+
+# Restart (seeds default Creem plans on first boot)
+pm2 restart zakibot-platform
+```
+
+### Reset a Specific Table
+
+Use the Prisma CLI to open the SQLite database:
+
+```bash
+cd ~/zakibot/platform
+npx prisma studio
+```
+
+This opens a web UI at `http://localhost:5555` where you can view, edit, and delete records from any table.
+
+Or use the SQLite CLI directly:
+
+```bash
+sqlite3 ~/zakibot/platform/prisma/dev.db
+
+-- Examples:
+DELETE FROM "Order";                    -- Clear all orders
+DELETE FROM "WhopEvent";                -- Clear webhook logs
+DELETE FROM "BotConfig" WHERE userId = 'xxx';  -- Delete a user's bots
+UPDATE "Subscription" SET plan = 'Free', maxInstances = 1 WHERE userId = 'xxx';  -- Reset a user's plan
+
+.quit
+```
+
+---
+
+## 6. Caddy (SSL / Reverse Proxy)
+
+For production with a domain and SSL:
+
+### Install Caddy
+
+```bash
+sudo apt install -y debian-keyring debian-archive-keyring apt-transport-https
+curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | sudo gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | sudo tee /etc/apt/sources.list.d/caddy-stable.list
+sudo apt update
+sudo apt install caddy
+```
+
+### Configure Caddy
+
+Edit `/etc/caddy/Caddyfile`:
+
+```
+yourdomain.com {
+    reverse_proxy localhost:3000
 }
 ```
 
 ```bash
-sudo ln -s /etc/nginx/sites-available/openclaw-host /etc/nginx/sites-enabled/
-sudo nginx -t
-sudo systemctl restart nginx
+sudo systemctl restart caddy
 ```
 
-## 9. Usage
+Caddy handles SSL certificates automatically.
 
-1. Open your browser and navigate to `http://your-server-ip:3000` (or your domain).
-2. Register a new user.
-3. Configure your **API Keys** (OpenRouter, OpenAI, etc.) in the dashboard.
-4. Launch your bot instance!
-
-## 10. Updating OpenClaw Host
-
-Whenever you push new changes to GitHub and want to update your VPS:
-
-1.  **Pull the latest code**:
-    ```bash
-    cd ~/openclaw-host
-    git pull origin main
-    ```
-
-2.  **Update dependencies & Database**:
-    ```bash
-    # Update web dependencies
-    cd ~/openclaw-host/platform
-    npm install
-    
-    # Apply new database migrations
-    npx prisma migrate dev --name sync
-    ```
-
-3.  **Restart the services**:
-    ```bash
-    # Restart the Next.js platform
-    pm2 restart openclaw-host-platform
-    
-    # Optional: Check logs to ensure everything is fine
-    pm2 logs openclaw-host-platform
-    ```
-
-## External Access Troubleshooting
-
-If you cannot access your platform via your VPS IP:
-
-1.  **Use HTTP and Port 3000**: By default, the app runs on `http` (not `https`) at port `3000`. Try: 
-    `http://45.55.73.131:3000`
-2.  **Check Firewall (UFW)**: Ubuntu's firewall might be blocking the port.
-    ```bash
-    sudo ufw allow 3000/tcp
-    sudo ufw allow 80/tcp
-    sudo ufw allow 443/tcp
-    sudo ufw status
-    ```
-3.  **Binding to IPv4**: Ensure Next.js is listening on all interfaces (`0.0.0.0`) and not just `localhost`.
-    Update your start command:
-    ```bash
-    # For dev
-    npx next dev -H 0.0.0.0
-    
-    # For production
-    npx next start -H 0.0.0.0
-    ```
-4.  **SSL/HTTPS Note**: If you use `https://` with an IP address, it will fail unless you have a specific certificate for that IP. Use `http://` until you have a domain and Nginx/SSL set up.
+> **If using Cloudflare**: Set SSL mode to **Full (strict)** in the Cloudflare dashboard.
 
 ---
-**Note**: Ensure your firewall (UFW) allows traffic on the required ports (3000, 80, 443).
+
+## 7. Firewall & Ports
+
 ```bash
-sudo ufw allow 80/tcp
-sudo ufw allow 443/tcp
-sudo ufw allow 3000/tcp
+# Allow required ports
+sudo ufw allow 22/tcp    # SSH
+sudo ufw allow 80/tcp    # HTTP
+sudo ufw allow 443/tcp   # HTTPS
+sudo ufw allow 3000/tcp  # Direct access (optional, can remove after Caddy)
+sudo ufw enable
+sudo ufw status
 ```
+
+---
+
+## 8. Troubleshooting
+
+### Platform won't start
+
+```bash
+pm2 logs zakibot-platform --lines 50
+```
+
+### Database errors after update
+
+```bash
+cd ~/zakibot/platform
+npx prisma generate       # Regenerate client
+npx prisma db push        # Sync schema
+pm2 restart zakibot-platform
+```
+
+### "Cannot find module" errors
+
+```bash
+cd ~/zakibot/platform
+rm -rf node_modules
+npm install
+npx prisma generate
+npm run build
+pm2 restart zakibot-platform
+```
+
+### Check if the server is running
+
+```bash
+pm2 status
+curl -s http://localhost:3000 | head -5
+```
+
+### View all PM2 processes
+
+```bash
+pm2 list
+pm2 monit        # Real-time monitoring
+```
+
+---
+
+## Quick Reference
+
+| Task | Command |
+|------|---------|
+| Start | `pm2 start "npx tsx server.ts" --name zakibot-platform` |
+| Stop | `pm2 stop zakibot-platform` |
+| Restart | `pm2 restart zakibot-platform` |
+| Logs | `pm2 logs zakibot-platform` |
+| Update | `cd ~/zakibot && git pull && cd platform && npm install && npx prisma generate && npx prisma db push && npm run build && pm2 restart zakibot-platform` |
+| Backup DB | `cp ~/zakibot/platform/prisma/dev.db ~/backups/zakibot-$(date +%Y%m%d).db` |
+| Reset DB | `rm ~/zakibot/platform/prisma/dev.db && cd ~/zakibot/platform && npx prisma db push` |
+| Browse DB | `npx prisma studio` |

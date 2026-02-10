@@ -145,19 +145,22 @@ export default function Login() {
                             </button>
                         </form>
 
-                        {/* Mobile-only: How to setup your 1st agent */}
-                        <div className="md:hidden mt-6">
+                        {/* Mobile-only: How to Set Up Your First Agent */}
+                        <div className="md:hidden mt-8">
                             <button
                                 type="button"
                                 onClick={() => setShowVideo(true)}
-                                className="w-full flex items-center justify-center gap-3 py-4 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 active:scale-95 transition-all"
+                                className="w-full flex items-center gap-4 px-5 py-4 rounded-2xl border border-[#ff6b6b]/30 bg-gradient-to-r from-[#ff6b6b]/10 to-transparent hover:from-[#ff6b6b]/20 active:scale-[0.97] transition-all"
                             >
-                                <div className="w-8 h-8 rounded-full bg-[#ff6b6b] flex items-center justify-center shadow-lg shadow-[#ff6b6b]/30">
+                                <div className="w-10 h-10 rounded-full bg-[#EF4444] flex items-center justify-center shrink-0" style={{ boxShadow: '0 0 16px rgba(239,68,68,0.5), 0 0 32px rgba(239,68,68,0.2)' }}>
                                     <svg width="12" height="14" viewBox="0 0 12 14" fill="white">
                                         <path d="M0 0v14l12-7z" />
                                     </svg>
                                 </div>
-                                <span className="text-sm font-bold text-white/80 tracking-wide">How to setup your 1st agent</span>
+                                <div className="text-left">
+                                    <span className="text-sm font-bold text-white block">How to Set Up Your First Agent</span>
+                                    <span className="text-[11px] text-white/40 font-medium">Watch a quick 60-second guide</span>
+                                </div>
                             </button>
                         </div>
 

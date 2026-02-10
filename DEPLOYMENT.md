@@ -239,7 +239,23 @@ npx prisma generate
 pm2 restart zakibot-platform
 ```
 
-### Restoring Just the Database
+### Restoring Just the Database (Quickest Method)
+
+If you just need to move the database to a new server (after doing a fresh install):
+
+```bash
+# From your local machine — download the DB from old server
+scp root@OLD_SERVER_IP:~/zakibot/platform/prisma/dev.db ./backup.db
+
+# Upload the DB to the new server
+scp ./backup.db root@NEW_SERVER_IP:~/zakibot/platform/prisma/dev.db
+
+# SSH into new server and restart
+ssh root@NEW_SERVER_IP
+pm2 restart zakibot-platform
+```
+
+Or restore from a local backup file:
 
 ```bash
 pm2 stop zakibot-platform

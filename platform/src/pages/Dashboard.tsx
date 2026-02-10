@@ -464,38 +464,7 @@ export default function Dashboard() {
                                 </div>
                             </div>
 
-                            {/* Bottom row: Credit bar — compact inline */}
-                            {subscription && (
-                                <div className="px-5 md:px-6 pb-4 md:pb-5">
-                                    <div className="flex items-center gap-3">
-                                        <Sparkles size={14} className="text-emerald-400 shrink-0" />
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex items-center gap-3">
-                                                <div className="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
-                                                    <div
-                                                        className="h-full rounded-full transition-all duration-500"
-                                                        style={{
-                                                            width: `${Math.min(100, ((subscription?.creditBalance || 0) / 50) * 100)}%`,
-                                                            background: (subscription?.creditBalance || 0) > 5
-                                                                ? 'linear-gradient(90deg, #10b981, #34d399)'
-                                                                : (subscription?.creditBalance || 0) > 0
-                                                                    ? 'linear-gradient(90deg, #f59e0b, #fbbf24)'
-                                                                    : '#ef4444'
-                                                        }}
-                                                    />
-                                                </div>
-                                                <span className="text-xs font-black text-emerald-400 whitespace-nowrap">${subscription?.creditBalance?.toFixed(2) ?? '0.00'}</span>
-                                            </div>
-                                        </div>
-                                        <button
-                                            onClick={() => navigate('/topup')}
-                                            className="bg-emerald-600/80 hover:bg-emerald-500 text-white font-black py-1.5 px-3.5 rounded-lg transition-all text-[9px] uppercase tracking-widest flex items-center gap-1.5 shrink-0"
-                                        >
-                                            <Plus size={10} /> Top Up
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
+
                         </header>
 
                         {agents.length === 0 ? (

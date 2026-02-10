@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { Bot, Layout as LayoutIcon, Users, Settings, LogOut, Activity, ShieldCheck, MessageSquare, CreditCard, Cpu, Menu, X, Crown, Zap } from 'lucide-react';
+import { Bot, Layout as LayoutIcon, Users, Settings, LogOut, Activity, ShieldCheck, MessageSquare, CreditCard, Cpu, Menu, X, Crown, Zap, Sparkles } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import Logo from './Logo';
 
@@ -83,6 +83,9 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                                 <span className={`text-[10px] font-bold ${atLimit ? 'text-red-400' : 'text-zinc-400'}`}>
                                     {subscription.currentCount}/{subscription.maxInstances}
                                 </span>
+                                <span className="text-zinc-600">|</span>
+                                <Sparkles size={12} className="text-emerald-400" />
+                                <span className="text-[10px] font-bold text-emerald-400">${subscription.creditBalance?.toFixed(2) ?? '0.00'}</span>
                             </div>
                             {(isFree || atLimit) && (
                                 <button

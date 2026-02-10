@@ -137,6 +137,39 @@ export default function Billing() {
 
     const checkoutLinks = provider === 'creem' ? creemLinks : whopLinks;
 
+    const handleCheckout = async (planName: string) => {
+        const link = checkoutLinks[planName];
+        if (!link || link === '#' || planName === 'Free' || planName === currentPlan) return;
+        if (planName === 'Enterprise' || provider !== 'creem') {
+            window.open(link, '_blank');
+            return;
+        }
+
+        // Find plan details for amount
+        const plan = plans.find(p => p.name === planName);
+        const amount = plan ? parseFloat(plan.price.replace('$', '')) : 0;
+        const creemPlan = creemPlans.find((cp: any) => cp.planName === planName);
+
+        try {
+            const res = await fetch('/api/checkout', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({
+                    checkoutUrl: link,
+                    planName,
+                    type: 'subscription',
+                    amount,
+                    productId: creemPlan?.creemProductId || null,
+                }),
+            });
+            const data = await res.json();
+            if (data.url) window.open(data.url, '_blank');
+        } catch (err) {
+            // Fallback: open link directly if API fails
+            window.open(link, '_blank');
+        }
+    };
+
     return (
         <div className="space-y-8 md:space-y-12 max-w-5xl mx-auto py-6 md:py-12 px-4">
             <header className="text-center space-y-4">
@@ -209,18 +242,16 @@ export default function Billing() {
                                 ))}
                             </ul>
 
-                            <a
-                                href={isCurrent ? '#' : checkoutLinks[plan.name]}
-                                target={plan.name === 'Enterprise' || isCurrent ? '_self' : '_blank'}
-                                rel="noopener noreferrer"
+                            <button
+                                onClick={() => handleCheckout(plan.name)}
+                                disabled={isCurrent || plan.name === 'Free'}
                                 className={cn(
                                     "w-full py-3 md:py-4 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all transform active:scale-95 shadow-xl text-center block",
                                     getButtonStyle(plan.name)
                                 )}
-                                onClick={e => { if (isCurrent || plan.name === 'Free') e.preventDefault(); }}
                             >
                                 {getButtonLabel(plan.name)}
-                            </a>
+                            </button>
                         </motion.div>
                     );
                 })}

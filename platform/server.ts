@@ -226,6 +226,47 @@ app.post('/api/users/source', async (req: any, res: any) => {
     }
 });
 
+// --- Checkout: Create Pending Order & Redirect with Email ---
+app.post('/api/checkout', async (req: any, res: any) => {
+    try {
+        const authHeader = req.headers.authorization;
+        if (!authHeader?.startsWith('Bearer ')) return res.status(401).json({ error: 'Missing token' });
+
+        const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_key_change_this_openclaw_host';
+        const decoded: any = jwtVerify(authHeader.split(' ')[1], JWT_SECRET);
+        if (!decoded.userId) return res.status(401).json({ error: 'Invalid token' });
+
+        const { checkoutUrl, planName, type, amount, productId } = req.body;
+        if (!checkoutUrl) return res.status(400).json({ error: 'checkoutUrl required' });
+
+        const user = await prisma.user.findUnique({ where: { id: decoded.userId } });
+        if (!user) return res.status(404).json({ error: 'User not found' });
+
+        // Create pending order
+        const order = await prisma.order.create({
+            data: {
+                userId: user.id,
+                type: type || 'subscription',
+                status: 'pending',
+                amount: Number(amount) || 0,
+                planName: planName || null,
+                productId: productId || null,
+                provider: 'creem',
+            }
+        });
+
+        // Append email to checkout URL for Creem auto-fill
+        const url = new URL(checkoutUrl);
+        url.searchParams.set('email', user.email);
+        // Pass our order ID as metadata so webhook can link back
+        url.searchParams.set('metadata[order_id]', order.id);
+
+        res.json({ url: url.toString(), orderId: order.id });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // --- Bot Config Routes (Multi-Agent) ---
 
 app.get('/api/config', async (req, res) => {

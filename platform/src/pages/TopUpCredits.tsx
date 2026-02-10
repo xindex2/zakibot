@@ -62,12 +62,29 @@ export default function TopUpCredits() {
         setLoading(false);
     }, [token]);
 
-    const handlePurchase = (pack: CreditPack | typeof DEFAULT_PACKS[0]) => {
+    const handlePurchase = async (pack: CreditPack | typeof DEFAULT_PACKS[0]) => {
         if ('checkoutUrl' in pack && pack.checkoutUrl) {
-            // Open proper payment checkout in new tab
+            try {
+                const res = await fetch('/api/checkout', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({
+                        checkoutUrl: pack.checkoutUrl,
+                        planName: `Credits_${pack.amount}`,
+                        type: 'credit_topup',
+                        amount: pack.amount,
+                        productId: ('productId' in pack ? pack.productId : null) || null,
+                    }),
+                });
+                const data = await res.json();
+                if (data.url) {
+                    window.open(data.url, '_blank');
+                    return;
+                }
+            } catch { /* fallback below */ }
+            // Fallback: open directly
             window.open(pack.checkoutUrl, '_blank');
         } else {
-            // No checkout URL configured — notify user
             alert('Credit packs are not yet configured. Please contact support or ask your admin to set up credit products in the admin panel (Plans > Add Credit Pack).');
         }
     };

@@ -73,11 +73,12 @@ export default function TopUpCredits() {
     };
 
     // Build display list from server packs or fallback defaults
+    const packLabels: Record<number, string> = { 5: 'Starter Pack', 10: 'Standard Pack', 25: 'Power Pack', 50: 'Pro Pack', 100: 'Enterprise Pack' };
     const displayPacks = packsConfigured
         ? creditPacks.map(p => ({
             amount: p.amount,
             price: p.price,
-            label: `$${p.amount} Credits`,
+            label: packLabels[p.amount] || `$${p.amount} Credits`,
             popular: p.amount === 10,
             checkoutUrl: p.checkoutUrl,
             productId: p.productId
@@ -160,8 +161,8 @@ export default function TopUpCredits() {
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: i * 0.08 }}
                             className={`relative p-6 rounded-2xl border flex flex-col items-center gap-4 cursor-pointer transition-all hover:scale-[1.02] active:scale-95 group ${pack.popular
-                                    ? 'bg-emerald-900/20 border-emerald-500/30 ring-1 ring-emerald-500/20'
-                                    : 'bg-zinc-900/50 border-zinc-800 hover:border-zinc-700'
+                                ? 'bg-emerald-900/20 border-emerald-500/30 ring-1 ring-emerald-500/20'
+                                : 'bg-zinc-900/50 border-zinc-800 hover:border-zinc-700'
                                 }`}
                             onClick={() => handlePurchase(pack)}
                         >
@@ -177,8 +178,8 @@ export default function TopUpCredits() {
                             </div>
                             <button
                                 className={`w-full py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${pack.popular
-                                        ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/30 hover:bg-emerald-500'
-                                        : 'bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700'
+                                    ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/30 hover:bg-emerald-500'
+                                    : 'bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700'
                                     }`}
                             >
                                 <CreditCard size={12} />

@@ -10,7 +10,7 @@ export default function AdminSettings() {
         'WHOP_BUSINESS_ID': '',
         'CREEM_API_KEY': '',
         'CREEM_WEBHOOK_SECRET': '',
-        'PAYMENT_PROVIDER': 'whop',
+        'PAYMENT_PROVIDER': 'creem',
         'OPENROUTER_API_KEY': '',
     });
     const [loading, setLoading] = useState(true);
@@ -55,7 +55,7 @@ export default function AdminSettings() {
         }
     };
 
-    const activeProvider = config['PAYMENT_PROVIDER'] || 'whop';
+    const activeProvider = config['PAYMENT_PROVIDER'] || 'creem';
 
     if (loading) {
         return (

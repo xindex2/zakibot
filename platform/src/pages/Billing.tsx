@@ -12,7 +12,7 @@ const PLAN_ORDER = ['Free', 'Starter', 'Pro', 'Elite', 'Enterprise'];
 export default function Billing() {
     const { user, token } = useAuth();
     const [subscription, setSubscription] = useState<any>(null);
-    const [provider, setProvider] = useState('whop');
+    const [provider, setProvider] = useState('creem');
     const [creemPlans, setCreemPlans] = useState<any[]>([]);
     const [whopPlans, setWhopPlans] = useState<any[]>([]);
 
@@ -28,7 +28,7 @@ export default function Billing() {
         // Fetch active payment provider
         fetch('/api/payment-provider')
             .then(r => r.json())
-            .then(data => setProvider(data.provider || 'whop'))
+            .then(data => setProvider(data.provider || 'creem'))
             .catch(() => { });
 
         // Fetch Creem plans for checkout URLs
@@ -70,22 +70,22 @@ export default function Billing() {
             price: '$0',
             icon: <Shield size={24} />,
             agents: 1,
-            features: ['1 Active Agent', '50 Messages/Day', 'Community Support', 'Basic Skills'],
+            features: ['1 Active Agent', 'Community Support', 'Basic Skills'],
             color: 'text-zinc-400',
             bg: 'bg-zinc-900/30'
         },
         {
             name: 'Starter',
-            price: '$9',
+            price: '$29',
             icon: <Rocket size={24} />,
-            agents: 2,
-            features: ['2 Active Agents', '$5 in API Credits Included', 'Priority Email Support', 'All Public Skills', 'Custom System Prompts'],
+            agents: 1,
+            features: ['1 Active Agent', '$10 in API Credits Included', 'Priority Email Support', 'All Public Skills', 'Custom System Prompts'],
             color: 'text-blue-500',
             bg: 'bg-blue-950/20'
         },
         {
             name: 'Pro',
-            price: '$29',
+            price: '$69',
             icon: <Zap size={24} />,
             agents: 5,
             features: ['5 Active Agents', '$10 in API Credits Included', 'Priority Support', 'Advanced Skills', 'API Access', 'Custom Webhooks'],

@@ -6,7 +6,7 @@ export default function PlansEdit() {
     const { token } = useAuth();
     const [whopPlans, setWhopPlans] = useState<any[]>([]);
     const [creemPlans, setCreemPlans] = useState<any[]>([]);
-    const [provider, setProvider] = useState('whop');
+    const [provider, setProvider] = useState('creem');
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
 

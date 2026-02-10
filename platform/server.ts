@@ -423,9 +423,9 @@ app.use('/api', authRoutes); // This handles /api/auth/google
 app.get('/api/payment-provider', async (req: any, res: any) => {
     try {
         const config = await prisma.systemConfig.findUnique({ where: { key: 'PAYMENT_PROVIDER' } });
-        res.json({ provider: config?.value || 'whop' });
+        res.json({ provider: config?.value || 'creem' });
     } catch (e: any) {
-        res.json({ provider: 'whop' });
+        res.json({ provider: 'creem' });
     }
 });
 
@@ -956,7 +956,43 @@ app.get('*', (req, res, next) => {
     res.sendFile(path.join(distPath, 'index.html'));
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
     console.log(`🚀 OpenClaw Host Backend running on http://localhost:${PORT}`);
     console.log(`📂 Serving static files from: ${distPath}`);
+
+    // Auto-seed Creem plans and credit packs on startup
+    try {
+        const CREEM_SUBSCRIPTION_PLANS = [
+            { creemProductId: 'prod_2ZADi9Jg8uzIhtYCYMfe16', planName: 'Starter', maxInstances: 1, checkoutUrl: 'https://www.creem.io/payment/prod_2ZADi9Jg8uzIhtYCYMfe16' },
+            { creemProductId: 'prod_17vXhoHAhzrUuW72E8yoMo', planName: 'Pro', maxInstances: 5, checkoutUrl: 'https://www.creem.io/payment/prod_17vXhoHAhzrUuW72E8yoMo' },
+            { creemProductId: 'prod_7cEmSdPrcpXkARBp8vNHCt', planName: 'Elite', maxInstances: 10, checkoutUrl: 'https://www.creem.io/payment/prod_7cEmSdPrcpXkARBp8vNHCt' },
+        ];
+
+        const CREEM_CREDIT_PACKS = [
+            { creemProductId: 'prod_mmW39x3i3R1wiikmWBLD0', planName: 'Credits_5', maxInstances: 0, checkoutUrl: 'https://www.creem.io/payment/prod_mmW39x3i3R1wiikmWBLD0' },
+            { creemProductId: 'prod_3hLkXNNcRpBj6VFjdObgRk', planName: 'Credits_10', maxInstances: 0, checkoutUrl: 'https://www.creem.io/payment/prod_3hLkXNNcRpBj6VFjdObgRk' },
+            { creemProductId: 'prod_11ynDoFCSWJUNNDwAC1s6y', planName: 'Credits_25', maxInstances: 0, checkoutUrl: 'https://www.creem.io/payment/prod_11ynDoFCSWJUNNDwAC1s6y' },
+            { creemProductId: 'prod_4Sa3c1FRHxpJypefUZYYqK', planName: 'Credits_50', maxInstances: 0, checkoutUrl: 'https://www.creem.io/payment/prod_4Sa3c1FRHxpJypefUZYYqK' },
+            { creemProductId: 'prod_5SlwKAMQXbA8Qjj5tvoQpc', planName: 'Credits_100', maxInstances: 0, checkoutUrl: 'https://www.creem.io/payment/prod_5SlwKAMQXbA8Qjj5tvoQpc' },
+        ];
+
+        for (const plan of [...CREEM_SUBSCRIPTION_PLANS, ...CREEM_CREDIT_PACKS]) {
+            await prisma.creemPlan.upsert({
+                where: { creemProductId: plan.creemProductId },
+                update: { checkoutUrl: plan.checkoutUrl, planName: plan.planName, maxInstances: plan.maxInstances },
+                create: plan,
+            });
+        }
+
+        // Set default payment provider to creem if not set
+        await prisma.systemConfig.upsert({
+            where: { key: 'PAYMENT_PROVIDER' },
+            update: {},
+            create: { key: 'PAYMENT_PROVIDER', value: 'creem' },
+        });
+
+        console.log('✅ Creem plans & credit packs seeded');
+    } catch (e: any) {
+        console.warn('⚠️  Creem plan seeding skipped:', e.message);
+    }
 });

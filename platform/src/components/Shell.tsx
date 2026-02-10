@@ -55,19 +55,20 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     return (
         <div className="min-h-screen bg-zinc-950 text-white flex flex-col font-sans overflow-hidden">
             {/* Topbar Header */}
-            <header className="h-14 md:h-16 border-b border-zinc-800 bg-zinc-900 flex items-center justify-between px-4 md:px-8 relative z-[60] shrink-0 shadow-xl shadow-black/20">
-                <div className="flex items-center gap-3">
+            <header className="h-14 md:h-16 border-b border-zinc-800 bg-zinc-900 flex items-center justify-between px-3 md:px-8 relative z-[60] shrink-0 shadow-xl shadow-black/20">
+                <div className="flex items-center gap-2 md:gap-3">
                     <button
                         onClick={() => setSidebarOpen(!sidebarOpen)}
                         className="md:hidden text-zinc-400 hover:text-white transition-colors p-1"
                     >
-                        {sidebarOpen ? <X size={22} /> : <Menu size={22} />}
+                        {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
                     </button>
-                    <Link to="/dashboard" className="flex items-center gap-2 md:gap-3 group">
+                    <Link to="/dashboard" className="flex items-center gap-1.5 md:gap-3 group">
                         <div className="flex items-center justify-center transition-transform hover:scale-110">
-                            <Logo size={80} className="drop-shadow-lg" />
+                            <Logo size={50} className="drop-shadow-lg md:hidden" />
+                            <Logo size={80} className="drop-shadow-lg hidden md:block" />
                         </div>
-                        <span className="text-xs md:text-sm font-black tracking-widest uppercase italic">OpenClaw<span className="text-red-600"> Host</span></span>
+                        <span className="text-[10px] md:text-sm font-black tracking-widest uppercase italic">OpenClaw<span className="text-red-600"> Host</span></span>
                     </Link>
                 </div>
 
@@ -129,7 +130,53 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                     ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
                     top-14 md:top-0
                 `}>
-                    <nav className="flex flex-col gap-8 overflow-y-auto pr-2 custom-scrollbar">
+                    <nav className="flex flex-col gap-6 overflow-y-auto pr-2 custom-scrollbar">
+                        {/* Mobile-only: Plan & Credits section */}
+                        {subscription && (
+                            <div className="md:hidden space-y-3">
+                                <p className="px-3 text-[9px] font-bold uppercase tracking-[0.25em] text-zinc-500">Plan & Credits</p>
+                                <div className="px-2 space-y-2.5">
+                                    {/* Plan + Agents */}
+                                    <div className="flex items-center gap-2 bg-zinc-800/80 border border-zinc-700/50 rounded-lg px-3 py-2">
+                                        <Crown size={14} className={isFree ? 'text-zinc-500' : 'text-yellow-400'} />
+                                        <span className="text-xs font-bold uppercase tracking-widest text-zinc-300">{subscription.plan}</span>
+                                        <span className="text-zinc-600 mx-1">|</span>
+                                        <Bot size={14} className="text-zinc-400" />
+                                        <span className={`text-xs font-bold ${atLimit ? 'text-red-400' : 'text-zinc-400'}`}>
+                                            {subscription.currentCount}/{subscription.maxInstances}
+                                        </span>
+                                    </div>
+                                    {/* Upgrade */}
+                                    <button
+                                        onClick={() => handleNav('/billing')}
+                                        className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 text-black text-xs font-bold uppercase tracking-widest px-3 py-2.5 rounded-lg transition-all shadow-lg shadow-yellow-900/20"
+                                    >
+                                        <Zap size={13} strokeWidth={3} />
+                                        Upgrade
+                                    </button>
+                                    {/* Credits + Top Up */}
+                                    <div className="flex items-center gap-2">
+                                        <div className="flex-1 flex items-center gap-2 bg-zinc-800/80 border border-zinc-700/50 rounded-lg px-3 py-2">
+                                            <Sparkles size={14} className="text-emerald-400" />
+                                            <span className="text-xs font-bold text-emerald-400">${subscription.creditBalance?.toFixed(2) ?? '0.00'}</span>
+                                        </div>
+                                        <button
+                                            onClick={() => handleNav('/topup')}
+                                            className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold uppercase tracking-widest px-3 py-2 rounded-lg transition-all"
+                                        >
+                                            <Plus size={13} strokeWidth={3} />
+                                            Top Up
+                                        </button>
+                                    </div>
+                                    {/* Mission Support */}
+                                    <a href="mailto:support@openclaw-host.com" className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-zinc-400 hover:text-red-500 transition-colors px-1 py-1">
+                                        <MessageSquare size={14} />
+                                        Mission Support
+                                    </a>
+                                </div>
+                            </div>
+                        )}
+
                         <div className="space-y-3">
                             <p className="px-3 text-[9px] font-bold uppercase tracking-[0.25em] text-zinc-500">Platform</p>
                             <div className="space-y-0.5">

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { Bot, Layout as LayoutIcon, Users, Settings, LogOut, Activity, ShieldCheck, MessageSquare, CreditCard, Cpu, Menu, X, Crown, Zap, Sparkles } from 'lucide-react';
+import { Bot, Layout as LayoutIcon, Users, Settings, LogOut, Activity, ShieldCheck, MessageSquare, CreditCard, Cpu, Menu, X, Crown, Zap, Sparkles, Plus } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import Logo from './Logo';
 
@@ -74,7 +74,8 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                 <div className="flex items-center gap-3 md:gap-5">
                     {/* Plan & Usage */}
                     {subscription && (
-                        <div className="hidden sm:flex items-center gap-3">
+                        <div className="hidden sm:flex items-center gap-2">
+                            {/* Plan + Agents + Upgrade */}
                             <div className="flex items-center gap-2 bg-zinc-800/80 border border-zinc-700/50 rounded-lg px-3 py-1.5">
                                 <Crown size={12} className={isFree ? 'text-zinc-500' : 'text-yellow-400'} />
                                 <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-300">{subscription.plan}</span>
@@ -83,19 +84,26 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                                 <span className={`text-[10px] font-bold ${atLimit ? 'text-red-400' : 'text-zinc-400'}`}>
                                     {subscription.currentCount}/{subscription.maxInstances}
                                 </span>
-                                <span className="text-zinc-600">|</span>
+                            </div>
+                            <button
+                                onClick={() => navigate('/billing')}
+                                className="flex items-center gap-1.5 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 text-black text-[10px] font-bold uppercase tracking-widest px-2.5 py-1.5 rounded-lg transition-all shadow-lg shadow-yellow-900/20"
+                            >
+                                <Zap size={11} strokeWidth={3} />
+                                Upgrade
+                            </button>
+                            {/* Credits + Top Up */}
+                            <div className="flex items-center gap-2 bg-zinc-800/80 border border-zinc-700/50 rounded-lg px-3 py-1.5">
                                 <Sparkles size={12} className="text-emerald-400" />
                                 <span className="text-[10px] font-bold text-emerald-400">${subscription.creditBalance?.toFixed(2) ?? '0.00'}</span>
                             </div>
-                            {(isFree || atLimit) && (
-                                <button
-                                    onClick={() => navigate('/billing')}
-                                    className="flex items-center gap-1.5 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 text-black text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-lg transition-all shadow-lg shadow-yellow-900/20"
-                                >
-                                    <Zap size={11} strokeWidth={3} />
-                                    Upgrade
-                                </button>
-                            )}
+                            <button
+                                onClick={() => navigate('/topup')}
+                                className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold uppercase tracking-widest px-2.5 py-1.5 rounded-lg transition-all"
+                            >
+                                <Plus size={11} strokeWidth={3} />
+                                Top Up
+                            </button>
                         </div>
                     )}
                     <a href="mailto:support@openclaw-host.com" className="hidden sm:flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400 hover:text-red-500 transition-colors">

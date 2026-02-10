@@ -226,7 +226,7 @@ app.post('/api/users/source', async (req: any, res: any) => {
     }
 });
 
-// --- Checkout: Create Pending Order & Redirect with Email ---
+// --- Checkout: Create Pending Order & Creem Checkout Session with Email ---
 app.post('/api/checkout', async (req: any, res: any) => {
     try {
         const authHeader = req.headers.authorization;
@@ -237,7 +237,7 @@ app.post('/api/checkout', async (req: any, res: any) => {
         if (!decoded.userId) return res.status(401).json({ error: 'Invalid token' });
 
         const { checkoutUrl, planName, type, amount, productId } = req.body;
-        if (!checkoutUrl) return res.status(400).json({ error: 'checkoutUrl required' });
+        if (!checkoutUrl && !productId) return res.status(400).json({ error: 'checkoutUrl or productId required' });
 
         const user = await prisma.user.findUnique({ where: { id: decoded.userId } });
         if (!user) return res.status(404).json({ error: 'User not found' });
@@ -255,13 +255,109 @@ app.post('/api/checkout', async (req: any, res: any) => {
             }
         });
 
-        // Append email to checkout URL for Creem auto-fill
-        const url = new URL(checkoutUrl);
-        url.searchParams.set('email', user.email);
-        // Pass our order ID as metadata so webhook can link back
-        url.searchParams.set('metadata[order_id]', order.id);
+        // Try Creem Checkout API (proper way to prefill email)
+        const { getSystemConfig } = await import('./src/lib/config-helper.js');
+        const apiKey = await getSystemConfig('CREEM_API_KEY');
 
-        res.json({ url: url.toString(), orderId: order.id });
+        if (apiKey && productId) {
+            try {
+                const isTestKey = apiKey.startsWith('test_') || apiKey.includes('test');
+                const creemBase = isTestKey ? 'https://test-api.creem.io' : 'https://api.creem.io';
+
+                const creemRes = await fetch(`${creemBase}/v1/checkouts`, {
+                    method: 'POST',
+                    headers: {
+                        'x-api-key': apiKey,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        product_id: productId,
+                        request_id: order.id,
+                        success_url: `${req.protocol}://${req.get('host')}/billing`,
+                        customer: { email: user.email },
+                        metadata: { order_id: order.id, user_id: user.id },
+                    }),
+                });
+
+                const creemData = await creemRes.json();
+
+                if (creemData.checkout_url) {
+                    // Update order with Creem checkout ID
+                    await prisma.order.update({
+                        where: { id: order.id },
+                        data: { checkoutId: creemData.id || null }
+                    });
+                    return res.json({ url: creemData.checkout_url, orderId: order.id });
+                }
+                console.warn('[Checkout] Creem API error, falling back to direct URL:', creemData);
+            } catch (creemErr: any) {
+                console.warn('[Checkout] Creem API call failed, falling back:', creemErr.message);
+            }
+        }
+
+        // Fallback: append email as query param to checkoutUrl
+        if (checkoutUrl) {
+            const url = new URL(checkoutUrl);
+            url.searchParams.set('email', user.email);
+            url.searchParams.set('customer_email', user.email);
+            return res.json({ url: url.toString(), orderId: order.id });
+        }
+
+        res.json({ url: checkoutUrl, orderId: order.id });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// --- Customer Billing Portal ---
+app.post('/api/billing/portal', async (req: any, res: any) => {
+    try {
+        const authHeader = req.headers.authorization;
+        if (!authHeader?.startsWith('Bearer ')) return res.status(401).json({ error: 'Missing token' });
+
+        const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_key_change_this_openclaw_host';
+        const decoded: any = jwtVerify(authHeader.split(' ')[1], JWT_SECRET);
+        if (!decoded.userId) return res.status(401).json({ error: 'Invalid token' });
+
+        const { getSystemConfig } = await import('./src/lib/config-helper.js');
+        const apiKey = await getSystemConfig('CREEM_API_KEY');
+        if (!apiKey) return res.status(500).json({ error: 'Creem API key not configured' });
+
+        const user = await prisma.user.findUnique({ where: { id: decoded.userId } });
+        if (!user) return res.status(404).json({ error: 'User not found' });
+
+        const sub = await prisma.subscription.findUnique({ where: { userId: user.id } });
+        const customerId = req.body.customerId || sub?.creemSubscriptionId;
+
+        const isTestKey = apiKey.startsWith('test_') || apiKey.includes('test');
+        const creemBase = isTestKey ? 'https://test-api.creem.io' : 'https://api.creem.io';
+
+        // Try to get customer by email first, then create portal
+        const searchRes = await fetch(`${creemBase}/v1/customers/search?email=${encodeURIComponent(user.email)}`, {
+            headers: { 'x-api-key': apiKey },
+        });
+        const searchData = await searchRes.json();
+        const creemCustomerId = searchData?.items?.[0]?.id || searchData?.id || customerId;
+
+        if (!creemCustomerId) {
+            return res.status(404).json({ error: 'No Creem customer found for this account' });
+        }
+
+        const portalRes = await fetch(`${creemBase}/v1/customers/billing`, {
+            method: 'POST',
+            headers: {
+                'x-api-key': apiKey,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ customer_id: creemCustomerId }),
+        });
+        const portalData = await portalRes.json();
+
+        if (portalData.customer_portal_link) {
+            return res.json({ url: portalData.customer_portal_link });
+        }
+
+        res.status(500).json({ error: 'Could not generate portal link', details: portalData });
     } catch (e: any) {
         res.status(500).json({ error: e.message });
     }

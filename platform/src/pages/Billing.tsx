@@ -275,7 +275,28 @@ export default function Billing() {
                 })}
             </div>
 
-            {/* Credits are managed on the /topup page */}
+            {/* Manage Subscription */}
+            {currentPlan !== 'Free' && provider === 'creem' && (
+                <div className="text-center">
+                    <button
+                        onClick={async () => {
+                            try {
+                                const res = await fetch('/api/billing/portal', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                                });
+                                const data = await res.json();
+                                if (data.url) window.open(data.url, '_blank');
+                                else alert(data.error || 'Could not open customer portal');
+                            } catch { alert('Could not open customer portal'); }
+                        }}
+                        className="inline-flex items-center gap-2 px-6 py-3 bg-zinc-900 border border-zinc-700 hover:border-zinc-500 rounded-xl text-[10px] font-black text-zinc-400 hover:text-white uppercase tracking-widest transition-all"
+                    >
+                        <CreditCard size={14} />
+                        Manage Subscription & Payment Methods
+                    </button>
+                </div>
+            )}
 
             <footer className="bg-zinc-900 border border-zinc-800 p-6 md:p-8 rounded-2xl md:rounded-3xl flex flex-col sm:flex-row items-center justify-between gap-4 shadow-2xl">
                 <div className="flex items-center gap-4 md:gap-6">

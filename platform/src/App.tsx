@@ -9,6 +9,7 @@ import Maintenance from './pages/Maintenance';
 import AdminEvents from './pages/AdminEvents';
 import PlansEdit from './pages/PlansEdit';
 import AdminSettings from './pages/AdminSettings';
+import Orders from './pages/Orders';
 import ThankYou from './pages/ThankYou';
 import Profile from './pages/Profile';
 import Billing from './pages/Billing';
@@ -94,6 +95,11 @@ function AppRoutes() {
             <Route path="/admin/events" element={
                 <ProtectedRoute adminOnly>
                     <AdminEvents />
+                </ProtectedRoute>
+            } />
+            <Route path="/admin/orders" element={
+                <ProtectedRoute adminOnly>
+                    <Orders />
                 </ProtectedRoute>
             } />
             <Route path="/admin/plans" element={

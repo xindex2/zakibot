@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Logo from '../components/Logo';
 import StarField from '../components/StarField';
+import { getSource } from '../lib/referral-tracking';
 
 export default function Register() {
     const [formData, setFormData] = useState({ full_name: '', email: '', password: '', confirmPassword: '' });
@@ -34,7 +35,7 @@ export default function Register() {
                     full_name: formData.full_name,
                     email: formData.email,
                     password: formData.password,
-                    acquisition_source: new URLSearchParams(window.location.search).get('utm_source') || new URLSearchParams(window.location.search).get('ref') || 'Direct'
+                    acquisition_source: getSource()
                 })
             });
 

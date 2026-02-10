@@ -199,6 +199,33 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
+// --- Sync Acquisition Source ---
+app.post('/api/users/source', async (req: any, res: any) => {
+    try {
+        const authHeader = req.headers.authorization;
+        if (!authHeader?.startsWith('Bearer ')) return res.status(401).json({ error: 'Missing token' });
+
+        const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_key_change_this_openclaw_host';
+        const decoded: any = jwtVerify(authHeader.split(' ')[1], JWT_SECRET);
+
+        const { source } = req.body;
+        if (!source || !decoded.userId) return res.status(400).json({ error: 'source required' });
+
+        // Only update if current source is generic (don't overwrite meaningful sources)
+        const user = await prisma.user.findUnique({ where: { id: decoded.userId } });
+        if (user && (!user.acquisition_source || user.acquisition_source === 'Direct' || user.acquisition_source === 'Google Auth')) {
+            await prisma.user.update({
+                where: { id: decoded.userId },
+                data: { acquisition_source: source }
+            });
+        }
+
+        res.json({ success: true });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // --- Bot Config Routes (Multi-Agent) ---
 
 app.get('/api/config', async (req, res) => {

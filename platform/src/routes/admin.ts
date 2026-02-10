@@ -347,4 +347,45 @@ router.post('/credits/add', async (req, res) => {
     }
 });
 
+// ========================
+// Orders
+// ========================
+
+/**
+ * GET /api/admin/orders
+ * List orders with pagination, filtering by status/type, and search by email
+ */
+router.get('/orders', async (req, res) => {
+    try {
+        const page = parseInt(req.query.page as string) || 1;
+        const limit = parseInt(req.query.limit as string) || 20;
+        const status = req.query.status as string;
+        const type = req.query.type as string;
+        const search = req.query.search as string;
+        const skip = (page - 1) * limit;
+
+        const where: any = {};
+        if (status) where.status = status;
+        if (type) where.type = type;
+        if (search) {
+            where.user = { email: { contains: search } };
+        }
+
+        const [orders, total] = await Promise.all([
+            prisma.order.findMany({
+                where,
+                include: { user: { select: { email: true, full_name: true } } },
+                orderBy: { createdAt: 'desc' },
+                skip,
+                take: limit,
+            }),
+            prisma.order.count({ where }),
+        ]);
+
+        res.json({ orders, total, page, totalPages: Math.ceil(total / limit) });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 export default router;

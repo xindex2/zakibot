@@ -133,7 +133,50 @@ export class CreemService {
             }
         });
 
+        // --- Order Tracking ---
+        const checkoutId = data?.id || data?.checkout?.id;
+        const amount = data?.amount ? parseFloat(data.amount) / 100 : this.getPlanPrice(planName);
+
+        if (eventType === 'checkout.completed') {
+            // Create completed order
+            await prisma.order.upsert({
+                where: { checkoutId: checkoutId || `sub_${subscriptionId}_${Date.now()}` },
+                update: { status: 'completed' },
+                create: {
+                    userId: user.id,
+                    type: 'subscription',
+                    status: 'completed',
+                    amount: amount || 0,
+                    planName,
+                    productId,
+                    checkoutId: checkoutId || `sub_${subscriptionId}_${Date.now()}`,
+                    subscriptionId,
+                    provider: 'creem',
+                }
+            });
+        } else if (status === 'deactivated') {
+            // Mark latest order as refunded on refund/dispute/cancel
+            const latestOrder = await prisma.order.findFirst({
+                where: { userId: user.id, type: 'subscription', status: 'completed' },
+                orderBy: { createdAt: 'desc' }
+            });
+            if (latestOrder) {
+                const newStatus = eventType.includes('refund') || eventType.includes('dispute') ? 'refunded' : 'canceled';
+                await prisma.order.update({ where: { id: latestOrder.id }, data: { status: newStatus } });
+            }
+        }
+
         console.log(`[Creem] ${status === 'active' ? 'Activated' : 'Deactivated'} subscription for ${email} (plan: ${planName})`);
+    }
+
+    /**
+     * Get plan price from plan name for order tracking
+     */
+    private static getPlanPrice(planName: string): number {
+        const prices: Record<string, number> = {
+            'Starter': 29, 'Pro': 69, 'Elite': 99,
+        };
+        return prices[planName] || 0;
     }
 
     /**
@@ -221,6 +264,23 @@ export class CreemService {
                 amount: creditAmount,
                 type: 'topup',
                 description: `Credit purchase: $${creditAmount} via Creem`
+            }
+        });
+
+        // --- Order Tracking ---
+        const checkoutId = data?.id || data?.checkout?.id;
+        await prisma.order.upsert({
+            where: { checkoutId: checkoutId || `credit_${user.id}_${Date.now()}` },
+            update: { status: 'completed' },
+            create: {
+                userId: user.id,
+                type: 'credit_topup',
+                status: 'completed',
+                amount: creditAmount,
+                planName: creditPack.planName,
+                productId: productId || undefined,
+                checkoutId: checkoutId || `credit_${user.id}_${Date.now()}`,
+                provider: 'creem',
             }
         });
 

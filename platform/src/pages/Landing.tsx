@@ -1,4 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { captureSource } from '../lib/referral-tracking';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -94,37 +96,8 @@ export default function Landing() {
             metaDesc.setAttribute("content", "The professional way to hosting OpenClaw. High-performance OpenClaw VPS, 1-click install, and instant deployment for your AI agents.");
         }
 
-        // Track acquisition source
-        if (!sessionStorage.getItem('acquisition_source')) {
-            const urlParams = new URLSearchParams(window.location.search);
-            const utmSource = urlParams.get('utm_source');
-            const referrer = document.referrer;
-
-            let source = 'Direct';
-
-            if (utmSource) {
-                source = utmSource;
-            } else if (referrer) {
-                try {
-                    const refUrl = new URL(referrer);
-                    if (refUrl.hostname.includes('google')) {
-                        source = 'Google';
-                    } else if (refUrl.hostname.includes('bing')) {
-                        source = 'Bing';
-                    } else if (refUrl.hostname.includes('facebook') || refUrl.hostname.includes('fb.me')) {
-                        source = 'Facebook';
-                    } else if (refUrl.hostname.includes('twitter.com') || refUrl.hostname.includes('t.co') || refUrl.hostname.includes('x.com')) {
-                        source = 'Twitter';
-                    } else if (!refUrl.hostname.includes(window.location.hostname)) {
-                        source = `Referral: ${refUrl.hostname}`;
-                    }
-                } catch (e) {
-                    console.error('Referrer parsing error:', e);
-                }
-            }
-
-            sessionStorage.setItem('acquisition_source', source);
-        }
+        // Track acquisition source (persists in localStorage through OAuth redirects)
+        captureSource();
     }, []);
 
     return (

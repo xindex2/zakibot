@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Logo from '../components/Logo';
 import StarField from '../components/StarField';
+import { captureSource, syncSourceToServer } from '../lib/referral-tracking';
 
 export default function Login() {
     const [formData, setFormData] = useState({ email: '', password: '' });
@@ -12,6 +13,9 @@ export default function Login() {
     const navigate = useNavigate();
     const location = useLocation();
     const { login } = useAuth();
+
+    // Capture source on page visit (survives OAuth redirect)
+    useEffect(() => { captureSource(); }, []);
 
     // Handle Google OAuth redirect callback
     useEffect(() => {
@@ -24,6 +28,8 @@ export default function Login() {
             try {
                 const user = JSON.parse(decodeURIComponent(userData));
                 login(token, user);
+                // Sync the pre-auth source to the server
+                syncSourceToServer(token);
                 navigate('/dashboard');
             } catch (e) {
                 console.error('Failed to parse user data from Google', e);

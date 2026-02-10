@@ -26,10 +26,10 @@ sudo apt update && sudo apt upgrade -y
 sudo apt install -y git curl build-essential python3-pip python3-venv
 ```
 
-### 1.2 Install Node.js (v18+)
+### 1.2 Install Node.js (v20+)
 
 ```bash
-curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
 sudo apt install -y nodejs
 ```
 

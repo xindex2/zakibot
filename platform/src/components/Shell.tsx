@@ -47,6 +47,10 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     const handleNav = (path: string) => {
         navigate(path);
         setSidebarOpen(false);
+        // When navigating to /dashboard, dispatch event so Dashboard resets editingAgent
+        if (path === '/dashboard') {
+            window.dispatchEvent(new CustomEvent('resetDashboard'));
+        }
     };
 
     const isFree = subscription?.plan === 'Free';

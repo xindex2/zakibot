@@ -116,6 +116,13 @@ export default function Dashboard() {
     const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const lastSavedJson = useRef<string>('');
 
+    // Listen for sidebar "Dashboard" / "Agents" clicks to exit agent settings
+    useEffect(() => {
+        const handleReset = () => setEditingAgent(null);
+        window.addEventListener('resetDashboard', handleReset);
+        return () => window.removeEventListener('resetDashboard', handleReset);
+    }, []);
+
     // Auto-save: debounce 2 seconds after any editingAgent change (only for existing agents)
     useEffect(() => {
         if (!editingAgent || !editingAgent.id || isSaving) return;

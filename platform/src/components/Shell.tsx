@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { Bot, Layout as LayoutIcon, Users, Settings, LogOut, Activity, ShieldCheck, MessageSquare, CreditCard, Cpu, Menu, X, Crown, Zap, Sparkles, Plus } from 'lucide-react';
+import { Bot, LayoutDashboard, User, Settings, LogOut, Activity, ShieldCheck, MessageSquare, Wallet, Cpu, Menu, X, Crown, Zap, Sparkles, Plus, Users } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import Logo from './Logo';
 
@@ -27,8 +27,8 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     }, [location.pathname]);
 
     const menuItems = [
-        { icon: <LayoutIcon size={18} />, label: 'Dashboard', path: '/dashboard' },
-        { icon: <Bot size={18} />, label: 'Agents', path: '/dashboard' },
+        { icon: <LayoutDashboard size={20} strokeWidth={1.5} />, label: 'Dashboard', path: '/dashboard' },
+        { icon: <Bot size={20} strokeWidth={1.5} />, label: 'Agents', path: '/dashboard' },
     ];
 
     const adminItems = [
@@ -40,8 +40,8 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     ];
 
     const accountItems = [
-        { icon: <Bot size={18} />, label: 'Profile', path: '/profile' },
-        { icon: <CreditCard size={18} />, label: 'Billing', path: '/billing' },
+        { icon: <User size={20} strokeWidth={1.5} />, label: 'Profile', path: '/profile' },
+        { icon: <Wallet size={20} strokeWidth={1.5} />, label: 'Billing', path: '/billing' },
     ];
 
     const handleNav = (path: string) => {

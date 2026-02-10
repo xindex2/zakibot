@@ -140,8 +140,25 @@ export default function Billing() {
     const handleCheckout = async (planName: string) => {
         const link = checkoutLinks[planName];
         if (!link || link === '#' || planName === 'Free' || planName === currentPlan) return;
-        if (planName === 'Enterprise' || provider !== 'creem') {
+        if (planName === 'Enterprise') {
             window.open(link, '_blank');
+            return;
+        }
+
+        // Helper to append email to checkout URL
+        const appendEmail = (url: string) => {
+            try {
+                const u = new URL(url);
+                if (user?.email) {
+                    u.searchParams.set('email', user.email);
+                    u.searchParams.set('customer_email', user.email);
+                }
+                return u.toString();
+            } catch { return url; }
+        };
+
+        if (provider !== 'creem') {
+            window.open(appendEmail(link), '_blank');
             return;
         }
 
@@ -164,9 +181,10 @@ export default function Billing() {
             });
             const data = await res.json();
             if (data.url) window.open(data.url, '_blank');
+            else window.open(appendEmail(link), '_blank');
         } catch (err) {
-            // Fallback: open link directly if API fails
-            window.open(link, '_blank');
+            // Fallback: open link directly with email appended
+            window.open(appendEmail(link), '_blank');
         }
     };
 

@@ -21,7 +21,7 @@ const DEFAULT_PACKS = [
 ];
 
 export default function TopUpCredits() {
-    const { token } = useAuth();
+    const { user, token } = useAuth();
     const navigate = useNavigate();
     const [balance, setBalance] = useState(0);
     const [transactions, setTransactions] = useState<any[]>([]);
@@ -64,6 +64,18 @@ export default function TopUpCredits() {
 
     const handlePurchase = async (pack: CreditPack | typeof DEFAULT_PACKS[0]) => {
         if ('checkoutUrl' in pack && pack.checkoutUrl) {
+            // Build URL with email prefilled
+            const appendEmail = (url: string) => {
+                try {
+                    const u = new URL(url);
+                    if (user?.email) {
+                        u.searchParams.set('email', user.email);
+                        u.searchParams.set('customer_email', user.email);
+                    }
+                    return u.toString();
+                } catch { return url; }
+            };
+
             try {
                 const res = await fetch('/api/checkout', {
                     method: 'POST',
@@ -82,8 +94,8 @@ export default function TopUpCredits() {
                     return;
                 }
             } catch { /* fallback below */ }
-            // Fallback: open directly
-            window.open(pack.checkoutUrl, '_blank');
+            // Fallback: open directly with email appended
+            window.open(appendEmail(pack.checkoutUrl), '_blank');
         } else {
             alert('Credit packs are not yet configured. Please contact support or ask your admin to set up credit products in the admin panel (Plans > Add Credit Pack).');
         }

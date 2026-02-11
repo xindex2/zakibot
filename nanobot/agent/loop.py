@@ -199,7 +199,7 @@ class AgentLoop:
                             return OutboundMessage(
                                 channel=msg.channel,
                                 chat_id=msg.chat_id,
-                                content="⚠️ Your credits have been used up. Please top up your account to continue chatting: https://openclaw-host.com/top-up-credits"
+                                content="⚠️ Your credits have been used up. Please top up your account to continue chatting: https://openclaw-host.com/topup"
                             )
                 except Exception as e:
                     # Fail-open: if the check fails, allow the message through

@@ -109,6 +109,15 @@ export default function PlansEdit() {
     const updateCreemPlan = (idx: number, field: string, value: any) => {
         const newPlans = [...creemPlans];
         newPlans[idx] = { ...newPlans[idx], [field]: value };
+
+        // Auto-extract product ID from checkout URL
+        if (field === 'checkoutUrl' && typeof value === 'string') {
+            const prodMatch = value.match(/prod_[A-Za-z0-9]+/);
+            if (prodMatch) {
+                newPlans[idx].creemProductId = prodMatch[0];
+            }
+        }
+
         setCreemPlans(newPlans);
     };
 
@@ -158,20 +167,6 @@ export default function PlansEdit() {
         return (
             <div key={`${plan.id || idx}-${realIdx}`} className="bg-white/2 border border-white/5 rounded-2xl p-6 space-y-5">
                 <div className={`grid gap-4 ${isCreditPack ? 'grid-cols-1 md:grid-cols-3' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4'}`}>
-                    {/* Product / Plan ID */}
-                    <div>
-                        <label className={`text-[9px] font-black uppercase tracking-widest text-${accentColor}-500/60 mb-2 block`}>
-                            {idLabel}
-                        </label>
-                        <input
-                            className="w-full bg-white/5 border border-white/5 rounded-xl px-4 py-3 outline-none font-bold text-xs tracking-tight font-mono"
-                            value={plan[idField] || ''}
-                            readOnly={!plan._isNew}
-                            onChange={(e) => update(idField, e.target.value)}
-                            placeholder={idPlaceholder}
-                        />
-                    </div>
-
                     {/* Display Name */}
                     <div>
                         <label className={`text-[9px] font-black uppercase tracking-widest text-${accentColor}-500/60 mb-2 block`}>
@@ -206,17 +201,47 @@ export default function PlansEdit() {
                         </div>
                     )}
 
-                    {/* Checkout URL */}
+                    {/* Payment Link (Checkout URL) */}
                     <div>
                         <label className={`text-[9px] font-black uppercase tracking-widest text-${accentColor}-500/60 mb-2 block`}>
-                            Checkout URL
+                            {isWhopPlan ? 'Checkout URL' : '🔗 Payment Link'}
                         </label>
                         <input
                             className="w-full bg-white/5 border border-white/5 rounded-xl px-4 py-3 outline-none font-bold text-xs tracking-tight font-mono"
                             value={plan.checkoutUrl || ''}
                             onChange={(e) => update('checkoutUrl', e.target.value)}
-                            placeholder={isWhopPlan ? 'https://whop.com/checkout/...' : 'https://creem.io/checkout/...'}
+                            placeholder={isWhopPlan ? 'https://whop.com/checkout/...' : 'https://creem.io/checkout/prod_...'}
                         />
+                        {!isWhopPlan && (
+                            <p className="text-[8px] text-zinc-600 mt-1.5 font-medium">
+                                Paste your Creem payment link — Product ID is auto-extracted
+                            </p>
+                        )}
+                    </div>
+
+                    {/* Product / Plan ID — auto-filled for Creem */}
+                    <div>
+                        <label className={`text-[9px] font-black uppercase tracking-widest text-${accentColor}-500/60 mb-2 block`}>
+                            {idLabel} {!isWhopPlan && <span className="text-emerald-500">(auto-extracted)</span>}
+                        </label>
+                        <input
+                            className={`w-full border rounded-xl px-4 py-3 outline-none font-bold text-xs tracking-tight font-mono ${!isWhopPlan && plan[idField] ? 'bg-emerald-500/5 border-emerald-500/20 text-emerald-400' : 'bg-white/5 border-white/5'
+                                }`}
+                            value={plan[idField] || ''}
+                            readOnly={!isWhopPlan && !plan._isNew}
+                            onChange={(e) => update(idField, e.target.value)}
+                            placeholder={idPlaceholder}
+                        />
+                        {!isWhopPlan && !plan[idField] && plan.checkoutUrl && (
+                            <p className="text-[8px] text-amber-400 mt-1.5 font-medium">
+                                ⚠ Could not extract product ID from URL. Enter it manually (find it in Creem Dashboard → Products → Copy ID)
+                            </p>
+                        )}
+                        {!isWhopPlan && plan[idField] && (
+                            <p className="text-[8px] text-emerald-400/60 mt-1.5 font-medium">
+                                ✓ Product ID extracted — email will be prefilled at checkout via Creem API
+                            </p>
+                        )}
                     </div>
                 </div>
 

@@ -281,8 +281,19 @@ router.get('/creem-plans', async (req, res) => {
  * Create or Update Creem Plan Mapping
  */
 router.post('/creem-plans', async (req, res) => {
-    const { creemProductId, planName, maxInstances, checkoutUrl } = req.body;
+    let { creemProductId, planName, maxInstances, checkoutUrl } = req.body;
     try {
+        // Auto-extract product ID from checkout URL if not provided or empty
+        if (!creemProductId && checkoutUrl) {
+            const prodMatch = checkoutUrl.match(/prod_[A-Za-z0-9]+/);
+            if (prodMatch) {
+                creemProductId = prodMatch[0];
+            }
+        }
+        if (!creemProductId) {
+            return res.status(400).json({ error: 'Product ID is required. Paste a Creem payment link or enter the product ID manually (prod_...).' });
+        }
+
         const plan = await prisma.creemPlan.upsert({
             where: { creemProductId },
             update: { planName, maxInstances: Number(maxInstances), checkoutUrl },

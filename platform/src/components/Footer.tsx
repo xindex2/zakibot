@@ -9,7 +9,7 @@ export default function Footer() {
                     <div className="md:col-span-2">
                         <div className="flex items-center gap-4 mb-6">
                             <Logo size={32} />
-                            <h3 className="text-xl font-bold italic uppercase tracking-tight">OpenClaw Host</h3>
+                            <h3 className="text-xl font-bold italic uppercase tracking-tight">My<span className="text-red-500">Claw</span>.Host</h3>
                         </div>
                         <p className="text-gray-500 leading-relaxed max-w-md">
                             The fastest and most reliable way to <strong>deploy OpenClaw</strong> VPS.
@@ -21,7 +21,7 @@ export default function Footer() {
                         <h4 className="font-bold uppercase tracking-widest text-xs mb-6 text-gray-400">Products</h4>
                         <ul className="flex flex-col gap-3">
                             <li><Link to="/openclaw-vps" className="text-gray-500 hover:text-white transition-colors">OpenClaw VPS</Link></li>
-                            <li><Link to="/openclaw-hosting" className="text-gray-500 hover:text-white transition-colors">OpenClaw Hosting</Link></li>
+                            <li><Link to="/openclaw-hosting" className="text-gray-500 hover:text-white transition-colors">MyClaw.Hosting</Link></li>
                             <li><Link to="/install-openclaw" className="text-gray-500 hover:text-white transition-colors">Install OpenClaw</Link></li>
                             <li><Link to="/deploy-openclaw" className="text-gray-500 hover:text-white transition-colors">Deploy OpenClaw</Link></li>
                         </ul>
@@ -39,11 +39,11 @@ export default function Footer() {
 
                 <div className="border-t border-white/5 pt-12 flex flex-col items-center gap-6 text-center">
                     <p className="text-gray-600 text-[11px] leading-relaxed max-w-3xl uppercase tracking-widest font-bold opacity-60">
-                        <strong>Disclaimer:</strong> OpenClaw Host is an independent hosting provider. We are not officially affiliated with the OpenClaw project.
+                        <strong>Disclaimer:</strong> MyClaw.Host is an independent hosting provider. We are not officially affiliated with the OpenClaw project.
                         For the official open-source project, please visit <a href="https://openclaw.ai/" target="_blank" rel="noopener noreferrer" className="text-red-500 hover:underline">openclaw.ai</a>.
                     </p>
                     <p className="text-gray-700 text-[10px] font-black tracking-widest uppercase">
-                        &copy; {new Date().getFullYear()} OpenClaw Host. All rights reserved.
+                        &copy; {new Date().getFullYear()} MyClaw.Host. All rights reserved.
                     </p>
                 </div>
             </div>

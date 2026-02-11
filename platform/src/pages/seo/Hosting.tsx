@@ -7,7 +7,7 @@ import { Cloud, TrendingUp, Users, ArrowRight } from 'lucide-react';
 
 export default function Hosting() {
     useEffect(() => {
-        document.title = "OpenClaw Hosting - Professional Managed AI Agent Solutions";
+        document.title = "MyClaw.Hosting - Professional Managed AI Agent Solutions";
     }, []);
 
     return (
@@ -17,7 +17,7 @@ export default function Hosting() {
                 <div className="max-w-7xl mx-auto px-8 py-6 flex justify-between items-center">
                     <Link to="/" className="flex items-center gap-4">
                         <Logo size={32} />
-                        <span className="text-xl font-black italic uppercase tracking-tighter">OpenClaw Host</span>
+                        <span className="text-xl font-black italic uppercase tracking-tighter">MyClaw.Host</span>
                     </Link>
                     <Link to="/register" className="bg-[#ff6b6b] text-white px-8 py-3 rounded-2xl font-black text-sm tracking-widest hover:scale-105 active:scale-95 transition-all shadow-2xl shadow-[#ff6b6b]/20">
                         TRY HOSTING
@@ -28,7 +28,7 @@ export default function Hosting() {
             <div className="relative z-10 max-w-5xl mx-auto px-8 py-32">
                 <div className="text-center mb-24">
                     <h1 className="text-5xl md:text-7xl font-black italic uppercase tracking-tighter mb-8 bg-gradient-to-b from-white to-gray-500 bg-clip-text text-transparent">
-                        Premium OpenClaw Hosting
+                        Premium MyClaw.Hosting
                     </h1>
                     <p className="text-xl text-gray-400 font-medium leading-relaxed max-w-3xl mx-auto">
                         Zero-config <strong>OpenClaw hosting</strong> for developers and businesses.

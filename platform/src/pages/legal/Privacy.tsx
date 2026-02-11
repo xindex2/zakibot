@@ -6,7 +6,7 @@ import Logo from '../../components/Logo';
 
 export default function Privacy() {
     useEffect(() => {
-        document.title = "Privacy | OpenClaw Host Platform";
+        document.title = "Privacy | MyClaw.Host Platform";
     }, []);
 
     return (
@@ -17,7 +17,7 @@ export default function Privacy() {
                 <div className="max-w-7xl mx-auto px-8 h-24 flex items-center justify-between">
                     <Link to="/" className="flex items-center gap-4 hover:scale-105 transition-transform active:scale-95">
                         <Logo size={40} />
-                        <span className="text-xl font-black italic uppercase tracking-tighter">OpenClaw Host</span>
+                        <span className="text-xl font-black italic uppercase tracking-tighter">MyClaw.Host</span>
                     </Link>
                     <Link to="/login" className="px-8 py-3 bg-white/5 border border-white/10 rounded-xl font-bold text-xs tracking-widest uppercase hover:bg-white hover:text-black transition-all">
                         Login
@@ -50,7 +50,7 @@ export default function Privacy() {
                             <h2 className="text-2xl font-black italic uppercase tracking-tight group-hover:text-[#ff6b6b] transition-colors">Agent Integrity</h2>
                         </div>
                         <p className="text-gray-400 text-lg leading-relaxed font-medium">
-                            Your agent neural networks and configurations are stored in isolated encrypted volumes. OpenClaw Host does not inspect the logic of your agent's private directory or monitor its internal directives unless required by global law.
+                            Your agent neural networks and configurations are stored in isolated encrypted volumes. MyClaw.Host does not inspect the logic of your agent's private directory or monitor its internal directives unless required by global law.
                         </p>
                     </section>
 

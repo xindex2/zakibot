@@ -2,7 +2,7 @@ export default function Logo({ size = 40, className = '' }: { size?: number, cla
     return (
         <img
             src="/logo.png"
-            alt="OpenClaw Host"
+            alt="MyClaw.Host"
             width={size}
             height={size}
             className={className}

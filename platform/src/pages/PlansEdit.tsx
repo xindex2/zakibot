@@ -131,7 +131,7 @@ export default function PlansEdit() {
 
     const isWhop = provider === 'whop';
     const plans = isWhop ? whopPlans : creemPlans;
-    const webhookUrl = isWhop ? 'https://openclaw-host.com/api/webhooks/whop' : 'https://openclaw-host.com/api/webhooks/creem';
+    const webhookUrl = isWhop ? 'https://myclaw.host/api/webhooks/whop' : 'https://myclaw.host/api/webhooks/creem';
 
     // Separate subscription plans from credit packs
     const subscriptionPlans = plans.filter(p => !p.planName?.startsWith('Credits_'));

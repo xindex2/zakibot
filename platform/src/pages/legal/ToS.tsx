@@ -6,7 +6,7 @@ import Logo from '../../components/Logo';
 
 export default function ToS() {
     useEffect(() => {
-        document.title = "Terms | OpenClaw Host Platform";
+        document.title = "Terms | MyClaw.Host Platform";
     }, []);
 
     return (
@@ -17,7 +17,7 @@ export default function ToS() {
                 <div className="max-w-7xl mx-auto px-8 h-24 flex items-center justify-between">
                     <Link to="/" className="flex items-center gap-4 hover:scale-105 transition-transform active:scale-95">
                         <Logo size={40} />
-                        <span className="text-xl font-black italic uppercase tracking-tighter">OpenClaw Host</span>
+                        <span className="text-xl font-black italic uppercase tracking-tighter">MyClaw.Host</span>
                     </Link>
                     <Link to="/login" className="px-8 py-3 bg-white/5 border border-white/10 rounded-xl font-bold text-xs tracking-widest uppercase hover:bg-white hover:text-black transition-all">
                         Login
@@ -40,7 +40,7 @@ export default function ToS() {
                             <h2 className="text-2xl font-black italic uppercase tracking-tight group-hover:text-[#ff6b6b] transition-colors">Hosting Directives</h2>
                         </div>
                         <p className="text-gray-400 text-lg leading-relaxed font-medium">
-                            OpenClaw Host provides infrastructure and professional hosting services for the OpenClaw Host agent project.
+                            MyClaw.Host provides infrastructure and professional hosting services for the MyClaw.Host agent project.
                             We are a premium hosting provider and operate independently from external open-source communities.
                         </p>
                     </section>
@@ -51,7 +51,7 @@ export default function ToS() {
                             <h2 className="text-2xl font-black italic uppercase tracking-tight group-hover:text-[#ff6b6b] transition-colors">Protocol Acceptance</h2>
                         </div>
                         <p className="text-gray-400 text-lg leading-relaxed font-medium">
-                            By interfacing with the OpenClaw Host Terminal, you agree to comply with these Terms of Engagement.
+                            By interfacing with the MyClaw.Host Terminal, you agree to comply with these Terms of Engagement.
                             Commanders must be at least 13 solar years of age to operate our systems.
                         </p>
                     </section>
@@ -73,7 +73,7 @@ export default function ToS() {
                             <h2 className="text-2xl font-black italic uppercase tracking-tight group-hover:text-[#ff6b6b] transition-colors">Liability Threshold</h2>
                         </div>
                         <p className="text-gray-400 text-lg leading-relaxed font-medium">
-                            OpenClaw Host is provided "as is" and "as available". We are not liable for any logical data decay, agent downtime, or indirect damages resulting from system utilization.
+                            MyClaw.Host is provided "as is" and "as available". We are not liable for any logical data decay, agent downtime, or indirect damages resulting from system utilization.
                         </p>
                     </section>
 

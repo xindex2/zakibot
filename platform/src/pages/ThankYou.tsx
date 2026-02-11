@@ -6,7 +6,7 @@ import StarField from '../components/StarField';
 
 export default function ThankYou() {
     useEffect(() => {
-        document.title = "Success | OpenClaw Host Platform";
+        document.title = "Success | MyClaw.Host Platform";
     }, []);
 
     return (

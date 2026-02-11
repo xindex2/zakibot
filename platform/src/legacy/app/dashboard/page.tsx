@@ -311,7 +311,7 @@ export default function Dashboard() {
                                         <RefreshCcw size={14} className="text-blue-500 animate-spin-slow" />
                                         <p className="text-xs text-blue-500 font-black uppercase tracking-widest">Awaiting Bridge Login</p>
                                     </div>
-                                    <p className="text-xs text-gray-500 ml-6">Initialize QR scan via system terminal or OpenClaw Host CLI.</p>
+                                    <p className="text-xs text-gray-500 ml-6">Initialize QR scan via system terminal or MyClaw.Host CLI.</p>
                                 </div>
                             </ChannelRow>
 

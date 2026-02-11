@@ -7,7 +7,7 @@ import Logo from '../components/Logo';
 
 export default function Contact() {
     useEffect(() => {
-        document.title = "Contact | OpenClaw Host Support";
+        document.title = "Contact | MyClaw.Host Support";
     }, []);
 
     return (
@@ -18,7 +18,7 @@ export default function Contact() {
                 <div className="max-w-7xl mx-auto px-8 h-24 flex items-center justify-between">
                     <Link to="/" className="flex items-center gap-4 hover:scale-105 transition-transform active:scale-95">
                         <Logo size={40} />
-                        <span className="text-xl font-black italic uppercase tracking-tighter">OpenClaw Host</span>
+                        <span className="text-xl font-black italic uppercase tracking-tighter">MyClaw.Host</span>
                     </Link>
                     <Link to="/login" className="px-8 py-3 bg-white/5 border border-white/10 rounded-xl font-bold text-xs tracking-widest uppercase hover:bg-white hover:text-black transition-all">
                         Login
@@ -39,7 +39,7 @@ export default function Contact() {
                 <div className="grid md:grid-cols-2 gap-12 max-w-5xl mx-auto">
                     {/* Primary Support Channel */}
                     <a
-                        href="mailto:support@openclaw-host.com"
+                        href="mailto:support@myclaw.host"
                         className="group relative bg-white/2 border border-white/5 rounded-[4rem] p-16 hover:bg-white/5 transition-all duration-500 hover:scale-[1.02] active:scale-95 overflow-hidden"
                     >
                         <div className="absolute top-0 right-0 p-12 opacity-5 group-hover:opacity-10 transition-opacity">
@@ -51,7 +51,7 @@ export default function Contact() {
                         </div>
 
                         <h3 className="text-xs font-black uppercase tracking-[0.4em] text-[#ff6b6b] mb-4">Direct Communication</h3>
-                        <h2 className="text-3xl font-black italic uppercase tracking-tighter mb-6">support@openclaw-host.com</h2>
+                        <h2 className="text-3xl font-black italic uppercase tracking-tighter mb-6">support@myclaw.host</h2>
                         <p className="text-gray-500 font-bold italic">24/7 Priority support for all fleet commanders.</p>
 
                         <div className="mt-12 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-[#ff6b6b]">

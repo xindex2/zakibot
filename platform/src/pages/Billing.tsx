@@ -118,7 +118,7 @@ export default function Billing() {
         'Starter': 'https://whop.com/checkout/plan_Ke7ZeyJO29DwZ',
         'Pro': 'https://whop.com/checkout/plan_9NRNdPMrVzwi8',
         'Elite': 'https://whop.com/checkout/plan_XXO2Ey0ki51AI',
-        'Enterprise': 'mailto:support@openclaw-host.com'
+        'Enterprise': 'mailto:support@myclaw.host'
     };
     const whopLinks: Record<string, string> = { ...whopFallbacks };
     whopPlans.forEach(wp => {
@@ -128,7 +128,7 @@ export default function Billing() {
     });
 
     // Build Creem checkout links from plan records
-    const creemLinks: Record<string, string> = { 'Free': '#', 'Enterprise': 'mailto:support@openclaw-host.com' };
+    const creemLinks: Record<string, string> = { 'Free': '#', 'Enterprise': 'mailto:support@myclaw.host' };
     creemPlans.forEach(cp => {
         if (cp.planName && cp.checkoutUrl) {
             creemLinks[cp.planName] = cp.checkoutUrl;
@@ -314,7 +314,7 @@ export default function Billing() {
                     </div>
                     <div className="text-center sm:text-left">
                         <h4 className="text-white font-bold text-xs md:text-sm uppercase italic tracking-wide">Secure Transaction Protocol</h4>
-                        <p className="text-zinc-500 text-[10px] font-medium uppercase tracking-widest">Direct support: support@openclaw-host.com</p>
+                        <p className="text-zinc-500 text-[10px] font-medium uppercase tracking-widest">Direct support: support@myclaw.host</p>
                     </div>
                 </div>
                 <div className="flex gap-4 grayscale opacity-40">

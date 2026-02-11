@@ -1175,7 +1175,7 @@ app.get('*', (req, res, next) => {
 });
 
 app.listen(PORT, async () => {
-    console.log(`🚀 OpenClaw Host Backend running on http://localhost:${PORT}`);
+    console.log(`🚀 MyClaw.Host Backend running on http://localhost:${PORT}`);
     console.log(`📂 Serving static files from: ${distPath}`);
 
     // Auto-seed Creem plans and credit packs on startup

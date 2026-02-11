@@ -90,7 +90,7 @@ export default function Landing() {
         initOneTap();
     }, [isAuthenticated, handleGoogleCredential]);
     useEffect(() => {
-        document.title = "OpenClaw Hosting, OpenClaw VPS, Install OpenClaw, Deploy OpenClaw - OpenClaw Host";
+        document.title = "MyClaw.Hosting, OpenClaw VPS, Install OpenClaw, Deploy OpenClaw - MyClaw.Host";
         const metaDesc = document.querySelector('meta[name="description"]');
         if (metaDesc) {
             metaDesc.setAttribute("content", "The professional way to hosting OpenClaw. High-performance OpenClaw VPS, 1-click install, and instant deployment for your AI agents.");
@@ -108,7 +108,7 @@ export default function Landing() {
             <nav className="nav" style={{ position: 'relative', zIndex: 10, borderBottom: '1px solid var(--color-border)' }}>
                 <div className="container flex-between" style={{ padding: 'clamp(0.75rem, 2vw, 1.25rem) var(--spacing-lg)' }}>
                     <div className="flex gap-md" style={{ alignItems: 'center' }}>
-                        <h3 style={{ margin: 0, letterSpacing: '-0.02em' }}>OpenClaw Host</h3>
+                        <h3 style={{ margin: 0, letterSpacing: '-0.02em' }}>My<span style={{ color: '#ef4444' }}>Claw</span>.Host</h3>
                         <Logo size={36} />
                     </div>
                     <div className="flex gap-lg" style={{ alignItems: 'center' }}>
@@ -160,7 +160,7 @@ export default function Landing() {
                             letterSpacing: '-0.03em',
                             textTransform: 'uppercase'
                         }}>
-                            OpenClaw Hosting
+                            My<span style={{ color: '#ef4444' }}>Claw</span>.Hosting
                         </h1>
                         <p style={{
                             fontSize: '1rem',
@@ -417,7 +417,7 @@ export default function Landing() {
                             </p>
                         </div>
 
-                        {/* OpenClaw Host */}
+                        {/* MyClaw.Host */}
                         <div className="card-glass" style={{
                             padding: 'var(--spacing-xl)',
                             borderRadius: 'var(--radius-xl)',
@@ -441,10 +441,10 @@ export default function Landing() {
                                 textTransform: 'uppercase',
                                 letterSpacing: '0.05em'
                             }}>
-                                ⚡ OpenClaw Host
+                                ⚡ MyClaw.Host
                             </div>
                             <h3 style={{ fontSize: '1.3rem', marginBottom: 'var(--spacing-lg)', color: 'var(--coral-bright)', textAlign: 'center' }}>
-                                With OpenClaw Host
+                                With MyClaw.Host
                             </h3>
                             {/* 3-step flow */}
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-md)', marginBottom: 'var(--spacing-lg)' }}>
@@ -621,7 +621,7 @@ export default function Landing() {
                     <h2 className="text-center mb-xl" style={{ fontSize: '2.5rem' }}>Frequently Asked Questions</h2>
                     <div style={{ maxWidth: '800px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 'var(--spacing-lg)' }}>
                         {[
-                            { q: "What is OpenClaw Hosting?", a: "OpenClaw Hosting is a dedicated platform that provides pre-configured VPS for running OpenClaw AI agents with zero technical setup." },
+                            { q: "What is MyClaw.Hosting?", a: "MyClaw.Hosting is a dedicated platform that provides pre-configured VPS for running OpenClaw AI agents with zero technical setup." },
                             { q: "How do I install OpenClaw?", a: "With 1-click deployment, we automatically install OpenClaw and all its dependencies in a secure Docker container for you." },
                             { q: "Can I run OpenClaw VPS for business?", a: "Yes, our enterprise-grade infrastructure is designed for reliable, 24/7 agent operations, perfect for business automation." },
                             { q: "Is the OpenClaw VPS dedicated?", a: "Absolutely. Every user gets an isolated environment with dedicated resources to ensure maximum speed and privacy." }

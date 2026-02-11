@@ -65,7 +65,7 @@ export default function Maintenance() {
                 <MaintenanceCard
                     icon={<RefreshCw className="text-blue-400" />}
                     title="Sync Global Assets"
-                    description="Pushes the latest OpenClaw Host updates to every active deployment in the fleet."
+                    description="Pushes the latest MyClaw.Host updates to every active deployment in the fleet."
                     onAction={() => handleAction('update')}
                     disabled={running}
                     loading={running && action === 'update'}

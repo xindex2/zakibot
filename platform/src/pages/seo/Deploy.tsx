@@ -18,7 +18,7 @@ export default function Deploy() {
                 <div className="max-w-7xl mx-auto px-8 py-6 flex justify-between items-center">
                     <Link to="/" className="flex items-center gap-4">
                         <Logo size={32} />
-                        <span className="text-xl font-black italic uppercase tracking-tighter">OpenClaw Host</span>
+                        <span className="text-xl font-black italic uppercase tracking-tighter">MyClaw.Host</span>
                     </Link>
                     <Link to="/register" className="bg-[#ff6b6b] text-white px-8 py-3 rounded-2xl font-black text-sm tracking-widest hover:scale-105 active:scale-95 transition-all shadow-2xl shadow-[#ff6b6b]/20">
                         DEPLOY NOW

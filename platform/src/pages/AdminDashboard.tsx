@@ -77,7 +77,7 @@ export default function AdminDashboard() {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div>
                     <h1 className="text-4xl font-black italic uppercase tracking-tighter mb-2">Command Center</h1>
-                    <p className="text-gray-500 font-medium uppercase tracking-[0.2em] text-[10px]">OpenClaw Host Infrastructure Monitor</p>
+                    <p className="text-gray-500 font-medium uppercase tracking-[0.2em] text-[10px]">MyClaw.Host Infrastructure Monitor</p>
                 </div>
                 <div className="flex items-center gap-3 px-6 py-3 bg-white/5 border border-white/5 rounded-2xl">
                     <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>

@@ -178,7 +178,7 @@ class AgentLoop:
              return OutboundMessage(
                 channel=msg.channel,
                 chat_id=msg.chat_id,
-                content="[ACCESS RESTRICTED] You have reached the limit of the Free Plan (2 messages). Please upgrade to continue using your Agent: https://openclaw-host.com/billing"
+                content="[ACCESS RESTRICTED] You have reached the limit of the Free Plan (2 messages). Please upgrade to continue using your Agent: https://myclaw.host/billing"
             )
         
         # Platform credit pre-check: block messages when credits are exhausted
@@ -199,7 +199,7 @@ class AgentLoop:
                             return OutboundMessage(
                                 channel=msg.channel,
                                 chat_id=msg.chat_id,
-                                content="⚠️ Your credits have been used up. Please top up your account to continue chatting: https://openclaw-host.com/topup"
+                                content="⚠️ Your credits have been used up. Please top up your account to continue chatting: https://myclaw.host/topup"
                             )
                 except Exception as e:
                     # Fail-open: if the check fails, allow the message through

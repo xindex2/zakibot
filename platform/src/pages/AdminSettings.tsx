@@ -217,7 +217,7 @@ export default function AdminSettings() {
                                 <span className="text-[10px] font-black uppercase tracking-widest text-gray-500">Webhook URL</span>
                                 <span className="px-3 py-1 bg-green-500/10 text-green-500 rounded-full text-[9px] font-black uppercase tracking-widest">Endpoint</span>
                             </div>
-                            <code className="text-[11px] text-red-500 font-black break-all">https://openclaw-host.com/api/webhooks/whop</code>
+                            <code className="text-[11px] text-red-500 font-black break-all">https://myclaw.host/api/webhooks/whop</code>
                         </div>
                     </div>
                 </div>
@@ -267,7 +267,7 @@ export default function AdminSettings() {
                                 <span className="text-[10px] font-black uppercase tracking-widest text-gray-500">Webhook URL</span>
                                 <span className="px-3 py-1 bg-green-500/10 text-green-500 rounded-full text-[9px] font-black uppercase tracking-widest">Endpoint</span>
                             </div>
-                            <code className="text-[11px] text-purple-400 font-black break-all">https://openclaw-host.com/api/webhooks/creem</code>
+                            <code className="text-[11px] text-purple-400 font-black break-all">https://myclaw.host/api/webhooks/creem</code>
                         </div>
                     </div>
                 </div>

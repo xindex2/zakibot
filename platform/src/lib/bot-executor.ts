@@ -15,6 +15,8 @@ export async function startBot(configId: string) {
         // Cleanup existing processes with this config ID in command line
         const killCmd = `pkill -f "nanobot.*${configId}.json" > /dev/null 2>&1 || true`;
         execSync(killCmd, { stdio: 'ignore' });
+        // Wait for old process (and its Telegram polling) to fully release
+        await new Promise(resolve => setTimeout(resolve, 3000));
     } catch (e) { }
 
     if (processes[configId]) {
@@ -256,9 +258,10 @@ export async function startBot(configId: string) {
                 try {
                     const usageJson = JSON.parse(line.substring(8));
                     if (apiKeyMode === 'platform_credits' && config.userId) {
-                        // Estimate cost: fallback rates if no pricing available
-                        const promptRate = 0.000003;  // $3/1M tokens default
-                        const completionRate = 0.000006; // $6/1M tokens default
+                        // Estimate cost using conservative rates close to typical OpenRouter pricing
+                        // Most models: $0.10-$1.50/1M input, $0.30-$2/1M output
+                        const promptRate = 0.0000005;   // $0.50/1M tokens (input)
+                        const completionRate = 0.0000015; // $1.50/1M tokens (output)
                         const cost = (usageJson.prompt_tokens * promptRate) + (usageJson.completion_tokens * completionRate);
                         if (cost > 0) {
                             deductCredits(

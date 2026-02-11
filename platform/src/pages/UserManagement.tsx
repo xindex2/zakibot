@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Trash2, Shield, Gem, ChevronLeft, ChevronRight, Edit2, Loader2, Save, X, ChevronDown, Bot, MessageSquare, CreditCard, Plus } from 'lucide-react';
+import { Search, Trash2, Shield, Gem, ChevronLeft, ChevronRight, Edit2, Loader2, Save, X, ChevronDown, Bot, MessageSquare, CreditCard, Plus, Play, Square, RotateCw } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -40,6 +40,8 @@ export default function UserManagement() {
     const [totalUsers, setTotalUsers] = useState(0);
     const [expandedUser, setExpandedUser] = useState<string | null>(null);
     const [botStatuses, setBotStatuses] = useState<Record<string, string>>({});
+    const [botControlLoading, setBotControlLoading] = useState<Record<string, boolean>>({});
+    const [restartAllLoading, setRestartAllLoading] = useState(false);
 
     // Edit State
     const [editingUser, setEditingUser] = useState<UserData | null>(null);
@@ -84,6 +86,52 @@ export default function UserManagement() {
             console.error('Failed to load users:', error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleBotControl = async (configId: string, action: 'start' | 'stop' | 'restart') => {
+        setBotControlLoading(prev => ({ ...prev, [configId]: true }));
+        try {
+            const res = await fetch('/api/admin/bot/control', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ action, configId })
+            });
+            const data = await res.json();
+            if (data.success) {
+                setBotStatuses(prev => ({ ...prev, [configId]: data.status }));
+            } else {
+                alert(data.error || 'Bot control failed');
+            }
+        } catch (e) {
+            alert('Failed to control bot');
+        } finally {
+            setBotControlLoading(prev => ({ ...prev, [configId]: false }));
+        }
+    };
+
+    const handleRestartAllPaid = async () => {
+        if (!confirm('Restart all stopped bots for paid users? This may take a moment.')) return;
+        setRestartAllLoading(true);
+        try {
+            const res = await fetch('/api/admin/bots/restart-paid', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await res.json();
+            if (data.success) {
+                alert(`Restarted ${data.results?.filter((r: any) => r.status === 'started').length || 0} of ${data.total} bot(s)`);
+                loadUsers();
+            } else {
+                alert(data.error || 'Restart failed');
+            }
+        } catch (e) {
+            alert('Failed to restart bots');
+        } finally {
+            setRestartAllLoading(false);
         }
     };
 
@@ -152,6 +200,17 @@ export default function UserManagement() {
                     <p className="text-primary font-bold uppercase tracking-[0.2em] text-[10px]">
                         Global User Registry & Management
                     </p>
+                </div>
+
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={handleRestartAllPaid}
+                        disabled={restartAllLoading}
+                        className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-4 py-3 rounded-xl font-bold uppercase text-[10px] tracking-widest hover:bg-emerald-500/20 transition-all disabled:opacity-50 whitespace-nowrap"
+                    >
+                        {restartAllLoading ? <Loader2 size={14} className="animate-spin" /> : <RotateCw size={14} />}
+                        Restart All Paid Bots
+                    </button>
                 </div>
 
                 <div className="relative w-full md:w-96 group">
@@ -348,6 +407,35 @@ export default function UserManagement() {
                                                                                 {ch}
                                                                             </span>
                                                                         ))}
+
+                                                                        {/* Admin Bot Controls */}
+                                                                        <div className="flex items-center gap-1 ml-2">
+                                                                            {botControlLoading[bot.id] ? (
+                                                                                <Loader2 size={14} className="animate-spin text-white/40" />
+                                                                            ) : isRunning ? (
+                                                                                <>
+                                                                                    <button
+                                                                                        onClick={(e) => { e.stopPropagation(); handleBotControl(bot.id, 'stop'); }}
+                                                                                        className="p-1.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-colors" title="Stop"
+                                                                                    >
+                                                                                        <Square size={12} />
+                                                                                    </button>
+                                                                                    <button
+                                                                                        onClick={(e) => { e.stopPropagation(); handleBotControl(bot.id, 'restart'); }}
+                                                                                        className="p-1.5 rounded-lg bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 hover:bg-yellow-500/20 transition-colors" title="Restart"
+                                                                                    >
+                                                                                        <RotateCw size={12} />
+                                                                                    </button>
+                                                                                </>
+                                                                            ) : (
+                                                                                <button
+                                                                                    onClick={(e) => { e.stopPropagation(); handleBotControl(bot.id, 'start'); }}
+                                                                                    className="p-1.5 rounded-lg bg-green-500/10 border border-green-500/20 text-green-400 hover:bg-green-500/20 transition-colors" title="Start"
+                                                                                >
+                                                                                    <Play size={12} />
+                                                                                </button>
+                                                                            )}
+                                                                        </div>
                                                                     </div>
                                                                 );
                                                             })}

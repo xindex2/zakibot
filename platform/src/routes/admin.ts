@@ -388,4 +388,81 @@ router.get('/orders', async (req, res) => {
     }
 });
 
+// ========================
+// Admin Bot Control
+// ========================
+
+/**
+ * POST /api/admin/bot/control
+ * Admin start/stop/restart any bot (bypasses plan check)
+ */
+router.post('/bot/control', async (req, res) => {
+    try {
+        const { action, configId } = req.body;
+        if (!configId) return res.status(400).json({ error: 'configId required' });
+
+        // Dynamic import to avoid circular deps
+        const { startBot, stopBot, getBotStatus } = await import('../lib/bot-executor.js');
+
+        if (action === 'start') {
+            await startBot(configId);
+            res.json({ success: true, status: 'running' });
+        } else if (action === 'stop') {
+            await stopBot(configId);
+            res.json({ success: true, status: 'stopped' });
+        } else if (action === 'restart') {
+            await stopBot(configId);
+            await new Promise(r => setTimeout(r, 2000));
+            await startBot(configId);
+            res.json({ success: true, status: 'running' });
+        } else if (action === 'status') {
+            res.json({ status: getBotStatus(configId) });
+        } else {
+            res.status(400).json({ error: 'Invalid action. Use start, stop, restart, or status.' });
+        }
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+/**
+ * POST /api/admin/bots/restart-paid
+ * Restart ALL stopped bots for paid users (bulk recovery)
+ */
+router.post('/bots/restart-paid', async (req, res) => {
+    try {
+        const { startBot } = await import('../lib/bot-executor.js');
+
+        // Find all bot configs belonging to paid users that are currently stopped
+        const paidBotConfigs = await prisma.botConfig.findMany({
+            where: {
+                status: 'stopped',
+                user: {
+                    subscription: {
+                        plan: { not: 'Free' }
+                    }
+                }
+            },
+            include: { user: { include: { subscription: true } } }
+        });
+
+        const results: { id: string; name: string; status: string; error?: string }[] = [];
+
+        for (const bot of paidBotConfigs) {
+            try {
+                await startBot(bot.id);
+                results.push({ id: bot.id, name: bot.name, status: 'started' });
+                // Stagger starts by 3 seconds
+                await new Promise(r => setTimeout(r, 3000));
+            } catch (err: any) {
+                results.push({ id: bot.id, name: bot.name, status: 'failed', error: err.message });
+            }
+        }
+
+        res.json({ success: true, total: paidBotConfigs.length, results });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 export default router;

@@ -135,25 +135,47 @@ export class CreemService {
 
         // --- Order Tracking ---
         const checkoutId = data?.id || data?.checkout?.id;
+        const requestId = data?.request_id; // Our order ID passed during checkout creation
         const amount = data?.amount ? parseFloat(data.amount) / 100 : this.getPlanPrice(planName);
 
         if (eventType === 'checkout.completed') {
-            // Create completed order
-            await prisma.order.upsert({
-                where: { checkoutId: checkoutId || `sub_${subscriptionId}_${Date.now()}` },
-                update: { status: 'completed' },
-                create: {
-                    userId: user.id,
-                    type: 'subscription',
-                    status: 'completed',
-                    amount: amount || 0,
-                    planName,
-                    productId,
-                    checkoutId: checkoutId || `sub_${subscriptionId}_${Date.now()}`,
-                    subscriptionId,
-                    provider: 'creem',
-                }
-            });
+            // Try to find the pending order we created at checkout time
+            let pendingOrder = null;
+            if (requestId) {
+                pendingOrder = await prisma.order.findUnique({ where: { id: requestId } });
+            }
+            if (!pendingOrder && checkoutId) {
+                pendingOrder = await prisma.order.findUnique({ where: { checkoutId } });
+            }
+
+            if (pendingOrder) {
+                // Update the pending order to completed
+                await prisma.order.update({
+                    where: { id: pendingOrder.id },
+                    data: {
+                        status: 'completed',
+                        checkoutId: checkoutId || pendingOrder.checkoutId,
+                        subscriptionId,
+                        amount: amount || pendingOrder.amount,
+                        planName: planName || pendingOrder.planName,
+                    }
+                });
+            } else {
+                // No pending order found — create a new completed order
+                await prisma.order.create({
+                    data: {
+                        userId: user.id,
+                        type: 'subscription',
+                        status: 'completed',
+                        amount: amount || 0,
+                        planName,
+                        productId,
+                        checkoutId: checkoutId || `sub_${subscriptionId}_${Date.now()}`,
+                        subscriptionId,
+                        provider: 'creem',
+                    }
+                });
+            }
         } else if (status === 'deactivated') {
             // Mark latest order as refunded on refund/dispute/cancel
             const latestOrder = await prisma.order.findFirst({
@@ -269,20 +291,40 @@ export class CreemService {
 
         // --- Order Tracking ---
         const checkoutId = data?.id || data?.checkout?.id;
-        await prisma.order.upsert({
-            where: { checkoutId: checkoutId || `credit_${user.id}_${Date.now()}` },
-            update: { status: 'completed' },
-            create: {
-                userId: user.id,
-                type: 'credit_topup',
-                status: 'completed',
-                amount: creditAmount,
-                planName: creditPack.planName,
-                productId: productId || undefined,
-                checkoutId: checkoutId || `credit_${user.id}_${Date.now()}`,
-                provider: 'creem',
-            }
-        });
+        const requestId = data?.request_id;
+
+        // Try to find a pending order from checkout time
+        let pendingOrder = null;
+        if (requestId) {
+            pendingOrder = await prisma.order.findUnique({ where: { id: requestId } });
+        }
+        if (!pendingOrder && checkoutId) {
+            pendingOrder = await prisma.order.findUnique({ where: { checkoutId } });
+        }
+
+        if (pendingOrder) {
+            await prisma.order.update({
+                where: { id: pendingOrder.id },
+                data: {
+                    status: 'completed',
+                    checkoutId: checkoutId || pendingOrder.checkoutId,
+                    amount: creditAmount || pendingOrder.amount,
+                }
+            });
+        } else {
+            await prisma.order.create({
+                data: {
+                    userId: user.id,
+                    type: 'credit_topup',
+                    status: 'completed',
+                    amount: creditAmount,
+                    planName: creditPack.planName,
+                    productId: productId || undefined,
+                    checkoutId: checkoutId || `credit_${user.id}_${Date.now()}`,
+                    provider: 'creem',
+                }
+            });
+        }
 
         console.log(`[Creem] Added $${creditAmount} credits for ${email}`);
     }

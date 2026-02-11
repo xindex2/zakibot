@@ -184,6 +184,7 @@ export default function UserManagement() {
                                 <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-white/40">Bots</th>
                                 <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-white/40">Credits</th>
                                 <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-white/40">Registered</th>
+                                <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-white/40">Source</th>
                                 <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-white/40 text-right">Control</th>
                             </tr>
                         </thead>
@@ -268,6 +269,15 @@ export default function UserManagement() {
                                                 {new Date(u.createdAt).toLocaleDateString()}
                                             </td>
                                             <td className="px-8 py-6">
+                                                {u.acquisition_source ? (
+                                                    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider bg-white/5 border border-white/10 text-white/50">
+                                                        {u.acquisition_source}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-[10px] text-white/20 italic">—</span>
+                                                )}
+                                            </td>
+                                            <td className="px-8 py-6">
                                                 <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                                     <button
                                                         onClick={() => handleEditUser(u)}
@@ -288,7 +298,7 @@ export default function UserManagement() {
                                         <AnimatePresence>
                                             {isExpanded && (
                                                 <tr key={`${u.id}-bots`}>
-                                                    <td colSpan={7} className="px-8 py-4">
+                                                    <td colSpan={8} className="px-8 py-4">
                                                         <motion.div
                                                             initial={{ opacity: 0, height: 0 }}
                                                             animate={{ opacity: 1, height: 'auto' }}

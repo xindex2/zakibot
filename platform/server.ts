@@ -1177,4 +1177,52 @@ app.listen(PORT, async () => {
     } catch (e: any) {
         console.warn('⚠️  Creem plan seeding skipped:', e.message);
     }
+
+    // ─── Auto-restart bots that were running before server restart (paid users only) ───
+    try {
+        const staleBots = await prisma.botConfig.findMany({
+            where: { status: 'running' },
+            include: { user: { include: { subscription: true } } }
+        });
+
+        if (staleBots.length > 0) {
+            console.log(`🔄 Found ${staleBots.length} bot(s) marked as running — checking for paid users...`);
+        }
+
+        let restartedCount = 0;
+        for (const bot of staleBots) {
+            const plan = (bot as any).user?.subscription?.plan || 'Free';
+
+            if (plan === 'Free') {
+                // Free users don't get auto-restart — mark as stopped
+                await prisma.botConfig.update({
+                    where: { id: bot.id },
+                    data: { status: 'stopped' }
+                });
+                console.log(`   ⏭  Skipped "${bot.name}" (Free user ${(bot as any).user?.email}) — marked stopped`);
+                continue;
+            }
+
+            // Paid user — restart the bot
+            try {
+                console.log(`   🚀 Restarting "${bot.name}" for ${plan} user ${(bot as any).user?.email}...`);
+                await startBot(bot.id);
+                restartedCount++;
+                // Small delay between bot starts to avoid overwhelming the server
+                await new Promise(resolve => setTimeout(resolve, 3000));
+            } catch (err: any) {
+                console.error(`   ❌ Failed to restart "${bot.name}":`, err.message);
+                await prisma.botConfig.update({
+                    where: { id: bot.id },
+                    data: { status: 'stopped' }
+                });
+            }
+        }
+
+        if (restartedCount > 0) {
+            console.log(`✅ Auto-restarted ${restartedCount} bot(s) for paid users`);
+        }
+    } catch (e: any) {
+        console.warn('⚠️  Bot auto-restart check failed:', e.message);
+    }
 });

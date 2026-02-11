@@ -238,7 +238,12 @@ export async function startBot(configId: string) {
             ENABLE_SUMMARIZE: config.summarizeEnabled ? "true" : "false",
             ENABLE_TMUX: config.tmuxEnabled ? "true" : "false",
             ENABLE_CRON: (config as any).cronEnabled ? "true" : "false",
-            ENABLE_SKILL_CREATOR: (config as any).skillCreatorEnabled ? "true" : "false"
+            ENABLE_SKILL_CREATOR: (config as any).skillCreatorEnabled ? "true" : "false",
+            // Credit pre-check: bot will call back to platform to verify credits
+            ...(apiKeyMode === 'platform_credits' && config.userId ? {
+                PLATFORM_URL: `http://localhost:${process.env.BACKEND_PORT || 3001}`,
+                CREDIT_USER_ID: config.userId,
+            } : {}),
         }
     });
 

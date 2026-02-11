@@ -909,6 +909,21 @@ app.get('/api/credits/packs', async (req: any, res: any) => {
     }
 });
 
+// Internal credit check for bot processes (no auth needed, called by nanobot agent loop)
+app.get('/api/internal/credit-check/:userId', async (req: any, res: any) => {
+    try {
+        const sub = await prisma.subscription.findUnique({
+            where: { userId: req.params.userId },
+            select: { creditBalance: true }
+        });
+        const balance = sub?.creditBalance ?? 0;
+        res.json({ ok: balance > 0.001, balance });
+    } catch (e: any) {
+        // If check fails, allow the message (fail-open)
+        res.json({ ok: true, balance: -1 });
+    }
+});
+
 // Credit balance
 app.get('/api/credits/balance', authenticateToken, async (req: any, res: any) => {
     try {

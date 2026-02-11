@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import os
 from pathlib import Path
 from typing import Any
 
@@ -179,6 +180,30 @@ class AgentLoop:
                 chat_id=msg.chat_id,
                 content="[ACCESS RESTRICTED] You have reached the limit of the Free Plan (2 messages). Please upgrade to continue using your Agent: https://openclaw-host.com/billing"
             )
+        
+        # Platform credit pre-check: block messages when credits are exhausted
+        if not is_internal:
+            platform_url = os.environ.get("PLATFORM_URL")
+            credit_user_id = os.environ.get("CREDIT_USER_ID")
+            if platform_url and credit_user_id:
+                try:
+                    import urllib.request
+                    req = urllib.request.Request(
+                        f"{platform_url}/api/internal/credit-check/{credit_user_id}",
+                        headers={"Accept": "application/json"}
+                    )
+                    with urllib.request.urlopen(req, timeout=3) as resp:
+                        data = json.loads(resp.read())
+                        if not data.get("ok", True):
+                            logger.warning(f"Credits exhausted for user {credit_user_id}")
+                            return OutboundMessage(
+                                channel=msg.channel,
+                                chat_id=msg.chat_id,
+                                content="⚠️ Your credits have been used up. Please top up your account to continue chatting: https://openclaw-host.com/top-up-credits"
+                            )
+                except Exception as e:
+                    # Fail-open: if the check fails, allow the message through
+                    logger.debug(f"Credit check failed (allowing message): {e}")
         
         if not is_internal:
             self.message_count += 1

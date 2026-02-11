@@ -6,7 +6,7 @@ import Register from './pages/Register';
 import AdminDashboard from './pages/AdminDashboard';
 import UserManagement from './pages/UserManagement';
 import Maintenance from './pages/Maintenance';
-import AdminEvents from './pages/AdminEvents';
+
 import PlansEdit from './pages/PlansEdit';
 import AdminSettings from './pages/AdminSettings';
 import Orders from './pages/Orders';
@@ -92,11 +92,7 @@ function AppRoutes() {
                     <UserManagement />
                 </ProtectedRoute>
             } />
-            <Route path="/admin/events" element={
-                <ProtectedRoute adminOnly>
-                    <AdminEvents />
-                </ProtectedRoute>
-            } />
+
             <Route path="/admin/orders" element={
                 <ProtectedRoute adminOnly>
                     <Orders />

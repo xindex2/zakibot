@@ -88,7 +88,7 @@ export default function AdminDashboard() {
             {/* Admin Quick Navigation */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                 <AdminNavLink to="/admin/users" icon={<Users size={18} />} label="User Registry" color="text-blue-500" />
-                <AdminNavLink to="/admin/events" icon={<Activity size={18} />} label="Whop Logs" color="text-[#ff4d4d]" />
+                <AdminNavLink to="/admin/orders" icon={<Activity size={18} />} label="Orders & Logs" color="text-[#ff4d4d]" />
                 <AdminNavLink to="/admin/plans" icon={<Settings size={18} />} label="Plan Config" color="text-amber-500" />
                 <AdminNavLink to="/admin/settings" icon={<Cpu size={18} />} label="Integration" color="text-cyan-400" />
             </div>

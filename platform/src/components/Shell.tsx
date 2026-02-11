@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { Bot, LayoutDashboard, User, Settings, LogOut, Activity, ShieldCheck, MessageSquare, Wallet, Cpu, Menu, X, Crown, Zap, Sparkles, Plus, Users, CreditCard } from 'lucide-react';
+import { Bot, LayoutDashboard, User, Settings, LogOut, Activity, MessageSquare, Wallet, Cpu, Menu, X, Crown, Zap, Sparkles, Plus, Users, CreditCard } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import Logo from './Logo';
 
@@ -34,8 +34,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     const adminItems = [
         { icon: <Activity size={18} />, label: 'Overview', path: '/admin' },
         { icon: <Users size={18} />, label: 'Users', path: '/admin/users' },
-        { icon: <ShieldCheck size={18} />, label: 'Logs', path: '/admin/events' },
-        { icon: <CreditCard size={18} />, label: 'Orders', path: '/admin/orders' },
+        { icon: <CreditCard size={18} />, label: 'Orders & Logs', path: '/admin/orders' },
         { icon: <Settings size={18} />, label: 'Business Plans', path: '/admin/plans' },
         { icon: <Cpu size={18} />, label: 'Settings', path: '/admin/settings' },
     ];

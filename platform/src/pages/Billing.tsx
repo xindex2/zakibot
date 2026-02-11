@@ -180,11 +180,20 @@ export default function Billing() {
                 }),
             });
             const data = await res.json();
-            if (data.url) window.open(data.url, '_blank');
-            else window.open(appendEmail(link), '_blank');
+            if (data.url) {
+                window.open(data.url, '_blank');
+            } else if (data.fallbackUrl) {
+                // API failed but we have a fallback URL
+                console.warn('Creem API failed, using fallback:', data.error);
+                alert(`Creem API error: ${data.error || 'Unknown error'}. Opening direct checkout link (email won't be prefilled).`);
+                window.open(data.fallbackUrl, '_blank');
+            } else {
+                alert(`Checkout error: ${data.error || 'Could not create checkout session'}. Please check your Creem API key in Admin Settings.`);
+            }
         } catch (err) {
-            // Fallback: open link directly with email appended
-            window.open(appendEmail(link), '_blank');
+            // Network error — try direct link
+            alert('Network error creating checkout. Opening direct link.');
+            window.open(link, '_blank');
         }
     };
 

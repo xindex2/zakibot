@@ -226,7 +226,6 @@ app.post('/api/users/source', async (req: any, res: any) => {
     }
 });
 
-// --- Checkout: Create Pending Order & Creem Checkout Session with Email ---
 app.post('/api/checkout', async (req: any, res: any) => {
     try {
         const authHeader = req.headers.authorization;
@@ -255,33 +254,40 @@ app.post('/api/checkout', async (req: any, res: any) => {
             }
         });
 
-        // Try Creem Checkout API (proper way to prefill email per docs.creem.io)
+        // Get Creem API key
         const { getSystemConfig } = await import('./src/lib/config-helper.js');
         const apiKey = await getSystemConfig('CREEM_API_KEY');
 
-        // If productId wasn't sent, try to extract it from the checkoutUrl
+        // Extract product ID from checkout URL if not provided directly
         let effectiveProductId = productId;
         if (!effectiveProductId && checkoutUrl) {
-            // Creem checkout URLs might contain the product ID in the path
             const prodMatch = checkoutUrl.match(/prod_[A-Za-z0-9]+/);
             if (prodMatch) effectiveProductId = prodMatch[0];
         }
 
-        console.log(`[Checkout] User: ${user.email}, ProductId: ${effectiveProductId || 'NONE'}, ApiKey: ${apiKey ? 'SET' : 'MISSING'}, CheckoutUrl: ${checkoutUrl || 'NONE'}`);
+        console.log(`[Checkout] User: ${user.email}, ProductId: ${effectiveProductId || 'NONE'}, ApiKey: ${apiKey ? 'SET(' + apiKey.substring(0, 8) + '...)' : 'MISSING'}`);
 
         if (apiKey && effectiveProductId) {
+            // Detect test vs production mode
+            // Creem keys: creem_xxx (prod) or creem_test_xxx / test_xxx (test)
+            const isTestMode = apiKey.includes('test');
+            const creemBase = isTestMode ? 'https://test-api.creem.io' : 'https://api.creem.io';
+
+            // Build success URL — use the host header (respects reverse proxy)
+            const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'https';
+            const host = req.headers['x-forwarded-host'] || req.get('host');
+            const successUrl = `${protocol}://${host}/billing`;
+
+            const requestBody: any = {
+                product_id: effectiveProductId,
+                request_id: order.id,
+                success_url: successUrl,
+                customer: { email: user.email },
+            };
+
+            console.log(`[Checkout] Calling Creem API: POST ${creemBase}/v1/checkouts`, JSON.stringify(requestBody));
+
             try {
-                const isTestKey = apiKey.startsWith('test_') || apiKey.includes('test');
-                const creemBase = isTestKey ? 'https://test-api.creem.io' : 'https://api.creem.io';
-
-                const requestBody = {
-                    product_id: effectiveProductId,
-                    request_id: order.id,
-                    success_url: `${req.protocol}://${req.get('host')}/billing`,
-                    customer: { email: user.email },
-                };
-                console.log(`[Checkout] Calling Creem API: POST ${creemBase}/v1/checkouts`, JSON.stringify(requestBody));
-
                 const creemRes = await fetch(`${creemBase}/v1/checkouts`, {
                     method: 'POST',
                     headers: {
@@ -291,34 +297,49 @@ app.post('/api/checkout', async (req: any, res: any) => {
                     body: JSON.stringify(requestBody),
                 });
 
-                const creemData = await creemRes.json();
-                console.log(`[Checkout] Creem API response (${creemRes.status}):`, JSON.stringify(creemData));
+                const creemText = await creemRes.text();
+                console.log(`[Checkout] Creem API response (${creemRes.status}):`, creemText);
 
-                if (creemData.checkout_url) {
-                    // Update order with Creem checkout ID
-                    await prisma.order.update({
-                        where: { id: order.id },
-                        data: { checkoutId: creemData.id || null }
+                if (creemRes.ok) {
+                    const creemData = JSON.parse(creemText);
+                    if (creemData.checkout_url) {
+                        // Update order with Creem checkout ID
+                        await prisma.order.update({
+                            where: { id: order.id },
+                            data: { checkoutId: creemData.id || null }
+                        });
+                        return res.json({ url: creemData.checkout_url, orderId: order.id });
+                    }
+                    console.warn('[Checkout] Creem API success but no checkout_url in response');
+                } else {
+                    console.error(`[Checkout] Creem API error ${creemRes.status}: ${creemText}`);
+                    // Return error to frontend with details so user knows what's wrong
+                    return res.status(502).json({
+                        error: `Creem API returned ${creemRes.status}`,
+                        details: creemText,
+                        fallbackUrl: checkoutUrl || null,
+                        orderId: order.id,
                     });
-                    return res.json({ url: creemData.checkout_url, orderId: order.id });
                 }
-                console.warn('[Checkout] Creem API did not return checkout_url, falling back to direct URL');
             } catch (creemErr: any) {
-                console.warn('[Checkout] Creem API call failed, falling back:', creemErr.message);
+                console.error('[Checkout] Creem API call failed:', creemErr.message);
+                return res.status(502).json({
+                    error: `Creem API call failed: ${creemErr.message}`,
+                    fallbackUrl: checkoutUrl || null,
+                    orderId: order.id,
+                });
             }
         } else {
-            console.warn(`[Checkout] Skipping Creem API: apiKey=${apiKey ? 'SET' : 'MISSING'}, productId=${effectiveProductId || 'MISSING'}`);
+            console.warn(`[Checkout] Cannot use Creem API: apiKey=${apiKey ? 'SET' : 'MISSING'}, productId=${effectiveProductId || 'MISSING'}`);
         }
 
-        // Fallback: append email as query param to checkoutUrl
+        // Last resort fallback — only if API key is missing
         if (checkoutUrl) {
-            const url = new URL(checkoutUrl);
-            url.searchParams.set('email', user.email);
-            url.searchParams.set('customer_email', user.email);
-            return res.json({ url: url.toString(), orderId: order.id });
+            console.warn('[Checkout] Using direct URL fallback (email will NOT be prefilled)');
+            return res.json({ url: checkoutUrl, orderId: order.id });
         }
 
-        res.json({ url: checkoutUrl, orderId: order.id });
+        res.status(400).json({ error: 'No checkout URL or product ID available' });
     } catch (e: any) {
         res.status(500).json({ error: e.message });
     }

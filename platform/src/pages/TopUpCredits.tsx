@@ -92,10 +92,18 @@ export default function TopUpCredits() {
                 if (data.url) {
                     window.open(data.url, '_blank');
                     return;
+                } else if (data.fallbackUrl) {
+                    console.warn('Creem API failed, using fallback:', data.error);
+                    alert(`Creem API error: ${data.error || 'Unknown error'}. Opening direct link (email won't be prefilled).`);
+                    window.open(data.fallbackUrl, '_blank');
+                    return;
+                } else {
+                    alert(`Checkout error: ${data.error || 'Could not create checkout'}. Check your Creem API key in Admin Settings.`);
                 }
-            } catch { /* fallback below */ }
-            // Fallback: open directly with email appended
-            window.open(appendEmail(pack.checkoutUrl), '_blank');
+            } catch {
+                alert('Network error creating checkout. Opening direct link.');
+                window.open(pack.checkoutUrl, '_blank');
+            }
         } else {
             alert('Credit packs are not yet configured. Please contact support or ask your admin to set up credit products in the admin panel (Plans > Add Credit Pack).');
         }

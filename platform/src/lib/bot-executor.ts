@@ -10,6 +10,46 @@ const prisma = new PrismaClient();
 // Process cache keyed by BOT CONFIG ID
 const processes: Record<string, { bot: ChildProcess, bridge?: ChildProcess }> = {};
 
+// --- OpenRouter model pricing cache ---
+interface ModelPricing { prompt: number; completion: number; }
+let pricingCache: Record<string, ModelPricing> = {};
+let pricingCacheTime = 0;
+const PRICING_CACHE_TTL = 3600_000; // 1 hour
+
+async function fetchOpenRouterPricing(): Promise<void> {
+    try {
+        const res = await fetch('https://openrouter.ai/api/v1/models');
+        const json = await res.json() as any;
+        const newCache: Record<string, ModelPricing> = {};
+        for (const model of json.data || []) {
+            if (model.id && model.pricing) {
+                newCache[model.id] = {
+                    prompt: parseFloat(model.pricing.prompt) || 0,
+                    completion: parseFloat(model.pricing.completion) || 0,
+                };
+            }
+        }
+        pricingCache = newCache;
+        pricingCacheTime = Date.now();
+        console.log(`[Pricing] Cached pricing for ${Object.keys(newCache).length} models`);
+    } catch (err: any) {
+        console.error('[Pricing] Failed to fetch OpenRouter pricing:', err.message);
+    }
+}
+
+async function getModelPricing(modelId: string): Promise<ModelPricing> {
+    // Refresh cache if stale or empty
+    if (Date.now() - pricingCacheTime > PRICING_CACHE_TTL || Object.keys(pricingCache).length === 0) {
+        await fetchOpenRouterPricing();
+    }
+    if (pricingCache[modelId]) {
+        return pricingCache[modelId];
+    }
+    // Fallback: very conservative rates if model not found
+    console.warn(`[Pricing] Model "${modelId}" not found in cache, using fallback rates`);
+    return { prompt: 0.000001, completion: 0.000002 }; // $1/$2 per 1M
+}
+
 export async function startBot(configId: string) {
     try {
         // Cleanup existing processes with this config ID in command line
@@ -258,20 +298,22 @@ export async function startBot(configId: string) {
                 try {
                     const usageJson = JSON.parse(line.substring(8));
                     if (apiKeyMode === 'platform_credits' && config.userId) {
-                        // Estimate cost using conservative rates close to typical OpenRouter pricing
-                        // Most models: $0.10-$1.50/1M input, $0.30-$2/1M output
-                        const promptRate = 0.0000005;   // $0.50/1M tokens (input)
-                        const completionRate = 0.0000015; // $1.50/1M tokens (output)
-                        const cost = (usageJson.prompt_tokens * promptRate) + (usageJson.completion_tokens * completionRate);
-                        if (cost > 0) {
-                            deductCredits(
-                                config.userId,
-                                cost,
-                                `${usageJson.model}: ${usageJson.prompt_tokens} in / ${usageJson.completion_tokens} out`
-                            ).catch((err: any) => {
-                                console.error(`[Credits ${config.name}]: Deduction failed:`, err.message);
-                            });
-                        }
+                        // Get real pricing for this model and deduct
+                        getModelPricing(usageJson.model).then(pricing => {
+                            const cost = (usageJson.prompt_tokens * pricing.prompt) + (usageJson.completion_tokens * pricing.completion);
+                            if (cost > 0) {
+                                console.log(`[Credits ${config.name}]: ${usageJson.model} - ${usageJson.prompt_tokens} in / ${usageJson.completion_tokens} out = $${cost.toFixed(6)}`);
+                                deductCredits(
+                                    config.userId!,
+                                    cost,
+                                    `${usageJson.model}: ${usageJson.prompt_tokens} in / ${usageJson.completion_tokens} out ($${cost.toFixed(6)})`
+                                ).catch((err: any) => {
+                                    console.error(`[Credits ${config.name}]: Deduction failed:`, err.message);
+                                });
+                            }
+                        }).catch((err: any) => {
+                            console.error(`[Credits ${config.name}]: Pricing lookup failed:`, err.message);
+                        });
                     }
                 } catch (e) { /* skip malformed usage lines */ }
             }

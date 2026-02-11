@@ -739,7 +739,7 @@ export default function Dashboard() {
                                                 {editingAgent.apiKeyMode === 'platform_credits' && subscription && (
                                                     <div className="mt-3 pt-3 border-t border-emerald-500/10 flex items-center justify-between">
                                                         <span className="text-[10px] text-white/40 uppercase tracking-widest font-bold">Balance</span>
-                                                        <span className="text-lg font-black text-emerald-400">${subscription?.creditBalance?.toFixed(2) ?? '0.00'}</span>
+                                                        <span className="text-lg font-black text-emerald-400">${subscription?.creditBalance?.toFixed(4) ?? '0.0000'}</span>
                                                     </div>
                                                 )}
                                             </button>
@@ -784,7 +784,7 @@ export default function Dashboard() {
                                                         </div>
                                                         <div className="text-right flex items-center gap-3">
                                                             <div>
-                                                                <span className="text-xl font-black text-emerald-400">${subscription?.creditBalance?.toFixed(2) ?? '0.00'}</span>
+                                                                <span className="text-xl font-black text-emerald-400">${subscription?.creditBalance?.toFixed(4) ?? '0.0000'}</span>
                                                                 <p className="text-[9px] text-white/30 uppercase tracking-widest">remaining</p>
                                                             </div>
                                                             <button

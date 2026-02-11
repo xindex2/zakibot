@@ -162,7 +162,7 @@ export default function TopUpCredits() {
                         </div>
                         <div>
                             <p className="text-[10px] text-emerald-400/60 uppercase tracking-widest font-bold">Current Balance</p>
-                            <p className="text-3xl font-black text-emerald-400">${balance.toFixed(2)}</p>
+                            <p className="text-3xl font-black text-emerald-400">${balance.toFixed(4)}</p>
                         </div>
                     </div>
                     <div className="flex items-center gap-2 bg-emerald-500/10 px-4 py-2 rounded-xl">

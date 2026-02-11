@@ -100,7 +100,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                             {/* Credits + Top Up */}
                             <div className="flex items-center gap-2 bg-zinc-800/80 border border-zinc-700/50 rounded-lg px-3 py-1.5">
                                 <Sparkles size={12} className="text-emerald-400" />
-                                <span className="text-[10px] font-bold text-emerald-400">${subscription.creditBalance?.toFixed(2) ?? '0.00'}</span>
+                                <span className="text-[10px] font-bold text-emerald-400">${subscription.creditBalance?.toFixed(4) ?? '0.0000'}</span>
                             </div>
                             <button
                                 onClick={() => navigate('/topup')}
@@ -162,7 +162,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                                     <div className="flex items-center gap-2">
                                         <div className="flex-1 flex items-center gap-2 bg-zinc-800/80 border border-zinc-700/50 rounded-lg px-3 py-2">
                                             <Sparkles size={14} className="text-emerald-400" />
-                                            <span className="text-xs font-bold text-emerald-400">${subscription.creditBalance?.toFixed(2) ?? '0.00'}</span>
+                                            <span className="text-xs font-bold text-emerald-400">${subscription.creditBalance?.toFixed(4) ?? '0.0000'}</span>
                                         </div>
                                         <button
                                             onClick={() => handleNav('/topup')}

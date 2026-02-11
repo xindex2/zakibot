@@ -320,7 +320,7 @@ export default function UserManagement() {
                                                 <div className="flex items-center gap-2">
                                                     <CreditCard size={12} className={u.subscription?.creditBalance ? 'text-emerald-400' : 'text-white/20'} />
                                                     <span className={`text-xs font-bold ${u.subscription?.creditBalance ? 'text-emerald-400' : 'text-white/30'}`}>
-                                                        ${(u.subscription?.creditBalance ?? 0).toFixed(2)}
+                                                        ${(u.subscription?.creditBalance ?? 0).toFixed(4)}
                                                     </span>
                                                 </div>
                                             </td>
@@ -570,7 +570,7 @@ export default function UserManagement() {
                                         />
                                         <div className="flex items-center gap-1 text-[10px] text-emerald-400 font-bold whitespace-nowrap">
                                             <CreditCard size={12} />
-                                            Current: ${(editingUser.subscription?.creditBalance ?? 0).toFixed(2)}
+                                            Current: ${(editingUser.subscription?.creditBalance ?? 0).toFixed(4)}
                                         </div>
                                     </div>
                                     <p className="text-[9px] text-white/30 mt-1">Enter amount to add to the user's credit balance. Leave 0 to skip.</p>

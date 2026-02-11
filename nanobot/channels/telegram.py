@@ -92,6 +92,7 @@ class TelegramChannel(BaseChannel):
         self.groq_api_key = groq_api_key
         self._app: Application | None = None
         self._chat_ids: dict[str, int] = {}  # Map sender_id to chat_id for replies
+        self._typing_tasks: dict[int, asyncio.Task] = {}  # chat_id -> typing task
     
     async def start(self) -> None:
         """Start the Telegram bot with long polling."""
@@ -152,6 +153,28 @@ class TelegramChannel(BaseChannel):
             await self._app.shutdown()
             self._app = None
     
+    async def _start_typing(self, chat_id: int) -> None:
+        """Start periodic typing indicator for a chat."""
+        await self._stop_typing(chat_id)
+
+        async def typing_loop() -> None:
+            while self._running and self._app:
+                try:
+                    await self._app.bot.send_chat_action(
+                        chat_id=chat_id, action="typing"
+                    )
+                except Exception:
+                    pass
+                await asyncio.sleep(4)
+
+        self._typing_tasks[chat_id] = asyncio.create_task(typing_loop())
+
+    async def _stop_typing(self, chat_id: int) -> None:
+        """Stop typing indicator for a chat."""
+        task = self._typing_tasks.pop(chat_id, None)
+        if task:
+            task.cancel()
+
     async def send(self, msg: OutboundMessage) -> None:
         """Send a message through Telegram."""
         if not self._app:
@@ -293,6 +316,8 @@ class TelegramChannel(BaseChannel):
                 )
             except Exception as e2:
                 logger.error(f"Error sending Telegram message: {e2}")
+        finally:
+            await self._stop_typing(int(msg.chat_id))
     
     async def _on_start(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handle /start command."""
@@ -386,6 +411,9 @@ class TelegramChannel(BaseChannel):
         content = "\n".join(content_parts) if content_parts else "[empty message]"
         
         logger.debug(f"Telegram message from {sender_id}: {content[:50]}...")
+        
+        # Start typing indicator while agent processes
+        await self._start_typing(chat_id)
         
         # Forward to the message bus
         await self._handle_message(

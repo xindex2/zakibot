@@ -28,6 +28,7 @@ class WhatsAppChannel(BaseChannel):
         self.config: WhatsAppConfig = config
         self._ws = None
         self._connected = False
+        self._typing_tasks: dict[str, asyncio.Task] = {}  # chat_id -> typing task
     
     async def start(self) -> None:
         """Start the WhatsApp channel by connecting to the bridge."""
@@ -228,6 +229,43 @@ class WhatsAppChannel(BaseChannel):
                 await self._ws.send(json.dumps(payload))
         except Exception as e:
             logger.error(f"Error sending WhatsApp message: {e}")
+        finally:
+            await self._stop_typing(msg.chat_id)
+    
+    async def _start_typing(self, chat_id: str) -> None:
+        """Start periodic typing indicator for a chat."""
+        await self._stop_typing(chat_id)
+
+        async def typing_loop() -> None:
+            while self._running and self._ws and self._connected:
+                try:
+                    payload = json.dumps({
+                        "type": "typing",
+                        "to": chat_id,
+                        "state": "composing"
+                    })
+                    await self._ws.send(payload)
+                except Exception:
+                    pass
+                await asyncio.sleep(4)
+
+        self._typing_tasks[chat_id] = asyncio.create_task(typing_loop())
+
+    async def _stop_typing(self, chat_id: str) -> None:
+        """Stop typing indicator for a chat."""
+        task = self._typing_tasks.pop(chat_id, None)
+        if task:
+            task.cancel()
+        # Send paused state
+        if self._ws and self._connected:
+            try:
+                await self._ws.send(json.dumps({
+                    "type": "typing",
+                    "to": chat_id,
+                    "state": "paused"
+                }))
+            except Exception:
+                pass
     
     async def _handle_bridge_message(self, raw: str) -> None:
         """Handle a message from the bridge."""
@@ -263,6 +301,9 @@ class WhatsAppChannel(BaseChannel):
                     "is_group": data.get("isGroup", False)
                 }
             )
+            
+            # Start typing indicator while agent processes
+            await self._start_typing(sender)
         
         elif msg_type == "status":
             # Connection status update

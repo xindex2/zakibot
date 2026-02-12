@@ -72,7 +72,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                             <Logo size={50} className="drop-shadow-lg md:hidden" />
                             <Logo size={80} className="drop-shadow-lg hidden md:block" />
                         </div>
-                        <span className="text-[10px] md:text-sm font-black tracking-widest uppercase italic">OpenClaw<span className="text-red-600"> Host</span></span>
+                        <span className="text-[10px] md:text-sm font-black tracking-widest uppercase italic">My<span className="text-red-600">Claw</span>.Host</span>
                     </Link>
                 </div>
 

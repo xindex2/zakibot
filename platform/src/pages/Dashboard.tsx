@@ -462,7 +462,7 @@ export default function Dashboard() {
                                         className="bg-white/5 hover:bg-white/10 border border-white/5 text-white font-bold px-3 md:px-4 py-2.5 rounded-xl transition-all flex items-center gap-2 text-xs"
                                     >
                                         <Play size={14} strokeWidth={3} className="text-red-500" fill="currentColor" />
-                                        <span className="hidden md:inline">Setup Guide</span>
+                                        <span className="hidden md:inline">How to Launch My First Agent</span>
                                     </button>
                                     <button
                                         onClick={handleCreateAgent}
@@ -478,12 +478,48 @@ export default function Dashboard() {
                         </header>
 
                         {agents.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center py-20 text-center">
+                            <div className="flex flex-col items-center justify-center py-12 text-center">
                                 <div className="w-20 h-20 bg-white/5 rounded-3xl flex items-center justify-center mb-6 border border-white/5">
                                     <Bot size={36} className="text-white/20" />
                                 </div>
-                                <h2 className="text-xl font-black uppercase italic tracking-tight mb-2 text-white/60">No Agents Yet</h2>
-                                <p className="text-white/30 text-sm max-w-md">Click <strong className="text-white/60">"New Agent"</strong> above to create your first AI agent and start deploying.</p>
+                                <h2 className="text-xl font-black uppercase italic tracking-tight mb-2 text-white/60">How to Launch Your First Agent</h2>
+                                <p className="text-white/30 text-sm max-w-md mb-8">Watch the quick tutorial below, then click <strong className="text-white/60">"New Agent"</strong> to create and deploy your first AI agent.</p>
+
+                                {/* Embedded tutorial video */}
+                                <div className="w-full max-w-2xl mb-8">
+                                    {/* Desktop: landscape video */}
+                                    <div className="hidden md:block">
+                                        <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0, borderRadius: '16px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.08)' }}>
+                                            <iframe
+                                                src="https://www.youtube.com/embed/BoQAmvbViAg"
+                                                title="How to Launch Your First Agent"
+                                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                                allowFullScreen
+                                                style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}
+                                            />
+                                        </div>
+                                    </div>
+                                    {/* Mobile: vertical short */}
+                                    <div className="md:hidden">
+                                        <div style={{ position: 'relative', paddingBottom: '177.78%', height: 0, borderRadius: '16px', overflow: 'hidden', maxWidth: '280px', margin: '0 auto', border: '1px solid rgba(255,255,255,0.08)' }}>
+                                            <iframe
+                                                src="https://www.youtube.com/embed/HW83uf-BvBk"
+                                                title="How to Launch Your First Agent"
+                                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                                allowFullScreen
+                                                style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <button
+                                    onClick={handleCreateAgent}
+                                    className="bg-green-600 hover:bg-green-500 text-white font-bold px-8 py-3.5 rounded-xl transition-all shadow-lg shadow-green-900/20 flex items-center gap-2 text-sm"
+                                >
+                                    <Plus size={18} strokeWidth={3} />
+                                    Create My First Agent
+                                </button>
                             </div>
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

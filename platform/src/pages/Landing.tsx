@@ -160,7 +160,7 @@ export default function Landing() {
                             letterSpacing: '-0.03em',
                             textTransform: 'uppercase'
                         }}>
-                            My<span style={{ color: '#ef4444' }}>Claw</span>.Hosting
+                            OpenClaw Hosting
                         </h1>
                         <p style={{
                             fontSize: '1rem',

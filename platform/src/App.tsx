@@ -18,6 +18,8 @@ import Hosting from './pages/seo/Hosting';
 import VPS from './pages/seo/VPS';
 import Deploy from './pages/seo/Deploy';
 import Install from './pages/seo/Install';
+import WhatsAppSEO from './pages/seo/WhatsApp';
+import TelegramSEO from './pages/seo/Telegram';
 import Contact from './pages/Contact';
 import Privacy from './pages/legal/Privacy';
 import ToS from './pages/legal/ToS';
@@ -53,6 +55,10 @@ function AppRoutes() {
             <Route path="/openclaw-vps" element={<VPS />} />
             <Route path="/deploy-openclaw" element={<Deploy />} />
             <Route path="/install-openclaw" element={<Install />} />
+            <Route path="/openclaw-whatsapp" element={<WhatsAppSEO />} />
+            <Route path="/openclaw-telegram" element={<TelegramSEO />} />
+            <Route path="/link-openclaw-whatsapp" element={<WhatsAppSEO />} />
+            <Route path="/link-openclaw-telegram" element={<TelegramSEO />} />
 
             <Route path="/thank-you" element={<ThankYou />} />
             <Route path="/contact" element={<Contact />} />

@@ -24,6 +24,8 @@ export default function Footer() {
                             <li><Link to="/openclaw-hosting" className="text-gray-500 hover:text-white transition-colors">MyClaw.Hosting</Link></li>
                             <li><Link to="/install-openclaw" className="text-gray-500 hover:text-white transition-colors">Install OpenClaw</Link></li>
                             <li><Link to="/deploy-openclaw" className="text-gray-500 hover:text-white transition-colors">Deploy OpenClaw</Link></li>
+                            <li><Link to="/openclaw-whatsapp" className="text-gray-500 hover:text-white transition-colors">OpenClaw + WhatsApp</Link></li>
+                            <li><Link to="/openclaw-telegram" className="text-gray-500 hover:text-white transition-colors">OpenClaw + Telegram</Link></li>
                         </ul>
                     </div>
 

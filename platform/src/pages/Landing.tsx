@@ -90,7 +90,7 @@ export default function Landing() {
         initOneTap();
     }, [isAuthenticated, handleGoogleCredential]);
     useEffect(() => {
-        document.title = "MyClaw.Hosting, OpenClaw VPS, Install OpenClaw, Deploy OpenClaw - MyClaw.Host";
+        document.title = "OpenClaw Hosting, OpenClaw VPS, Install OpenClaw, Deploy OpenClaw - All in 60 seconds - MyClaw.Host";
         const metaDesc = document.querySelector('meta[name="description"]');
         if (metaDesc) {
             metaDesc.setAttribute("content", "The professional way to hosting OpenClaw. High-performance OpenClaw VPS, 1-click install, and instant deployment for your AI agents.");

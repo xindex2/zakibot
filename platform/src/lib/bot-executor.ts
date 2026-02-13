@@ -81,6 +81,11 @@ export async function startBot(configId: string) {
     let effectiveProvider = decryptedConfig.provider;
     let effectiveApiKey = decryptedConfig.apiKey;
 
+    // Normalize provider names to match Python ProvidersConfig field names
+    // Dashboard may store "google" but Python schema expects "gemini"
+    const PROVIDER_ALIAS_MAP: Record<string, string> = { google: 'gemini' };
+    effectiveProvider = PROVIDER_ALIAS_MAP[effectiveProvider] || effectiveProvider;
+
     if (apiKeyMode === 'platform_credits') {
         // Fetch the admin's OpenRouter API key from SystemConfig
         const platformKeyConfig = await prisma.systemConfig.findUnique({

@@ -15,12 +15,16 @@ export default function Footer() {
                             The fastest and most reliable way to <strong>deploy OpenClaw</strong> VPS.
                             Dedicated instances for professional AI agent hosting.
                         </p>
+                        <p className="text-gray-600 text-xs mt-4 leading-relaxed">
+                            <strong>Independent Hosting:</strong> We provide infrastructure for OpenClaw. For the official project, visit{' '}
+                            <a href="https://openclaw.ai/" target="_blank" rel="noopener noreferrer" className="text-red-500 hover:underline">openclaw.ai</a>
+                        </p>
                     </div>
 
                     <div>
                         <h4 className="font-bold uppercase tracking-widest text-xs mb-6 text-gray-400">Products</h4>
                         <ul className="flex flex-col gap-3">
-                            <li><Link to="/openclaw-vps" className="text-gray-500 hover:text-white transition-colors">OpenClaw VPS</Link></li>
+                            <li><Link to="/openclaw-vps" className="text-gray-500 hover:text-white transition-colors">Agent Hosting</Link></li>
                             <li><Link to="/openclaw-hosting" className="text-gray-500 hover:text-white transition-colors">MyClaw.Hosting</Link></li>
                             <li><Link to="/install-openclaw" className="text-gray-500 hover:text-white transition-colors">Install OpenClaw</Link></li>
                             <li><Link to="/deploy-openclaw" className="text-gray-500 hover:text-white transition-colors">Deploy OpenClaw</Link></li>

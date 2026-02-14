@@ -90,10 +90,10 @@ export default function Landing() {
         initOneTap();
     }, [isAuthenticated, handleGoogleCredential]);
     useEffect(() => {
-        document.title = "OpenClaw Hosting, OpenClaw VPS, Install OpenClaw, Deploy OpenClaw - All in 60 seconds - MyClaw.Host";
+        document.title = "OpenClaw VPS Hosting & Deploy OpenClaw Multi Agents in 60s - MyClaw.Host";
         const metaDesc = document.querySelector('meta[name="description"]');
         if (metaDesc) {
-            metaDesc.setAttribute("content", "The professional way to hosting OpenClaw. High-performance OpenClaw VPS, 1-click install, and instant deployment for your AI agents.");
+            metaDesc.setAttribute("content", "The easiest way to host OpenClaw agents. 1-Click setup, Multi-Agent support for Telegram & WhatsApp, and 24/7 uptime. Start for $19/mo.");
         }
 
         // Track acquisition source (persists in localStorage through OAuth redirects)
@@ -113,6 +113,7 @@ export default function Landing() {
                     </div>
                     <div className="flex gap-lg" style={{ alignItems: 'center' }}>
                         <a href="#pricing" className="btn btn-ghost" style={{ fontSize: '0.95rem' }}>Pricing</a>
+                        <a href="#faq" className="btn btn-ghost" style={{ fontSize: '0.95rem' }}>FAQ</a>
                         {isAuthenticated ? (
                             <Link to="/dashboard" className="btn btn-primary" style={{ padding: '0.6rem 1.5rem', fontSize: '0.95rem' }}>Dashboard</Link>
                         ) : (
@@ -140,49 +141,51 @@ export default function Landing() {
                             <Logo size={120} />
                         </div>
 
-                        <div style={{
-                            background: 'rgba(255,107,107,0.1)',
-                            padding: '0.75rem 1.5rem',
-                            borderRadius: 'var(--radius-md)',
-                            border: '1px solid rgba(255,107,107,0.2)',
-                            marginBottom: 'var(--spacing-xl)',
-                            display: 'inline-block'
-                        }}>
-                            <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--color-text-secondary)' }}>
-                                <strong>Independent Hosting:</strong> We provide infrastructure for OpenClaw. For the official project, visit <a href="https://openclaw.ai/" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--coral-bright)', textDecoration: 'none', fontWeight: 'bold' }}>openclaw.ai</a>
-                            </p>
-                        </div>
-
                         <h1 style={{
-                            fontSize: 'clamp(3rem, 8vw, 5rem)',
+                            fontSize: 'clamp(2.5rem, 7vw, 4.5rem)',
                             marginBottom: 'var(--spacing-md)',
-                            lineHeight: 1,
+                            lineHeight: 1.05,
                             letterSpacing: '-0.03em',
                             textTransform: 'uppercase'
                         }}>
-                            OpenClaw Hosting
+                            OpenClaw VPS Hosting
                         </h1>
-                        <p style={{
-                            fontSize: '1rem',
-                            color: 'var(--coral-bright)',
-                            fontWeight: 'var(--font-weight-bold)',
-                            letterSpacing: '0.2em',
-                            textTransform: 'uppercase',
-                            marginBottom: 'var(--spacing-xl)'
-                        }}>
-                            THE AI THAT ACTUALLY DOES THINGS.
-                        </p>
 
                         <p style={{
-                            fontSize: '1.25rem',
-                            maxWidth: '650px',
-                            margin: '0 auto var(--spacing-2xl)',
+                            fontSize: '1.3rem',
+                            maxWidth: '700px',
+                            margin: '0 auto var(--spacing-xl)',
                             color: 'var(--color-text-secondary)',
                             lineHeight: 1.6,
                         }}>
-                            The easiest way to <strong>install OpenClaw</strong> and <strong>deploy OpenClaw</strong> VPS.
-                            Get your dedicated AI agent in under 60 seconds.
+                            Deploy autonomous AI agents in 60 seconds. No coding. No servers. Just results.
                         </p>
+
+                        {/* Key Benefits */}
+                        <div style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 'var(--spacing-sm)',
+                            alignItems: 'center',
+                            marginBottom: 'var(--spacing-2xl)',
+                        }}>
+                            {[
+                                { icon: '✅', text: 'Multi-Agent Support: Run Telegram & WhatsApp bots simultaneously.' },
+                                { icon: '✅', text: '24/7 Uptime: Your agents work while you sleep.' },
+                                { icon: '✅', text: '1-Click Setup: No Linux commands required.' },
+                            ].map((item, i) => (
+                                <div key={i} style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '10px',
+                                    fontSize: '1.05rem',
+                                    color: 'var(--color-text-secondary)',
+                                }}>
+                                    <span>{item.icon}</span>
+                                    <span>{item.text}</span>
+                                </div>
+                            ))}
+                        </div>
 
                         {/* Providers & Channels Showcase */}
                         <div style={{ maxWidth: '700px', margin: '0 auto var(--spacing-2xl)', display: 'flex', flexDirection: 'column', gap: 'var(--spacing-lg)' }}>
@@ -273,6 +276,63 @@ export default function Landing() {
                             )}
                         </div>
 
+                    </div>
+                </div>
+            </section>
+
+            {/* What is OpenClaw? — SEO Section */}
+            <section style={{
+                padding: 'var(--spacing-2xl) 0',
+                background: 'rgba(255,255,255,0.02)',
+                borderTop: '1px solid var(--color-border)',
+                position: 'relative',
+                zIndex: 1
+            }}>
+                <div className="container" style={{ maxWidth: '850px', margin: '0 auto', textAlign: 'center' }}>
+                    <h2 style={{ fontSize: '2.5rem', marginBottom: 'var(--spacing-lg)', letterSpacing: '-0.02em' }}>
+                        What is OpenClaw?
+                    </h2>
+                    <p style={{
+                        fontSize: '1.15rem',
+                        color: 'var(--color-text-secondary)',
+                        lineHeight: 1.8,
+                        margin: '0 auto'
+                    }}>
+                        <strong>OpenClaw</strong> is an open-source autonomous agent framework.
+                        Unlike standard VPS providers like Contabo or Hostinger where you get a blank Linux server,
+                        <strong> MyClaw</strong> gives you a <strong>fully managed OpenClaw instance</strong> pre-installed
+                        with Docker, ready to automate tasks on <strong>Telegram</strong>, <strong>Discord</strong>,
+                        <strong> WhatsApp</strong>, and the web instantly.
+                    </p>
+                    <div style={{
+                        marginTop: 'var(--spacing-xl)',
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        justifyContent: 'center',
+                        gap: 'var(--spacing-lg)'
+                    }}>
+                        {[
+                            { label: 'Pre-installed Docker', icon: '🐳' },
+                            { label: 'Ready for Telegram', icon: '💬' },
+                            { label: 'WhatsApp Support', icon: '📱' },
+                            { label: 'Web Automation', icon: '🌐' },
+                        ].map((item, i) => (
+                            <div key={i} style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                padding: '0.6rem 1.2rem',
+                                background: 'rgba(255,107,107,0.06)',
+                                border: '1px solid rgba(255,107,107,0.15)',
+                                borderRadius: 'var(--radius-full)',
+                                fontSize: '0.9rem',
+                                color: 'var(--color-text-secondary)',
+                                fontWeight: '600'
+                            }}>
+                                <span>{item.icon}</span>
+                                {item.label}
+                            </div>
+                        ))}
                     </div>
                 </div>
             </section>
@@ -506,7 +566,7 @@ export default function Landing() {
                     }}>
                         {[
                             { name: "One Agent", price: "$19", limit: "1 Agent", features: ["Dedicated VPS", "1-Click Installation", "Web Terminal Access", "Persistent Storage"], checkoutUrl: "https://whop.com/checkout/plan_Ke7ZeyJO29DwZ" },
-                            { name: "5 Agents", price: "$69", limit: "Up to 5 Agents", features: ["Priority Support", "Dedicated Resources", "Multi-Agent Dashboard", "Safe Volume Backups"], popular: true, checkoutUrl: "https://whop.com/checkout/plan_9NRNdPMrVzwi8" },
+                            { name: "5 Agents", price: "$69", limit: "Multi-Agent Dashboard: Run 5 Simultaneous Bots", features: ["Priority Support", "Dedicated Resources", "Multi-Agent Dashboard", "Safe Volume Backups"], popular: true, checkoutUrl: "https://whop.com/checkout/plan_9NRNdPMrVzwi8" },
                             { name: "10 Agents", price: "$99", limit: "Up to 10 Agents", features: ["Enterprise Hardware", "Advanced Monitoring", "Custom Subdomains", "Global Edge Network"], checkoutUrl: "https://whop.com/checkout/plan_XXO2Ey0ki51AI" },
                         ].map((plan, i) => (
                             <div key={i} className="card-glass" style={{
@@ -615,6 +675,96 @@ export default function Landing() {
                 </div>
             </section>
 
+            {/* Technical Specs */}
+            <section style={{
+                padding: 'var(--spacing-lg) 0',
+                position: 'relative',
+                zIndex: 1,
+                borderTop: '1px solid var(--color-border)',
+                background: 'rgba(255,255,255,0.015)'
+            }}>
+                <div className="container text-center">
+                    <p style={{
+                        fontSize: '0.75rem',
+                        color: 'var(--color-text-muted)',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.15em',
+                        fontWeight: 'bold',
+                        marginBottom: 'var(--spacing-md)'
+                    }}>Technical Specs</p>
+                    <div className="flex-center" style={{ gap: 'var(--spacing-md)', flexWrap: 'wrap' }}>
+                        {[
+                            'Dedicated Docker Container',
+                            '2GB+ RAM',
+                            'NVMe Storage',
+                            'Persistent Memory',
+                            'Auto-Healing'
+                        ].map((spec, i) => (
+                            <span key={i} style={{
+                                padding: '0.5rem 1rem',
+                                background: 'rgba(255,255,255,0.04)',
+                                border: '1px solid rgba(255,255,255,0.08)',
+                                borderRadius: 'var(--radius-full)',
+                                fontSize: '0.85rem',
+                                color: 'var(--color-text-secondary)',
+                                fontWeight: '600'
+                            }}>
+                                {spec}
+                            </span>
+                        ))}
+                    </div>
+                </div>
+            </section>
+
+            {/* Comparison Table */}
+            <section style={{
+                padding: 'var(--spacing-2xl) 0',
+                position: 'relative',
+                zIndex: 1,
+                borderTop: '1px solid var(--color-border)',
+                background: 'rgba(255,107,107,0.02)'
+            }}>
+                <div className="container">
+                    <h2 className="text-center mb-xl" style={{ fontSize: '2.5rem', letterSpacing: '-0.02em' }}>Why MyClaw vs. a Standard VPS?</h2>
+                    <p className="text-center" style={{ color: 'var(--color-text-secondary)', maxWidth: '700px', margin: '0 auto var(--spacing-2xl)', fontSize: '1.1rem' }}>
+                        Stop wasting hours on server setup. See how we compare to DIY VPS providers.
+                    </p>
+                    <div style={{ maxWidth: '800px', margin: '0 auto', overflow: 'auto' }}>
+                        <table style={{
+                            width: '100%',
+                            borderCollapse: 'separate',
+                            borderSpacing: 0,
+                            border: '1px solid var(--color-border)',
+                            borderRadius: 'var(--radius-xl)',
+                            overflow: 'hidden',
+                            fontSize: '0.95rem'
+                        }}>
+                            <thead>
+                                <tr style={{ background: 'rgba(255,255,255,0.04)' }}>
+                                    <th style={{ padding: '1rem 1.25rem', textAlign: 'left', borderBottom: '1px solid var(--color-border)', color: 'var(--color-text-muted)', fontWeight: 'bold', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Feature</th>
+                                    <th style={{ padding: '1rem 1.25rem', textAlign: 'center', borderBottom: '1px solid var(--color-border)', color: 'var(--coral-bright)', fontWeight: 'bold', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>MyClaw (Us)</th>
+                                    <th style={{ padding: '1rem 1.25rem', textAlign: 'center', borderBottom: '1px solid var(--color-border)', color: 'var(--color-text-muted)', fontWeight: 'bold', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Standard VPS</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {[
+                                    { feature: 'Setup Time', us: '60 Seconds (1-Click)', them: '45+ Minutes (Manual)' },
+                                    { feature: 'Software', us: 'Pre-Installed', them: 'You Install It Yourself' },
+                                    { feature: 'Multi-Agent', us: 'Built-in Dashboard', them: 'Requires Complex Coding' },
+                                    { feature: 'Maintenance', us: 'Managed Updates', them: 'You Fix It When It Breaks' },
+                                ].map((row, i) => (
+                                    <tr key={i} style={{ borderBottom: i < 3 ? '1px solid var(--color-border)' : 'none' }}>
+                                        <td style={{ padding: '0.9rem 1.25rem', fontWeight: '600', color: 'var(--color-text-primary)' }}>{row.feature}</td>
+                                        <td style={{ padding: '0.9rem 1.25rem', textAlign: 'center', color: 'var(--color-success)', fontWeight: '600' }}>✅ {row.us}</td>
+                                        <td style={{ padding: '0.9rem 1.25rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>❌ {row.them}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
             {/* FAQ Section */}
             <section id="faq" style={{ padding: 'var(--spacing-2xl) 0', position: 'relative', zIndex: 1 }}>
                 <div className="container">
@@ -624,7 +774,10 @@ export default function Landing() {
                             { q: "What is MyClaw.Hosting?", a: "MyClaw.Hosting is a dedicated platform that provides pre-configured VPS for running OpenClaw AI agents with zero technical setup." },
                             { q: "How do I install OpenClaw?", a: "With 1-click deployment, we automatically install OpenClaw and all its dependencies in a secure Docker container for you." },
                             { q: "Can I run OpenClaw VPS for business?", a: "Yes, our enterprise-grade infrastructure is designed for reliable, 24/7 agent operations, perfect for business automation." },
-                            { q: "Is the OpenClaw VPS dedicated?", a: "Absolutely. Every user gets an isolated environment with dedicated resources to ensure maximum speed and privacy." }
+                            { q: "Is the OpenClaw VPS dedicated?", a: "Absolutely. Every user gets an isolated environment with dedicated resources to ensure maximum speed and privacy." },
+                            { q: "Can I run multiple agents at once?", a: "Yes! With our Pro Plan ($69/mo), you can use our Multi-Agent Dashboard to run up to 5 simultaneous agents for different tasks (e.g., one for Support, one for Sales)." },
+                            { q: "Do I need to keep my computer on?", a: "No. Your agents run on our 24/7 cloud infrastructure. You can close your browser, and they keep working." },
+                            { q: "Is my data private?", a: "Yes. Every agent runs in an isolated Docker container. Your API keys and memory are encrypted and never shared." }
                         ].map((faq, i) => (
                             <div key={i} className="card-glass" style={{ padding: 'var(--spacing-lg)' }}>
                                 <h4 style={{ color: 'var(--coral-bright)', marginBottom: 'var(--spacing-sm)', fontSize: '1.2rem' }}>{faq.q}</h4>

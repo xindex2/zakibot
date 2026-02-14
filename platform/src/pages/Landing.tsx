@@ -28,6 +28,7 @@ export default function Landing() {
     const { isAuthenticated, login } = useAuth();
     const navigate = useNavigate();
     const [oneTapLoading, setOneTapLoading] = useState(false);
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
     // Handle Google One Tap credential
     const handleGoogleCredential = useCallback(async (response: any) => {
@@ -107,11 +108,14 @@ export default function Landing() {
             {/* Navigation */}
             <nav className="nav" style={{ position: 'relative', zIndex: 10, borderBottom: '1px solid var(--color-border)' }}>
                 <div className="container flex-between" style={{ padding: 'clamp(0.75rem, 2vw, 1.25rem) var(--spacing-lg)' }}>
+                    {/* Left: Logo — text hidden on mobile */}
                     <div className="flex gap-md" style={{ alignItems: 'center' }}>
-                        <h3 style={{ margin: 0, letterSpacing: '-0.02em' }}>My<span style={{ color: '#ef4444' }}>Claw</span>.Host</h3>
                         <Logo size={36} />
+                        <h3 className="hidden-mobile" style={{ margin: 0, letterSpacing: '-0.02em' }}>My<span style={{ color: '#ef4444' }}>Claw</span>.Host</h3>
                     </div>
-                    <div className="flex gap-lg" style={{ alignItems: 'center' }}>
+
+                    {/* Desktop nav links */}
+                    <div className="hidden-mobile flex gap-lg" style={{ alignItems: 'center' }}>
                         <a href="#pricing" className="btn btn-ghost" style={{ fontSize: '0.95rem' }}>Pricing</a>
                         <a href="#faq" className="btn btn-ghost" style={{ fontSize: '0.95rem' }}>FAQ</a>
                         {isAuthenticated ? (
@@ -123,7 +127,62 @@ export default function Landing() {
                             </>
                         )}
                     </div>
+
+                    {/* Mobile hamburger button */}
+                    <button
+                        className="visible-mobile-only"
+                        onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                        style={{
+                            background: 'none',
+                            border: '1px solid rgba(255,255,255,0.12)',
+                            borderRadius: 'var(--radius-md)',
+                            padding: '0.5rem 0.7rem',
+                            cursor: 'pointer',
+                            color: 'white',
+                            fontSize: '1.2rem',
+                            lineHeight: 1,
+                            display: 'none',
+                        }}
+                        aria-label="Toggle menu"
+                    >
+                        {mobileMenuOpen ? '✕' : '☰'}
+                    </button>
                 </div>
+
+                {/* Mobile dropdown menu */}
+                <AnimatePresence>
+                    {mobileMenuOpen && (
+                        <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.25 }}
+                            style={{
+                                overflow: 'hidden',
+                                borderTop: '1px solid var(--color-border)',
+                                background: 'var(--bg-deep)',
+                            }}
+                        >
+                            <div style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: 'var(--spacing-sm)',
+                                padding: 'var(--spacing-md) var(--spacing-lg)',
+                            }}>
+                                <a href="#pricing" onClick={() => setMobileMenuOpen(false)} className="btn btn-ghost" style={{ fontSize: '0.95rem', textAlign: 'left' }}>Pricing</a>
+                                <a href="#faq" onClick={() => setMobileMenuOpen(false)} className="btn btn-ghost" style={{ fontSize: '0.95rem', textAlign: 'left' }}>FAQ</a>
+                                {isAuthenticated ? (
+                                    <Link to="/dashboard" onClick={() => setMobileMenuOpen(false)} className="btn btn-primary" style={{ padding: '0.6rem 1.5rem', fontSize: '0.95rem', textAlign: 'center' }}>Dashboard</Link>
+                                ) : (
+                                    <>
+                                        <Link to="/login" onClick={() => setMobileMenuOpen(false)} className="btn btn-ghost" style={{ fontSize: '0.95rem', textAlign: 'left' }}>Login</Link>
+                                        <Link to="/register" onClick={() => setMobileMenuOpen(false)} className="btn btn-primary" style={{ padding: '0.6rem 1.5rem', fontSize: '0.95rem', textAlign: 'center' }}>Get Started</Link>
+                                    </>
+                                )}
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </nav>
 
             {/* Hero Section */}

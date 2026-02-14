@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { CreditCard, Shield, Rocket, CheckCircle2, Bot, Zap, Crown, Building2, Plus, Sparkles } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
+import { isIOSWebView } from '../lib/webview-detect';
+import IOSWebViewBanner from '../components/IOSWebViewBanner';
 
 function cn(...inputs: any) {
     return inputs.filter(Boolean).join(' ');
@@ -11,6 +13,11 @@ const PLAN_ORDER = ['Free', 'Starter', 'Pro', 'Elite', 'Enterprise'];
 
 export default function Billing() {
     const { user, token } = useAuth();
+
+    // iOS WebView: show redirect banner instead of payment UI
+    if (isIOSWebView()) {
+        return <IOSWebViewBanner type="billing" />;
+    }
     const [subscription, setSubscription] = useState<any>(null);
     const [provider, setProvider] = useState('creem');
     const [creemPlans, setCreemPlans] = useState<any[]>([]);

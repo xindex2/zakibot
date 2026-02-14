@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { User, Shield, Camera, Lock, Bot } from 'lucide-react';
+import { User, Shield, Camera, Lock, Bot, Trash2, AlertTriangle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -10,9 +11,13 @@ function cn(...inputs: ClassValue[]) {
 }
 
 export default function Profile() {
-    const { user } = useAuth();
+    const { user, logout } = useAuth();
+    const navigate = useNavigate();
     const [profileForm, setProfileForm] = useState({ full_name: '', avatar_url: '', password: '' });
     const [status, setStatus] = useState({ loading: false, error: '', success: '' });
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [deleteConfirmEmail, setDeleteConfirmEmail] = useState('');
+    const [deleteStatus, setDeleteStatus] = useState({ loading: false, error: '' });
 
     useEffect(() => {
         if (user) {
@@ -42,6 +47,29 @@ export default function Profile() {
             }
         } catch (err) {
             setStatus({ loading: false, error: 'Network error occurred.', success: '' });
+        }
+    };
+
+    const handleDeleteAccount = async () => {
+        setDeleteStatus({ loading: true, error: '' });
+        try {
+            const res = await fetch('/api/profile', {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                },
+                body: JSON.stringify({ confirmEmail: deleteConfirmEmail })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                logout();
+                navigate('/login');
+            } else {
+                setDeleteStatus({ loading: false, error: data.error || 'Failed to delete account.' });
+            }
+        } catch (err) {
+            setDeleteStatus({ loading: false, error: 'Network error occurred.' });
         }
     };
 
@@ -133,8 +161,88 @@ export default function Profile() {
                             </button>
                         </div>
                     </section>
+
+                    {/* ── Danger Zone ── */}
+                    <section className="border border-red-900/40 rounded-3xl p-10 shadow-xl bg-red-950/10">
+                        <div className="flex items-center gap-3 mb-4">
+                            <AlertTriangle size={18} className="text-red-500" />
+                            <h2 className="text-sm font-black text-red-500 uppercase tracking-widest">Danger Zone</h2>
+                        </div>
+                        <p className="text-zinc-500 text-sm mb-6 leading-relaxed">
+                            Permanently delete your account and all associated data including agents, configurations, chat history, and subscription.
+                            <strong className="text-red-400"> This action cannot be undone.</strong>
+                        </p>
+                        <button
+                            onClick={() => setShowDeleteModal(true)}
+                            className="bg-red-950/50 border border-red-800/50 text-red-400 px-8 py-3.5 rounded-xl font-bold text-xs tracking-widest uppercase hover:bg-red-900/50 hover:border-red-700/50 hover:text-red-300 active:scale-95 transition-all flex items-center gap-3"
+                        >
+                            <Trash2 size={14} />
+                            Delete Account
+                        </button>
+                    </section>
                 </div>
             </div>
+
+            {/* Delete Confirmation Modal */}
+            {showDeleteModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm" onClick={() => setShowDeleteModal(false)}>
+                    <div className="bg-zinc-900 border border-red-900/50 rounded-3xl p-10 max-w-md w-full mx-4 shadow-2xl" onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center gap-3 mb-6">
+                            <div className="w-12 h-12 rounded-2xl bg-red-950/50 border border-red-900/50 flex items-center justify-center">
+                                <AlertTriangle size={22} className="text-red-500" />
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-black text-white tracking-tight">Delete Account</h3>
+                                <p className="text-xs text-zinc-500 font-medium">This is permanent and irreversible</p>
+                            </div>
+                        </div>
+
+                        <div className="bg-red-950/20 border border-red-900/30 rounded-xl p-4 mb-6">
+                            <p className="text-red-400 text-xs font-bold leading-relaxed">
+                                All your agents will be stopped and deleted. Your subscription, credits, and all data will be permanently removed. You will be logged out immediately.
+                            </p>
+                        </div>
+
+                        <div className="space-y-2 mb-6">
+                            <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest block px-1">
+                                Type your email to confirm: <span className="text-red-400">{user?.email}</span>
+                            </label>
+                            <input
+                                type="email"
+                                value={deleteConfirmEmail}
+                                onChange={e => setDeleteConfirmEmail(e.target.value)}
+                                className="input-modern w-full border-red-900/30 focus:border-red-500/50"
+                                placeholder="your@email.com"
+                                autoComplete="off"
+                            />
+                        </div>
+
+                        {deleteStatus.error && (
+                            <div className="p-3 bg-red-950/30 border border-red-900/30 text-red-400 text-xs font-bold rounded-lg mb-4 flex items-center gap-2">
+                                <div className="w-1.5 h-1.5 bg-red-500 rounded-full" />
+                                {deleteStatus.error}
+                            </div>
+                        )}
+
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => { setShowDeleteModal(false); setDeleteConfirmEmail(''); setDeleteStatus({ loading: false, error: '' }); }}
+                                className="flex-1 bg-zinc-800 text-zinc-300 py-4 rounded-xl font-bold text-xs tracking-widest uppercase hover:bg-zinc-700 transition-all"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleDeleteAccount}
+                                disabled={deleteStatus.loading || deleteConfirmEmail !== user?.email}
+                                className="flex-1 bg-red-600 text-white py-4 rounded-xl font-bold text-xs tracking-widest uppercase hover:bg-red-500 transition-all shadow-xl shadow-red-600/20 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                            >
+                                <Trash2 size={14} />
+                                {deleteStatus.loading ? 'Deleting...' : 'Delete Forever'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

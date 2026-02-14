@@ -25,6 +25,7 @@
     "express": "^4.19.2",
     "framer-motion": "^11.2.10",
     "google-auth-library": "^10.5.0",
+    "jose": "^5.10.0",
     "jsonwebtoken": "^9.0.3",
     "lucide-react": "^0.563.0",
     "multer": "^2.0.2",

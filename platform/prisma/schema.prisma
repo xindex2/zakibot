@@ -16,6 +16,7 @@ model User {
   acquisition_source String?  @default("Direct")
   whop_user_id       String?  @unique
   google_id          String?  @unique
+  apple_id           String?  @unique
   avatar_url         String?
   configs            BotConfig[]
   subscription       Subscription?

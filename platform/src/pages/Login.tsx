@@ -36,7 +36,9 @@ export default function Login() {
                 setError('Authentication failed. Please try again.');
             }
         } else if (googleError) {
-            setError('Google authentication failed. Please try again.');
+            setError(googleError === 'apple_auth_failed'
+                ? 'Apple authentication failed. Please try again.'
+                : 'Google authentication failed. Please try again.');
         }
     }, [location, login, navigate]);
 
@@ -71,6 +73,10 @@ export default function Login() {
     /** Use server-side OAuth redirect — works on all platforms (desktop, mobile, WebView) */
     const handleGoogleLogin = () => {
         window.location.href = '/api/auth/google';
+    };
+
+    const handleAppleLogin = () => {
+        window.location.href = '/api/auth/apple';
     };
 
     return (
@@ -148,6 +154,18 @@ export default function Login() {
                                     <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.956l3.007 2.332C4.672 5.164 6.656 3.58 9 3.58z" fill="#ea4335" />
                                 </svg>
                                 Continue with Google
+                            </button>
+
+                            {/* Apple Sign-In */}
+                            <button
+                                type="button"
+                                onClick={handleAppleLogin}
+                                className="w-full bg-white/5 border border-white/10 text-white py-5 rounded-2xl font-bold tracking-wide text-sm flex items-center justify-center gap-4 hover:bg-white/10 active:scale-95 transition-all"
+                            >
+                                <svg width="18" height="18" viewBox="0 0 18 22" fill="white">
+                                    <path d="M17.0493 7.52997C16.9373 7.61597 14.9653 8.72397 14.9653 11.186C14.9653 14.052 17.4933 15.052 17.5733 15.078C17.5613 15.14 17.1733 16.482 16.2373 17.848C15.4133 19.038 14.5533 20.226 13.2533 20.226C11.9533 20.226 11.5893 19.47 10.0893 19.47C8.62534 19.47 8.06534 20.25 6.86534 20.25C5.66534 20.25 4.82934 19.134 3.86534 17.776C2.74534 16.176 1.83734 13.716 1.83734 11.378C1.83734 7.78197 4.11734 5.86797 6.36134 5.86797C7.62534 5.86797 8.68134 6.69597 9.48934 6.69597C10.2613 6.69597 11.4373 5.81997 12.8853 5.81997C13.4453 5.81997 15.4173 5.86797 17.0493 7.52997ZM12.1293 3.83397C12.7533 3.09597 13.1893 2.07597 13.1893 1.05597C13.1893 0.917969 13.1773 0.777969 13.1533 0.665969C12.1413 0.701969 10.9413 1.33797 10.2013 2.17197C9.61334 2.83197 9.08134 3.85197 9.08134 4.88397C9.08134 5.03397 9.10534 5.18397 9.11734 5.23197C9.17734 5.24397 9.27334 5.25597 9.36934 5.25597C10.2733 5.25597 11.4693 4.64397 12.1293 3.83397Z" />
+                                </svg>
+                                Continue with Apple
                             </button>
                         </form>
 

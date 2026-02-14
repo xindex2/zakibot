@@ -11,7 +11,7 @@ Complete guide for deploying, updating, backing up, and migrating the **Zakibot*
 3. [Database Backup](#3-database-backup)
 4. [Database Restore / Server Migration](#4-database-restore--server-migration)
 5. [Database Reset](#5-database-reset)
-6. [Caddy (SSL / Reverse Proxy)](#6-caddy-ssl--reverse-proxy)
+6. [Nginx (Reverse Proxy)](#6-nginx-reverse-proxy)
 7. [Firewall & Ports](#7-firewall--ports)
 8. [Troubleshooting](#8-troubleshooting)
 
@@ -110,7 +110,7 @@ pm2 startup
 ```bash
 pm2 status
 pm2 logs zakibot-platform --lines 20
-curl http://localhost:3000
+curl http://localhost:3001
 ```
 
 ---
@@ -262,10 +262,10 @@ pm2 restart zakibot-platform
 
 ```bash
 pm2 logs zakibot-platform --lines 10
-curl http://localhost:3000
+curl http://localhost:3001
 ```
 
-Open `http://5.6.7.8:3000` in your browser — you should see all your old users, bots, and data.
+Open `http://5.6.7.8:3001` in your browser — you should see all your old users, bots, and data.
 
 ### Step 7: Point your domain to the new server
 
@@ -332,37 +332,48 @@ UPDATE "Subscription" SET plan = 'Free', maxInstances = 1 WHERE userId = 'xxx'; 
 
 ---
 
-## 6. Caddy (SSL / Reverse Proxy)
+## 6. Nginx (Reverse Proxy)
 
-For production with a domain and SSL:
+For production with a domain behind Cloudflare:
 
-### Install Caddy
+### Install Nginx
 
 ```bash
-sudo apt install -y debian-keyring debian-archive-keyring apt-transport-https
-curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | sudo gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
-curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | sudo tee /etc/apt/sources.list.d/caddy-stable.list
-sudo apt update
-sudo apt install caddy
+sudo apt install -y nginx
 ```
 
-### Configure Caddy
+### Configure Nginx
 
-Edit `/etc/caddy/Caddyfile`:
+Create `/etc/nginx/sites-enabled/default`:
 
-```
-yourdomain.com {
-    reverse_proxy localhost:3000
+```bash
+cat > /etc/nginx/sites-enabled/default << 'EOF'
+server {
+    listen 80;
+    server_name yourdomain.com www.yourdomain.com;
+
+    location / {
+        proxy_pass http://localhost:3001;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+    }
 }
+EOF
 ```
+
+Replace `yourdomain.com` with your actual domain.
 
 ```bash
-sudo systemctl restart caddy
+nginx -t && sudo systemctl restart nginx
 ```
 
-Caddy handles SSL certificates automatically.
-
-> **If using Cloudflare**: Set SSL mode to **Full (strict)** in the Cloudflare dashboard.
+> **If using Cloudflare**: Set SSL mode to **Full** in the Cloudflare dashboard. Cloudflare handles SSL termination.
 
 ---
 
@@ -373,7 +384,7 @@ Caddy handles SSL certificates automatically.
 sudo ufw allow 22/tcp    # SSH
 sudo ufw allow 80/tcp    # HTTP
 sudo ufw allow 443/tcp   # HTTPS
-sudo ufw allow 3000/tcp  # Direct access (optional, can remove after Caddy)
+sudo ufw allow 3001/tcp  # Direct access (optional, can remove after Nginx)
 sudo ufw enable
 sudo ufw status
 ```
@@ -412,7 +423,21 @@ pm2 restart zakibot-platform
 
 ```bash
 pm2 status
-curl -s http://localhost:3000 | head -5
+curl -s http://localhost:3001 | head -5
+```
+
+### Nginx won't start
+
+```bash
+# Check config validity
+nginx -t
+
+# If sites-enabled/default is missing:
+mkdir -p /etc/nginx/sites-enabled
+# Then recreate the config (see Section 6)
+
+# Restart
+systemctl restart nginx
 ```
 
 ### View all PM2 processes
@@ -428,7 +453,7 @@ pm2 monit        # Real-time monitoring
 
 | Task | Command |
 |------|---------|
-| Start | `pm2 start "npx tsx server.ts" --name zakibot-platform` |
+| Start | `cd ~/zakibot/platform && pm2 start "npx tsx server.ts" --name zakibot-platform` |
 | Stop | `pm2 stop zakibot-platform` |
 | Restart | `pm2 restart zakibot-platform` |
 | Logs | `pm2 logs zakibot-platform` |

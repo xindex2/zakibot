@@ -183,6 +183,25 @@ export async function startBot(configId: string) {
         }
     };
 
+    // ── Channel validation: auto-disable channels with missing credentials ──
+    const ch = nanobotConfig.channels;
+    if (ch.telegram.enabled && !ch.telegram.token) {
+        ch.telegram.enabled = false;
+        console.log(`   ⚠️  [${config.name}] Telegram auto-disabled (no token)`);
+    }
+    if (ch.discord.enabled && !ch.discord.token) {
+        ch.discord.enabled = false;
+        console.log(`   ⚠️  [${config.name}] Discord auto-disabled (no token)`);
+    }
+    if (ch.feishu.enabled && (!ch.feishu.app_id || !ch.feishu.app_secret)) {
+        ch.feishu.enabled = false;
+        console.log(`   ⚠️  [${config.name}] Feishu auto-disabled (missing app_id or app_secret)`);
+    }
+    if (ch.slack.enabled && !ch.slack.bot_token) {
+        ch.slack.enabled = false;
+        console.log(`   ⚠️  [${config.name}] Slack auto-disabled (no bot_token)`);
+    }
+
     fs.writeFileSync(configPath, JSON.stringify(nanobotConfig, null, 2));
 
     const nanobotRoot = path.join(process.cwd(), '..');
@@ -325,7 +344,7 @@ export async function startBot(configId: string) {
         }
     });
 
-    child.stderr?.on('data', (data: any) => console.error(`[Bot error ${config.name}]: ${data}`));
+    child.stderr?.on('data', (data: any) => console.log(`[Bot log ${config.name}]: ${data}`));
 
     child.on('close', (code: any) => {
 

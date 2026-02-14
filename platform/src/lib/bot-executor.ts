@@ -170,7 +170,8 @@ export async function startBot(configId: string) {
                 enabled: decryptedConfig.browserEnabled,
                 max_tool_retries: 3,
                 captcha_provider: (decryptedConfig as any).captchaProvider || "",
-                captcha_api_key: (decryptedConfig as any).captchaApiKey || ""
+                captcha_api_key: (decryptedConfig as any).captchaApiKey || "",
+                proxy_url: (decryptedConfig as any).proxyUrl || ""
             },
             exec: {
                 enabled: decryptedConfig.shellEnabled

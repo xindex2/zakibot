@@ -34,6 +34,31 @@ tools:
 | `2captcha` | Medium (humans) | ~$2.99/1000 |
 | `anticaptcha` | Medium (humans) | ~$2.00/1000 |
 
+## Proxy Support 🌐
+
+Route browser traffic through a proxy to avoid IP-based bot detection.
+
+### Setup
+Add to your bot's `config.yaml`:
+```yaml
+tools:
+  browser:
+    proxy_url: "http://user:pass@proxy-host:port"
+```
+
+### Supported formats
+- `http://user:pass@host:port` — HTTP proxy with auth
+- `http://host:port` — HTTP proxy without auth
+- `socks5://host:port` — SOCKS5 proxy
+
+### Recommended providers
+| Provider | Type | Best for |
+|----------|------|----------|
+| Bright Data | Residential | Anti-bot bypass |
+| Oxylabs | Residential/DC | High volume |
+| SmartProxy | Residential | Budget-friendly |
+| IPRoyal | Residential | Small scale |
+
 ### Usage
 CAPTCHAs are **auto-solved on navigation** (goto). If a CAPTCHA appears later:
 ```

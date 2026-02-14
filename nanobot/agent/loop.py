@@ -107,6 +107,7 @@ class AgentLoop:
                 workspace=self.workspace,
                 captcha_provider=self.browser_config.captcha_provider,
                 captcha_api_key=self.browser_config.captcha_api_key,
+                proxy_url=self.browser_config.proxy_url,
             ))
         
         # Message tool

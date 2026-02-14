@@ -111,6 +111,7 @@ class BrowserConfig(BaseModel):
     max_tool_retries: int = 3
     captcha_provider: str = ""  # capsolver, 2captcha, or anticaptcha
     captcha_api_key: str = ""  # API key for the CAPTCHA solving provider
+    proxy_url: str = ""  # HTTP/SOCKS5 proxy URL (e.g. http://user:pass@host:port)
 
 
 class WebToolsConfig(BaseModel):

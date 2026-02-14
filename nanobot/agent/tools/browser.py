@@ -16,6 +16,47 @@ from nanobot.agent.tools.base import Tool
 
 
 # ---------------------------------------------------------------------------
+# User-Agent rotation pool — pick a random one per browser session
+# ---------------------------------------------------------------------------
+
+UA_POOL = [
+    # Chrome 131 — Windows 10
+    ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+     '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"', '"Windows"'),
+    # Chrome 131 — macOS
+    ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+     '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"', '"macOS"'),
+    # Chrome 130 — Windows 10
+    ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
+     '"Google Chrome";v="130", "Chromium";v="130", "Not_A Brand";v="99"', '"Windows"'),
+    # Chrome 130 — macOS
+    ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
+     '"Google Chrome";v="130", "Chromium";v="130", "Not_A Brand";v="99"', '"macOS"'),
+    # Chrome 129 — Windows 11
+    ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36",
+     '"Google Chrome";v="129", "Chromium";v="129", "Not_A Brand";v="24"', '"Windows"'),
+    # Edge 131 — Windows
+    ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36 Edg/131.0.0.0",
+     '"Microsoft Edge";v="131", "Chromium";v="131", "Not_A Brand";v="24"', '"Windows"'),
+    # Chrome 131 — Linux
+    ("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+     '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"', '"Linux"'),
+    # Chrome 128 — macOS
+    ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
+     '"Google Chrome";v="128", "Chromium";v="128", "Not-A.Brand";v="99"', '"macOS"'),
+]
+
+# Common desktop viewport sizes — one is picked randomly per session
+VIEWPORT_POOL = [
+    {"width": 1920, "height": 1080},
+    {"width": 1536, "height": 864},
+    {"width": 1440, "height": 900},
+    {"width": 1366, "height": 768},
+    {"width": 1280, "height": 720},
+    {"width": 1600, "height": 900},
+]
+
+# ---------------------------------------------------------------------------
 # Stealth JS — injected into every new page context to mask automation signals
 # ---------------------------------------------------------------------------
 
@@ -81,6 +122,24 @@ Object.defineProperty(screen, 'width', { get: () => window.innerWidth });
 Object.defineProperty(screen, 'height', { get: () => window.innerHeight });
 Object.defineProperty(screen, 'availWidth', { get: () => window.innerWidth });
 Object.defineProperty(screen, 'availHeight', { get: () => window.innerHeight });
+
+// 9. Spoof hardware specs (article technique #8 — deviceMemory/hardwareConcurrency)
+Object.defineProperty(navigator, 'deviceMemory', { get: () => 8 });
+Object.defineProperty(navigator, 'hardwareConcurrency', { get: () => 8 });
+Object.defineProperty(navigator, 'maxTouchPoints', { get: () => 0 });
+
+// 10. Fake battery API (some fingerprinters check this)
+if (navigator.getBattery) {
+    navigator.getBattery = () => Promise.resolve({
+        charging: true, chargingTime: 0, dischargingTime: Infinity, level: 1.0,
+        addEventListener: () => {}, removeEventListener: () => {}
+    });
+}
+
+// 11. Prevent iframe detection (Playwright creates hidden iframes)
+Object.defineProperty(HTMLIFrameElement.prototype, 'contentWindow', {
+    get: function() { return window; }
+});
 """
 
 # Common cookie consent selectors to auto-dismiss
@@ -606,12 +665,13 @@ class BrowserTool(Tool):
         "required": ["action"]
     }
     
-    def __init__(self, workspace: Path | str, captcha_provider: str = "", captcha_api_key: str = ""):
+    def __init__(self, workspace: Path | str, captcha_provider: str = "", captcha_api_key: str = "", proxy_url: str = ""):
         self.workspace = Path(workspace)
         self.browser = None
         self.context = None
         self.page = None
         self.playwright = None
+        self._proxy_url = proxy_url
         self._screenshots_dir = self.workspace / "screenshots"
         self._screenshots_dir.mkdir(exist_ok=True)
         self._captcha_solver = CaptchaSolver(provider=captcha_provider, api_key=captcha_api_key)
@@ -644,38 +704,74 @@ class BrowserTool(Tool):
             ]
         )
         
-        self.context = await self.browser.new_context(
-            user_agent=(
-                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-                "AppleWebKit/537.36 (KHTML, like Gecko) "
-                "Chrome/123.0.0.0 Safari/537.36"
-            ),
+        # Pick a random UA + viewport per session (article technique #2 & #7)
+        ua_string, sec_ch_ua, sec_ch_platform = random.choice(UA_POOL)
+        viewport = random.choice(VIEWPORT_POOL)
+        
+        # Pick a random timezone to match diversity
+        tz = random.choice(["America/New_York", "America/Chicago", "America/Los_Angeles", "Europe/London", "Europe/Paris"])
+        
+        # Build context options
+        context_opts = dict(
+            user_agent=ua_string,
             extra_http_headers={
-                "Accept-Language": "en-US,en;q=0.9",
+                "Accept-Language": random.choice(["en-US,en;q=0.9", "en-US,en;q=0.9,fr;q=0.8", "en-GB,en;q=0.9"]),
                 "Accept": (
                     "text/html,application/xhtml+xml,application/xml;q=0.9,"
                     "image/avif,image/webp,image/apng,*/*;q=0.8"
                 ),
-                "Sec-CH-UA": '"Google Chrome";v="123", "Not:A-Brand";v="8", "Chromium";v="123"',
+                "Sec-CH-UA": sec_ch_ua,
                 "Sec-CH-UA-Mobile": "?0",
-                "Sec-CH-UA-Platform": '"macOS"',
+                "Sec-CH-UA-Platform": sec_ch_platform,
                 "Upgrade-Insecure-Requests": "1",
                 "Sec-Fetch-Site": "none",
                 "Sec-Fetch-Mode": "navigate",
                 "Sec-Fetch-User": "?1",
                 "Sec-Fetch-Dest": "document",
             },
-            viewport={"width": 1920, "height": 1080},
+            viewport=viewport,
             locale="en-US",
-            timezone_id="America/New_York",
-            device_scale_factor=1,
-            color_scheme="light",
+            timezone_id=tz,
+            device_scale_factor=random.choice([1, 1, 1, 2]),  # Most are 1x, some Retina
+            color_scheme=random.choice(["light", "light", "light", "dark"]),  # Most users use light
         )
+        logger.debug(f"Session fingerprint: UA={ua_string[:50]}... viewport={viewport['width']}x{viewport['height']} tz={tz}")
+        
+        # Add proxy if configured
+        if self._proxy_url:
+            proxy_conf: dict[str, str] = {"server": self._proxy_url}
+            # Parse credentials from URL like http://user:pass@host:port
+            try:
+                from urllib.parse import urlparse
+                parsed = urlparse(self._proxy_url)
+                if parsed.username:
+                    proxy_conf["username"] = parsed.username
+                if parsed.password:
+                    proxy_conf["password"] = parsed.password
+                # Rebuild server without credentials
+                server = f"{parsed.scheme}://{parsed.hostname}"
+                if parsed.port:
+                    server += f":{parsed.port}"
+                proxy_conf["server"] = server
+            except Exception:
+                pass  # Use raw URL as-is
+            context_opts["proxy"] = proxy_conf
+            logger.info(f"Browser using proxy: {proxy_conf['server']}")
+        
+        self.context = await self.browser.new_context(**context_opts)
         
         # Inject stealth JS into every page
         await self.context.add_init_script(STEALTH_JS)
         
         self.page = await self.context.new_page()
+        
+        # Apply playwright-stealth patches on top of custom stealth JS
+        try:
+            from playwright_stealth import stealth_async
+            await stealth_async(self.page)
+        except ImportError:
+            logger.debug("playwright-stealth not installed, using custom stealth JS only")
+        
         logger.info("Browser started with stealth configuration")
 
     # ------------------------------------------------------------------
@@ -686,6 +782,32 @@ class BrowserTool(Tool):
         """Add a human-like random delay."""
         delay = random.randint(min_ms, max_ms) / 1000
         await asyncio.sleep(delay)
+
+    async def _human_mouse_move(self, target_x: float, target_y: float, steps: int = 0):
+        """Move mouse along a natural Bézier curve to the target point (article technique #4)."""
+        if not self.page:
+            return
+        try:
+            # Get current mouse position (default to a random start if unknown)
+            start_x = random.uniform(100, 400)
+            start_y = random.uniform(100, 400)
+            
+            # Generate 2 random control points for a cubic Bézier curve
+            cp1_x = start_x + (target_x - start_x) * random.uniform(0.2, 0.5) + random.uniform(-50, 50)
+            cp1_y = start_y + (target_y - start_y) * random.uniform(0.1, 0.4) + random.uniform(-30, 30)
+            cp2_x = start_x + (target_x - start_x) * random.uniform(0.5, 0.8) + random.uniform(-50, 50)
+            cp2_y = start_y + (target_y - start_y) * random.uniform(0.6, 0.9) + random.uniform(-30, 30)
+
+            num_steps = steps or random.randint(8, 18)
+            for i in range(num_steps + 1):
+                t = i / num_steps
+                # Cubic Bézier interpolation
+                x = (1-t)**3 * start_x + 3*(1-t)**2*t * cp1_x + 3*(1-t)*t**2 * cp2_x + t**3 * target_x
+                y = (1-t)**3 * start_y + 3*(1-t)**2*t * cp1_y + 3*(1-t)*t**2 * cp2_y + t**3 * target_y
+                await self.page.mouse.move(x, y)
+                await asyncio.sleep(random.uniform(0.005, 0.025))
+        except Exception:
+            pass  # Fallback: Playwright will move directly on click
 
     async def _dismiss_cookie_banners(self):
         """Try to auto-dismiss common cookie consent popups."""
@@ -759,7 +881,12 @@ class BrowserTool(Tool):
                 if not url:
                     return "Error: 'url' parameter is required for 'goto' action."
                 await self._human_delay(100, 300)
-                await self.page.goto(url, wait_until="domcontentloaded", timeout=60000)
+                # Set a realistic referer on navigation (article technique #10)
+                try:
+                    await self.page.goto(url, wait_until="domcontentloaded", timeout=60000,
+                                          referer=random.choice(["https://www.google.com/", "https://www.google.com/search?q=", ""]))
+                except Exception:
+                    await self.page.goto(url, wait_until="domcontentloaded", timeout=60000)
                 try:
                     await self.page.wait_for_load_state("networkidle", timeout=8000)
                 except Exception:
@@ -810,6 +937,15 @@ class BrowserTool(Tool):
                 await self._human_delay()
                 async def do_click():
                     await self.page.wait_for_selector(selector, state="visible", timeout=10000)
+                    # Move mouse naturally to the element before clicking (article technique #4)
+                    try:
+                        box = await self.page.locator(selector).first.bounding_box()
+                        if box:
+                            target_x = box["x"] + box["width"] * random.uniform(0.3, 0.7)
+                            target_y = box["y"] + box["height"] * random.uniform(0.3, 0.7)
+                            await self._human_mouse_move(target_x, target_y)
+                    except Exception:
+                        pass
                     await self.page.click(selector)
                 await self._retry_action(do_click)
                 return f"Clicked on '{selector}'"

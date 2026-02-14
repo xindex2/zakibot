@@ -89,6 +89,7 @@ interface AgentConfig {
     apifyApiToken: string;
     captchaProvider: string;
     captchaApiKey: string;
+    proxyUrl: string;
     gatewayHost: string;
     gatewayPort: number;
     maxToolIterations: number;
@@ -326,6 +327,7 @@ export default function Dashboard() {
             apifyApiToken: '',
             captchaProvider: '',
             captchaApiKey: '',
+            proxyUrl: '',
             restrictToWorkspace: true,
             gatewayHost: '0.0.0.0',
             gatewayPort: 18790 + (agents.length * 10),
@@ -1335,6 +1337,20 @@ export default function Dashboard() {
                                                     className="input-modern w-full text-[10px] mt-2"
                                                     placeholder="CAPTCHA API Key..."
                                                 />
+                                            </ToolCard>
+                                            <ToolCard
+                                                title="Browser Proxy" icon={<Globe size={20} />}
+                                                desc="Route browser traffic through a proxy to avoid IP bans."
+                                                checked={!!editingAgent.proxyUrl}
+                                            >
+                                                <input
+                                                    type="text"
+                                                    value={editingAgent.proxyUrl || ''}
+                                                    onChange={e => setEditingAgent({ ...editingAgent, proxyUrl: e.target.value })}
+                                                    className="input-modern w-full text-[10px] mt-2"
+                                                    placeholder="http://user:pass@host:port or socks5://host:port"
+                                                />
+                                                <p className="text-[9px] text-white/30 mt-1.5">Use residential proxies (Bright Data, Oxylabs, etc.) for best results.</p>
                                             </ToolCard>
                                         </div>
                                     </Section>

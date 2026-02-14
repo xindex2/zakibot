@@ -117,7 +117,8 @@ model BotConfig {
   // Browser
   browserEnabled  Boolean @default(true)
   captchaProvider String?
-  captchaApiKey   String?  
+  captchaApiKey   String?
+  proxyUrl        String?    // HTTP/SOCKS5 proxy for browser (e.g. http://user:pass@host:port)
   // Shell/Tmux
   shellEnabled    Boolean @default(false)
   tmuxEnabled     Boolean @default(false)

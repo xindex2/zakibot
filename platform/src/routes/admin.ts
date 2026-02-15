@@ -531,7 +531,7 @@ router.post('/drip/enroll-all', async (req, res) => {
 
 /**
  * GET /api/admin/drip/stats
- * Get drip campaign statistics
+ * Get drip campaign statistics with per-step breakdown
  */
 router.get('/drip/stats', async (req, res) => {
     try {
@@ -543,7 +543,52 @@ router.get('/drip/stats', async (req, res) => {
             prisma.emailDrip.count({ where: { status: 'skipped' } }),
         ]);
 
-        res.json({ total, sent, pending, failed, skipped });
+        // Per-step breakdown
+        const stepNames = [
+            'Welcome', 'Setup Nudge', 'Help Offer', 'Multi-Agent',
+            'Upgrade CTA', 'Price Rising', 'Last Chance', 'Inactive Warning'
+        ];
+
+        const steps = [];
+        for (let i = 0; i < 8; i++) {
+            const [stepSent, stepPending, stepFailed, stepSkipped] = await Promise.all([
+                prisma.emailDrip.count({ where: { step: i, status: 'sent' } }),
+                prisma.emailDrip.count({ where: { step: i, status: 'pending' } }),
+                prisma.emailDrip.count({ where: { step: i, status: 'failed' } }),
+                prisma.emailDrip.count({ where: { step: i, status: 'skipped' } }),
+            ]);
+            steps.push({
+                step: i,
+                name: stepNames[i],
+                sent: stepSent,
+                pending: stepPending,
+                failed: stepFailed,
+                skipped: stepSkipped,
+                total: stepSent + stepPending + stepFailed + stepSkipped,
+            });
+        }
+
+        // Recent activity (last 20 sent/failed)
+        const recent = await prisma.emailDrip.findMany({
+            where: { status: { in: ['sent', 'failed'] } },
+            orderBy: { sentAt: 'desc' },
+            take: 20,
+            select: { email: true, step: true, status: true, sentAt: true },
+        });
+
+        // Enrolled users count
+        const enrolledUsers = await prisma.emailDrip.groupBy({
+            by: ['userId'],
+        });
+
+        res.json({
+            overview: { total, sent, pending, failed, skipped, enrolledUsers: enrolledUsers.length },
+            steps,
+            recent: recent.map(r => ({
+                ...r,
+                stepName: stepNames[r.step] || `Step ${r.step}`,
+            })),
+        });
     } catch (e: any) {
         res.status(500).json({ error: e.message });
     }

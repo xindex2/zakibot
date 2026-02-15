@@ -650,8 +650,11 @@ app.post('/api/bot/control', authenticateToken, async (req: any, res: any) => {
         let result;
         if (action === 'start') {
             result = await startBot(configId);
+            // Persist running status to DB so dashboard shows correct state
+            await prisma.botConfig.update({ where: { id: configId }, data: { status: 'running' } });
         } else if (action === 'stop') {
             result = await stopBot(configId);
+            await prisma.botConfig.update({ where: { id: configId }, data: { status: 'stopped' } });
         } else if (action === 'status') {
             result = { status: getBotStatus(configId) };
         } else {

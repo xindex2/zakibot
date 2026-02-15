@@ -189,6 +189,25 @@ export class CreemService {
         }
 
         console.log(`[Creem] ${status === 'active' ? 'Activated' : 'Deactivated'} subscription for ${email} (plan: ${planName})`);
+
+        // Auto-restart user's running bots after upgrade so they pick up the new plan
+        if (status === 'active') {
+            try {
+                const { startBot, stopBot, getBotStatus } = await import('./bot-executor.js');
+                const userBots = await prisma.botConfig.findMany({ where: { userId: user.id } });
+                for (const bot of userBots) {
+                    const botStatus = getBotStatus(bot.id);
+                    if (botStatus === 'running') {
+                        console.log(`[Creem] Restarting bot ${bot.id} (${bot.name}) after plan upgrade to ${planName}`);
+                        await stopBot(bot.id);
+                        await new Promise(r => setTimeout(r, 1000));
+                        await startBot(bot.id);
+                    }
+                }
+            } catch (e: any) {
+                console.error('[Creem] Failed to restart bots after upgrade:', e.message);
+            }
+        }
     }
 
     /**

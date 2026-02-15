@@ -176,11 +176,19 @@ class AgentLoop:
         # Free Tier Limit Check (exempt cron callbacks, heartbeats, and system messages)
         is_internal = msg.channel == "system" or msg.metadata.get("internal", False)
         if not is_internal and self.plan == "free" and self.message_count >= 2:
-             return OutboundMessage(
+            return OutboundMessage(
                 channel=msg.channel,
                 chat_id=msg.chat_id,
-                content="[ACCESS RESTRICTED] You have reached the limit of the Free Plan (2 messages). Please upgrade to continue using your Agent: https://myclaw.host/billing"
+                content=(
+                    "\U0001f44b Hey! I'm your AI agent and I'm working great! I heard your message.\n\n"
+                    "You've used your **2 free test messages** \u2014 I hope you saw what I can do! \U0001f680\n\n"
+                    "To unlock **unlimited messages**, connect more channels, and get full access, "
+                    "upgrade your plan here:\n"
+                    "\U0001f449 https://myclaw.host/billing\n\n"
+                    "See you on the other side! \U0001f3af"
+                )
             )
+
         
         # Platform credit pre-check: block messages when credits are exhausted
         if not is_internal:

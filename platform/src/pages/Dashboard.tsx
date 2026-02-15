@@ -402,10 +402,9 @@ export default function Dashboard() {
             }
 
             if (resp.ok) {
-                // Auto-start the bot immediately after saving/deploying
+                // Auto-start the bot immediately after saving/deploying (all plans including Free)
                 const savedId = data.id || config.id;
-                const plan = subscription?.plan || 'Free';
-                if (savedId && plan !== 'Free') {
+                if (savedId) {
                     try {
                         await fetch('/api/bot/control', {
                             method: 'POST',
@@ -416,9 +415,6 @@ export default function Dashboard() {
                             body: JSON.stringify({ configId: savedId, action: 'start' })
                         });
                     } catch (e) { /* ignore start errors */ }
-                } else if (plan === 'Free') {
-                    // Free user — agent saved but needs upgrade to deploy
-                    setShowLimitModal(true);
                 }
                 await fetchAgents();
                 await fetchSubscription();
@@ -557,14 +553,13 @@ export default function Dashboard() {
                                 </div>
 
                                 <button
-                                    onClick={handleQuickStart}
-                                    disabled={isSaving}
+                                    onClick={handleCreateAgent}
                                     className="bg-green-600 hover:bg-green-500 text-white font-bold px-8 py-3.5 rounded-xl transition-all shadow-lg shadow-green-900/20 flex items-center gap-2 text-sm"
                                 >
-                                    {isSaving ? <Loader2 className="animate-spin" size={18} /> : <Rocket size={18} strokeWidth={3} />}
-                                    {isSaving ? 'Launching...' : 'Launch My First Agent'}
+                                    <Plus size={18} strokeWidth={3} />
+                                    Create My First Agent
                                 </button>
-                                <p className="text-[10px] text-white/25 mt-3">Uses your free $10 credits • No API key needed • Customize anytime</p>
+                                <p className="text-[10px] text-white/25 mt-3">Free plan includes 2 test messages • Upgrade to unlock unlimited</p>
                             </div>
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

@@ -307,7 +307,7 @@ export default function Dashboard() {
             provider: 'openrouter',
             model: 'google/gemini-3-flash-preview',
             apiKey: '',
-            apiKeyMode: 'own_key',
+            apiKeyMode: 'platform_credits',
             apiBase: '',
             telegramEnabled: false,
             discordEnabled: false,
@@ -334,6 +334,47 @@ export default function Dashboard() {
             maxToolIterations: 30
         };
         setEditingAgent(newAgent);
+    };
+
+    // One-click quick-start: auto-create and save a working agent with platform credits
+    const handleQuickStart = async () => {
+        if (subscription && agents.length >= (subscription.maxInstances || 1)) {
+            setShowLimitModal(true);
+            return;
+        }
+        const quickAgent: any = {
+            name: 'My First Agent',
+            description: 'A helpful AI assistant powered by your free credits.',
+            provider: 'openrouter',
+            model: 'google/gemini-3-flash-preview',
+            apiKey: '',
+            apiKeyMode: 'platform_credits',
+            apiBase: '',
+            telegramEnabled: false,
+            discordEnabled: false,
+            whatsappEnabled: false,
+            feishuEnabled: false,
+            slackEnabled: false,
+            browserEnabled: true,
+            shellEnabled: true,
+            tmuxEnabled: true,
+            weatherEnabled: true,
+            summarizeEnabled: true,
+            cronEnabled: true,
+            skillCreatorEnabled: true,
+            webSearchApiKey: '',
+            githubToken: '',
+            firecrawlApiKey: '',
+            apifyApiToken: '',
+            captchaProvider: '',
+            captchaApiKey: '',
+            proxyUrl: '',
+            restrictToWorkspace: true,
+            gatewayHost: '0.0.0.0',
+            gatewayPort: 18790 + (agents.length * 10),
+            maxToolIterations: 30
+        };
+        await saveConfig(quickAgent);
     };
 
     const saveConfig = async (config: AgentConfig) => {
@@ -485,7 +526,7 @@ export default function Dashboard() {
                                     <Bot size={36} className="text-white/20" />
                                 </div>
                                 <h2 className="text-xl font-black uppercase italic tracking-tight mb-2 text-white/60">How to Launch Your First Agent</h2>
-                                <p className="text-white/30 text-sm max-w-md mb-8">Watch the quick tutorial below, then click <strong className="text-white/60">"New Agent"</strong> to create and deploy your first AI agent.</p>
+                                <p className="text-white/30 text-sm max-w-md mb-8">Watch the quick tutorial below, then click <strong className="text-white/60">"Launch"</strong> to create your first AI agent — ready in seconds.</p>
 
                                 {/* Embedded tutorial video */}
                                 <div className="w-full max-w-2xl mb-8">
@@ -516,12 +557,14 @@ export default function Dashboard() {
                                 </div>
 
                                 <button
-                                    onClick={handleCreateAgent}
+                                    onClick={handleQuickStart}
+                                    disabled={isSaving}
                                     className="bg-green-600 hover:bg-green-500 text-white font-bold px-8 py-3.5 rounded-xl transition-all shadow-lg shadow-green-900/20 flex items-center gap-2 text-sm"
                                 >
-                                    <Plus size={18} strokeWidth={3} />
-                                    Create My First Agent
+                                    {isSaving ? <Loader2 className="animate-spin" size={18} /> : <Rocket size={18} strokeWidth={3} />}
+                                    {isSaving ? 'Launching...' : 'Launch My First Agent'}
                                 </button>
+                                <p className="text-[10px] text-white/25 mt-3">Uses your free $10 credits • No API key needed • Customize anytime</p>
                             </div>
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

@@ -78,7 +78,7 @@ router.get('/auth/google/callback', async (req, res) => {
                             password: crypto.randomBytes(16).toString('hex'),
                             google_id: googleId,
                             avatar_url,
-                            acquisition_source: 'Google Auth',
+                            acquisition_source: 'Direct',
                             subscription: {
                                 create: {
                                     plan: 'Free',
@@ -98,7 +98,7 @@ router.get('/auth/google/callback', async (req, res) => {
                                 password: crypto.randomBytes(16).toString('hex'),
                                 google_id: googleId,
                                 avatar_url,
-                                acquisition_source: 'Google Auth',
+                                acquisition_source: 'Direct',
                                 subscription: {
                                     create: {
                                         plan: 'Free',
@@ -185,7 +185,7 @@ router.post('/auth/google/token', async (req: any, res: any) => {
                             password: crypto.randomBytes(16).toString('hex'),
                             google_id: googleId,
                             avatar_url,
-                            acquisition_source: 'Google Auth',
+                            acquisition_source: 'Direct',
                             subscription: {
                                 create: { plan: 'Free', maxInstances: 1, creditBalance: 10 }
                             }
@@ -200,7 +200,7 @@ router.post('/auth/google/token', async (req: any, res: any) => {
                                 password: crypto.randomBytes(16).toString('hex'),
                                 google_id: googleId,
                                 avatar_url,
-                                acquisition_source: 'Google Auth',
+                                acquisition_source: 'Direct',
                                 subscription: {
                                     create: { plan: 'Free', maxInstances: 1 }
                                 }
@@ -357,7 +357,7 @@ router.post('/auth/apple/callback', express.urlencoded({ extended: true }), asyn
                         email: userEmail,
                         password: crypto.randomBytes(16).toString('hex'),
                         apple_id: appleId,
-                        acquisition_source: 'Apple Auth',
+                        acquisition_source: 'Direct',
                         subscription: {
                             create: {
                                 plan: 'Free',
@@ -376,7 +376,7 @@ router.post('/auth/apple/callback', express.urlencoded({ extended: true }), asyn
                             email: userEmail,
                             password: crypto.randomBytes(16).toString('hex'),
                             apple_id: appleId,
-                            acquisition_source: 'Apple Auth',
+                            acquisition_source: 'Direct',
                             subscription: {
                                 create: { plan: 'Free', maxInstances: 1 }
                             }

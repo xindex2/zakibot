@@ -7,9 +7,13 @@ interface BotInfo {
     id: string;
     name: string;
     model: string;
+    apiKeyMode: string;
+    status: string;
     telegramEnabled: boolean;
     discordEnabled: boolean;
     whatsappEnabled: boolean;
+    slackEnabled: boolean;
+    feishuEnabled: boolean;
 }
 
 interface UserData {
@@ -370,6 +374,8 @@ export default function UserManagement() {
                                                                     bot.telegramEnabled && 'TG',
                                                                     bot.discordEnabled && 'DC',
                                                                     bot.whatsappEnabled && 'WA',
+                                                                    bot.slackEnabled && 'SL',
+                                                                    bot.feishuEnabled && 'FS',
                                                                 ].filter(Boolean);
                                                                 return (
                                                                     <div key={bot.id} className="flex items-center gap-3 bg-white/[0.03] border border-white/5 rounded-xl px-4 py-3">
@@ -399,6 +405,11 @@ export default function UserManagement() {
                                                                         {/* Model */}
                                                                         <span className="text-[10px] font-mono text-white/30 bg-white/5 px-2 py-0.5 rounded hidden sm:inline">
                                                                             {bot.model?.split('/').pop() || 'unknown'}
+                                                                        </span>
+
+                                                                        {/* API Key Mode */}
+                                                                        <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${bot.apiKeyMode === 'own' ? 'text-amber-400 bg-amber-500/10' : 'text-emerald-400 bg-emerald-500/10'}`}>
+                                                                            {bot.apiKeyMode === 'own' ? '🔑 Own Key' : '💳 Credits'}
                                                                         </span>
 
                                                                         {/* Channel badges */}

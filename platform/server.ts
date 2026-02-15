@@ -213,7 +213,7 @@ app.post('/api/users/source', async (req: any, res: any) => {
 
         // Only update if current source is generic (don't overwrite meaningful sources)
         const user = await prisma.user.findUnique({ where: { id: decoded.userId } });
-        if (user && (!user.acquisition_source || user.acquisition_source === 'Direct' || user.acquisition_source === 'Google Auth')) {
+        if (user && (!user.acquisition_source || user.acquisition_source === 'Direct' || user.acquisition_source === 'Google Auth' || user.acquisition_source === 'Apple Auth')) {
             await prisma.user.update({
                 where: { id: decoded.userId },
                 data: { acquisition_source: source }
@@ -251,6 +251,7 @@ app.post('/api/checkout', async (req: any, res: any) => {
                 planName: planName || null,
                 productId: productId || null,
                 provider: 'creem',
+                source: user.acquisition_source || null,
             }
         });
 

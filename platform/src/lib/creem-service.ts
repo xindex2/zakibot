@@ -173,6 +173,7 @@ export class CreemService {
                         checkoutId: checkoutId || `sub_${subscriptionId}_${Date.now()}`,
                         subscriptionId,
                         provider: 'creem',
+                        source: user.acquisition_source || null,
                     }
                 });
             }
@@ -341,6 +342,7 @@ export class CreemService {
                     productId: productId || undefined,
                     checkoutId: checkoutId || `credit_${user.id}_${Date.now()}`,
                     provider: 'creem',
+                    source: user.acquisition_source || null,
                 }
             });
         }

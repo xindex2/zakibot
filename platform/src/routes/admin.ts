@@ -181,6 +181,13 @@ router.get('/users', async (req, res) => {
                 where,
                 include: {
                     subscription: true,
+                    configs: {
+                        select: {
+                            id: true, name: true, model: true, apiKeyMode: true, status: true,
+                            telegramEnabled: true, discordEnabled: true, whatsappEnabled: true,
+                            slackEnabled: true, feishuEnabled: true,
+                        }
+                    },
                     _count: {
                         select: { configs: true }
                     }
@@ -385,7 +392,7 @@ router.get('/orders', async (req, res) => {
         const [orders, total] = await Promise.all([
             prisma.order.findMany({
                 where,
-                include: { user: { select: { email: true, full_name: true } } },
+                include: { user: { select: { email: true, full_name: true, acquisition_source: true } } },
                 orderBy: { createdAt: 'desc' },
                 skip,
                 take: limit,

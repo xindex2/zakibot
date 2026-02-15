@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 interface Order {
     id: string;
     userId: string;
-    user?: { email: string; full_name: string };
+    user?: { email: string; full_name: string; acquisition_source?: string };
     type: string;
     status: string;
     amount: number;
@@ -14,6 +14,7 @@ interface Order {
     productId: string | null;
     checkoutId: string | null;
     provider: string;
+    source: string | null;
     createdAt: string;
 }
 
@@ -130,8 +131,8 @@ export default function Orders() {
                         key={tab.key}
                         onClick={() => setActiveTab(tab.key)}
                         className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab.key
-                                ? 'bg-white/10 text-white shadow-lg'
-                                : 'text-gray-500 hover:text-white hover:bg-white/5'
+                            ? 'bg-white/10 text-white shadow-lg'
+                            : 'text-gray-500 hover:text-white hover:bg-white/5'
                             }`}
                     >
                         {tab.icon}
@@ -276,7 +277,7 @@ export default function Orders() {
                                 <table className="w-full">
                                     <thead>
                                         <tr className="border-b border-white/5">
-                                            {['Date', 'User', 'Type', 'Plan / Pack', 'Amount', 'Status', 'Provider'].map(header => (
+                                            {['Date', 'User', 'Type', 'Plan / Pack', 'Amount', 'Status', 'Source', 'Provider'].map(header => (
                                                 <th key={header} className="text-left px-6 py-4 text-[9px] font-black uppercase tracking-widest text-gray-500">
                                                     {header}
                                                 </th>
@@ -316,6 +317,15 @@ export default function Orders() {
                                                     <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border ${STATUS_STYLES[order.status] || STATUS_STYLES.pending}`}>
                                                         {order.status}
                                                     </span>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    {(order.source || order.user?.acquisition_source) ? (
+                                                        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider bg-white/5 border border-white/10 text-white/50">
+                                                            {order.source || order.user?.acquisition_source}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-[10px] text-white/20 italic">—</span>
+                                                    )}
                                                 </td>
                                                 <td className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase">
                                                     {order.provider}

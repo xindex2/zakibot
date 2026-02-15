@@ -173,9 +173,9 @@ class AgentLoop:
         
         logger.info(f"Processing message from {msg.channel}:{msg.sender_id}")
         
-        # Free Tier Limit Check (exempt cron callbacks, heartbeats, and system messages)
+        # Free Tier: bot is active but only sends the upgrade teaser (no AI replies)
         is_internal = msg.channel == "system" or msg.metadata.get("internal", False)
-        if not is_internal and self.plan == "free" and self.message_count >= 2:
+        if not is_internal and self.plan == "free":
             return OutboundMessage(
                 channel=msg.channel,
                 chat_id=msg.chat_id,

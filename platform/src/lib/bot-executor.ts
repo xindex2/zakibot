@@ -10,6 +10,56 @@ const prisma = new PrismaClient();
 // Process cache keyed by BOT CONFIG ID
 const processes: Record<string, { bot: ChildProcess, bridge?: ChildProcess }> = {};
 
+// --- Auto-restart tracking for paid bots ---
+interface RestartState { count: number; firstAttemptAt: number; }
+const restartState: Record<string, RestartState> = {};
+const MAX_RESTARTS = 5;
+const RESTART_WINDOW_MS = 10 * 60 * 1000; // 10 minutes
+const RESTART_DELAY_MS = 5000; // 5 seconds before restart
+
+async function autoRestartBot(configId: string, botName: string): Promise<void> {
+    const now = Date.now();
+    let state = restartState[configId];
+
+    // Reset window if expired
+    if (state && (now - state.firstAttemptAt) > RESTART_WINDOW_MS) {
+        delete restartState[configId];
+        state = undefined as any;
+    }
+
+    // Initialize tracking
+    if (!state) {
+        restartState[configId] = { count: 0, firstAttemptAt: now };
+        state = restartState[configId];
+    }
+
+    state.count++;
+
+    if (state.count > MAX_RESTARTS) {
+        console.error(`[AutoRestart] Bot "${botName}" (${configId}) exceeded ${MAX_RESTARTS} restarts in ${RESTART_WINDOW_MS / 60000}min — giving up.`);
+        await prisma.botConfig.update({
+            where: { id: configId },
+            data: { status: 'stopped' }
+        }).catch(() => { });
+        return;
+    }
+
+    console.log(`[AutoRestart] Bot "${botName}" crashed, restarting in ${RESTART_DELAY_MS / 1000}s (attempt ${state.count}/${MAX_RESTARTS})...`);
+
+    await new Promise(resolve => setTimeout(resolve, RESTART_DELAY_MS));
+
+    try {
+        await startBot(configId);
+        console.log(`[AutoRestart] Bot "${botName}" restarted successfully.`);
+    } catch (err: any) {
+        console.error(`[AutoRestart] Failed to restart bot "${botName}":`, err.message);
+        await prisma.botConfig.update({
+            where: { id: configId },
+            data: { status: 'stopped' }
+        }).catch(() => { });
+    }
+}
+
 // --- OpenRouter model pricing cache ---
 interface ModelPricing { prompt: number; completion: number; }
 let pricingCache: Record<string, ModelPricing> = {};
@@ -347,14 +397,37 @@ export async function startBot(configId: string) {
 
     child.stderr?.on('data', (data: any) => console.log(`[Bot log ${config.name}]: ${data}`));
 
-    child.on('close', (code: any) => {
+    child.on('close', async (code: any) => {
+        const botName = config.name || configId;
 
         // Only kill the bridge that was spawned WITH this bot, not a newer one
         if (currentBridge && processes[configId]?.bridge === currentBridge) {
             currentBridge.kill('SIGTERM');
             delete processes[configId];
         }
-        prisma.botConfig.update({
+
+        // Check if user has a paid plan — auto-restart if so
+        try {
+            const freshConfig = await prisma.botConfig.findUnique({
+                where: { id: configId },
+                include: { user: { include: { subscription: true } } }
+            });
+            const plan = (freshConfig as any)?.user?.subscription?.plan || 'Free';
+
+            if (plan !== 'Free' && code !== 0) {
+                // Paid user and abnormal exit — auto-restart
+                await prisma.botConfig.update({
+                    where: { id: configId },
+                    data: { status: 'restarting' }
+                }).catch(() => { });
+                autoRestartBot(configId, botName).catch(console.error);
+                return;
+            }
+        } catch (e) {
+            // DB lookup failed, fall through to normal stopped
+        }
+
+        await prisma.botConfig.update({
             where: { id: configId },
             data: { status: 'stopped' }
         }).catch(console.error);

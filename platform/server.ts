@@ -1258,4 +1258,46 @@ app.listen(PORT, async () => {
     } catch (e: any) {
         console.warn('⚠️  Bot auto-restart check failed:', e.message);
     }
+
+    // ─── Watchdog: periodically check for paid bots that silently died ───
+    const WATCHDOG_INTERVAL_MS = 60_000; // 60 seconds
+    setInterval(async () => {
+        try {
+            // Find bots the DB thinks are running (or restarting)
+            const runningBots = await prisma.botConfig.findMany({
+                where: { status: { in: ['running', 'restarting'] } },
+                include: { user: { include: { subscription: true } } }
+            });
+
+            for (const bot of runningBots) {
+                const plan = (bot as any).user?.subscription?.plan || 'Free';
+                const actualStatus = getBotStatus(bot.id);
+
+                if (actualStatus === 'stopped' && plan !== 'Free') {
+                    console.log(`[Watchdog] Bot "${bot.name}" (${bot.id}) is dead but DB says running — restarting...`);
+                    try {
+                        await startBot(bot.id);
+                        console.log(`[Watchdog] Bot "${bot.name}" restarted successfully.`);
+                    } catch (err: any) {
+                        console.error(`[Watchdog] Failed to restart "${bot.name}":`, err.message);
+                        await prisma.botConfig.update({
+                            where: { id: bot.id },
+                            data: { status: 'stopped' }
+                        }).catch(() => { });
+                    }
+                    // Brief delay between restarts
+                    await new Promise(r => setTimeout(r, 3000));
+                } else if (actualStatus === 'stopped' && plan === 'Free') {
+                    // Free user bot silently died — just correct the DB status
+                    await prisma.botConfig.update({
+                        where: { id: bot.id },
+                        data: { status: 'stopped' }
+                    }).catch(() => { });
+                }
+            }
+        } catch (e: any) {
+            console.error('[Watchdog] Health-check error:', e.message);
+        }
+    }, WATCHDOG_INTERVAL_MS);
+    console.log(`🐕 Watchdog started (checking every ${WATCHDOG_INTERVAL_MS / 1000}s)`);
 });

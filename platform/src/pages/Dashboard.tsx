@@ -707,47 +707,67 @@ export default function Dashboard() {
                         {/* Editor Sidebar */}
                         <aside className="w-full md:w-72 border-b md:border-b-0 md:border-r border-white/5 bg-black/20 p-4 md:p-8 flex flex-col gap-4 md:gap-8 shrink-0">
                             <div>
-                                <div className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em] mb-6 pl-2">Configuration</div>
-                                <nav className="flex md:flex-col gap-1.5 md:gap-1 overflow-x-auto pb-2 md:pb-0 custom-scrollbar -mx-2 px-2 md:mx-0 md:px-0">
+                                <div className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em] mb-6 pl-2">Setup Steps</div>
+                                <nav className="flex md:flex-col gap-0 overflow-x-auto pb-2 md:pb-0 custom-scrollbar -mx-2 px-2 md:mx-0 md:px-0">
                                     {[
-                                        { id: 'provider', label: 'Model', icon: <Cpu size={16} /> },
-                                        { id: 'channels', label: 'Channels', icon: <Share2 size={16} /> },
-                                        { id: 'skills', label: 'Skills', icon: <Zap size={16} /> },
-                                        { id: 'tools', label: 'Tools', icon: <Terminal size={16} /> },
-                                        { id: 'workspace', label: 'Workspace', icon: <HardDrive size={16} /> },
-                                        { id: 'automation', label: 'Automation', icon: <Clock size={16} /> },
-                                        { id: 'system', label: 'System', icon: <Settings size={16} /> },
-                                    ].map((tab, idx) => {
+                                        { id: 'provider', label: 'Model', icon: <Cpu size={16} />, required: true },
+                                        { id: 'channels', label: 'Channels', icon: <Share2 size={16} />, required: true },
+                                        { id: 'skills', label: 'Skills', icon: <Zap size={16} />, required: false },
+                                        { id: 'tools', label: 'Tools', icon: <Terminal size={16} />, required: false },
+                                        { id: 'workspace', label: 'Workspace', icon: <HardDrive size={16} />, required: false },
+                                        { id: 'automation', label: 'Automation', icon: <Clock size={16} />, required: false },
+                                        { id: 'system', label: 'System', icon: <Settings size={16} />, required: false },
+                                        { id: 'deploy', label: 'Deploy', icon: <Rocket size={16} />, required: true },
+                                    ].map((tab, idx, arr) => {
+                                        const tabIds = ['provider', 'channels', 'skills', 'tools', 'workspace', 'automation', 'system', 'deploy'];
                                         const isActive = activeTab === tab.id;
-                                        const tabIds = ['provider', 'channels', 'skills', 'tools', 'workspace', 'automation', 'system'];
                                         const activeIdx = tabIds.indexOf(activeTab);
                                         const isPast = idx < activeIdx;
+                                        const isLast = idx === arr.length - 1;
                                         return (
-                                            <button
-                                                key={tab.id}
-                                                onClick={() => setActiveTab(tab.id)}
-                                                className={cn(
-                                                    "flex items-center gap-2 md:gap-3 px-3 md:px-4 py-2 md:py-3 rounded-xl md:rounded-xl font-bold text-[10px] md:text-[11px] transition-all text-left uppercase tracking-widest whitespace-nowrap relative",
-                                                    isActive
-                                                        ? "text-white bg-primary/10 border border-primary/30 shadow-lg shadow-primary/5"
-                                                        : isPast
-                                                            ? "text-green-400/60 hover:text-white hover:bg-white/5"
-                                                            : "text-white/30 hover:text-white hover:bg-white/5"
+                                            <div key={tab.id} className="flex md:flex-col items-center md:items-stretch">
+                                                <button
+                                                    onClick={() => setActiveTab(tab.id)}
+                                                    className={cn(
+                                                        "flex items-center gap-2 md:gap-3 px-3 md:px-4 py-2 md:py-2.5 rounded-xl font-bold text-[10px] md:text-[11px] transition-all text-left uppercase tracking-widest whitespace-nowrap relative w-full",
+                                                        isActive
+                                                            ? "text-white bg-primary/10 border border-primary/30 shadow-lg shadow-primary/5"
+                                                            : isPast
+                                                                ? "text-green-400/60 hover:text-white hover:bg-white/5"
+                                                                : "text-white/30 hover:text-white hover:bg-white/5"
+                                                    )}
+                                                >
+                                                    <span className={cn(
+                                                        "w-5 h-5 md:w-6 md:h-6 rounded-full flex items-center justify-center text-[9px] md:text-[10px] font-black shrink-0 border",
+                                                        isActive
+                                                            ? "bg-primary/20 border-primary/50 text-primary"
+                                                            : isPast
+                                                                ? "bg-green-500/10 border-green-500/30 text-green-400"
+                                                                : "bg-white/5 border-white/10 text-white/30"
+                                                    )}>
+                                                        {isPast ? '✓' : idx + 1}
+                                                    </span>
+                                                    <div className="hidden md:flex flex-col gap-0.5 flex-1 min-w-0">
+                                                        <span>{tab.label}</span>
+                                                        <span className={cn(
+                                                            "text-[8px] tracking-wider normal-case font-medium",
+                                                            tab.required ? "text-green-400/50" : "text-white/20"
+                                                        )}>
+                                                            {tab.id === 'deploy' ? 'final step' : tab.required ? 'required' : 'optional'}
+                                                        </span>
+                                                    </div>
+                                                    <span className="md:hidden">{tab.label}</span>
+                                                </button>
+                                                {/* Connecting line between steps (desktop only) */}
+                                                {!isLast && (
+                                                    <div className="hidden md:flex justify-center py-0">
+                                                        <div className={cn(
+                                                            "w-px h-3",
+                                                            isPast ? "bg-green-500/30" : "bg-white/10"
+                                                        )} />
+                                                    </div>
                                                 )}
-                                            >
-                                                <span className={cn(
-                                                    "w-5 h-5 md:w-6 md:h-6 rounded-full flex items-center justify-center text-[9px] md:text-[10px] font-black shrink-0 border",
-                                                    isActive
-                                                        ? "bg-primary/20 border-primary/50 text-primary"
-                                                        : isPast
-                                                            ? "bg-green-500/10 border-green-500/30 text-green-400"
-                                                            : "bg-white/5 border-white/10 text-white/30"
-                                                )}>
-                                                    {isPast ? '✓' : idx + 1}
-                                                </span>
-                                                <span className="hidden md:inline">{tab.label}</span>
-                                                <span className="md:hidden">{tab.label}</span>
-                                            </button>
+                                            </div>
                                         );
                                     })}
                                 </nav>
@@ -1511,25 +1531,163 @@ export default function Dashboard() {
                                     />
                                 )}
 
+                                {activeTab === 'deploy' && (
+                                    <Section title="Pre-Flight Check" subtitle="Review your agent configuration before deploying">
+                                        <div className="space-y-4 max-w-2xl">
+                                            {/* Model Check */}
+                                            <div className={cn(
+                                                "flex items-center gap-4 p-4 rounded-xl border",
+                                                editingAgent.model
+                                                    ? "border-green-500/20 bg-green-500/5"
+                                                    : "border-yellow-500/20 bg-yellow-500/5"
+                                            )}>
+                                                <span className={cn(
+                                                    "w-8 h-8 rounded-full flex items-center justify-center shrink-0",
+                                                    editingAgent.model ? "bg-green-500/20 text-green-400" : "bg-yellow-500/20 text-yellow-400"
+                                                )}>
+                                                    {editingAgent.model ? <Check size={16} /> : <Info size={16} />}
+                                                </span>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="text-xs font-black uppercase tracking-wider text-white/80">AI Model</div>
+                                                    <div className="text-sm text-white/50 truncate">{editingAgent.model || 'No model selected'}</div>
+                                                </div>
+                                                <span className={cn(
+                                                    "text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-full",
+                                                    editingAgent.model ? "text-green-400 bg-green-500/10" : "text-yellow-400 bg-yellow-500/10"
+                                                )}>
+                                                    {editingAgent.model ? 'Ready' : 'Required'}
+                                                </span>
+                                            </div>
+
+                                            {/* Channels Check */}
+                                            {(() => {
+                                                const channels = [];
+                                                if (editingAgent.telegramEnabled) channels.push('Telegram');
+                                                if (editingAgent.discordEnabled) channels.push('Discord');
+                                                if (editingAgent.whatsappEnabled) channels.push('WhatsApp');
+                                                const hasChannels = channels.length > 0;
+                                                return (
+                                                    <div className={cn(
+                                                        "flex items-center gap-4 p-4 rounded-xl border",
+                                                        hasChannels
+                                                            ? "border-green-500/20 bg-green-500/5"
+                                                            : "border-yellow-500/20 bg-yellow-500/5"
+                                                    )}>
+                                                        <span className={cn(
+                                                            "w-8 h-8 rounded-full flex items-center justify-center shrink-0",
+                                                            hasChannels ? "bg-green-500/20 text-green-400" : "bg-yellow-500/20 text-yellow-400"
+                                                        )}>
+                                                            {hasChannels ? <Check size={16} /> : <Info size={16} />}
+                                                        </span>
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="text-xs font-black uppercase tracking-wider text-white/80">Channels</div>
+                                                            <div className="text-sm text-white/50">{hasChannels ? channels.join(', ') : 'No channels connected'}</div>
+                                                        </div>
+                                                        <span className={cn(
+                                                            "text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-full",
+                                                            hasChannels ? "text-green-400 bg-green-500/10" : "text-yellow-400 bg-yellow-500/10"
+                                                        )}>
+                                                            {hasChannels ? 'Ready' : 'Required'}
+                                                        </span>
+                                                    </div>
+                                                );
+                                            })()}
+
+                                            {/* API Key Mode */}
+                                            <div className="flex items-center gap-4 p-4 rounded-xl border border-green-500/20 bg-green-500/5">
+                                                <span className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 bg-green-500/20 text-green-400">
+                                                    <Check size={16} />
+                                                </span>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="text-xs font-black uppercase tracking-wider text-white/80">API Key</div>
+                                                    <div className="text-sm text-white/50">
+                                                        {editingAgent.apiKeyMode === 'platform_credits' ? 'Using platform credits' : 'Using own key'}
+                                                    </div>
+                                                </div>
+                                                <span className="text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-full text-green-400 bg-green-500/10">
+                                                    Ready
+                                                </span>
+                                            </div>
+
+                                            {/* Optional features summary */}
+                                            <div className="flex items-center gap-4 p-4 rounded-xl border border-white/5 bg-white/[0.02]">
+                                                <span className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 bg-white/5 text-white/30">
+                                                    <Settings size={16} />
+                                                </span>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="text-xs font-black uppercase tracking-wider text-white/80">Optional Features</div>
+                                                    <div className="text-sm text-white/50">
+                                                        {[
+                                                            editingAgent.shellEnabled && 'Shell',
+                                                            editingAgent.browserEnabled && 'Browser',
+                                                            editingAgent.cronEnabled && 'Cron',
+                                                            editingAgent.weatherEnabled && 'Weather',
+                                                        ].filter(Boolean).join(', ') || 'None configured (can add later)'}
+                                                    </div>
+                                                </div>
+                                                <span className="text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-full text-white/30 bg-white/5">
+                                                    Optional
+                                                </span>
+                                            </div>
+
+                                            {/* Deploy hint */}
+                                            <div className="text-center pt-6">
+                                                <p className="text-white/30 text-sm">
+                                                    {editingAgent.model && (editingAgent.telegramEnabled || editingAgent.discordEnabled || editingAgent.whatsappEnabled)
+                                                        ? '✅ Everything looks good! Hit Deploy Mission below to launch your agent.'
+                                                        : '⚠️ Complete the required steps above before deploying.'}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </Section>
+                                )}
+
                             </div>
 
-                            {/* Floating Action Bar */}
-                            <div className="fixed bottom-4 right-4 md:bottom-12 md:right-12 flex items-center gap-2 md:gap-4 z-50">
-                                <button
-                                    onClick={() => deleteAgent(editingAgent.id)}
-                                    className="p-4 rounded-2xl bg-white/5 border border-white/5 text-white/40 hover:text-red-500 hover:bg-red-500/10 transition-all"
-                                >
-                                    <Trash2 size={20} />
-                                </button>
-                                <button
-                                    onClick={() => saveConfig(editingAgent)}
-                                    disabled={isSaving}
-                                    className="btn-primary-modern px-6 md:px-10 py-3 md:py-5 flex items-center gap-2 md:gap-3 shadow-2xl shadow-primary/20"
-                                >
-                                    {isSaving ? <Loader2 className="animate-spin" size={20} /> : <Rocket size={20} />}
-                                    <span className="font-black text-xs md:text-sm uppercase tracking-widest">Deploy Mission</span>
-                                </button>
-                            </div>
+                            {/* Floating Action Bar — Next/Back navigation */}
+                            {(() => {
+                                const tabIds = ['provider', 'channels', 'skills', 'tools', 'workspace', 'automation', 'system', 'deploy'];
+                                const currentIdx = tabIds.indexOf(activeTab);
+                                const isFirst = currentIdx === 0;
+                                const isLast = activeTab === 'deploy';
+                                return (
+                                    <div className="fixed bottom-4 right-4 left-4 md:bottom-12 md:right-12 md:left-auto flex items-center gap-2 md:gap-4 z-50 justify-end">
+                                        <button
+                                            onClick={() => deleteAgent(editingAgent.id)}
+                                            className="p-4 rounded-2xl bg-white/5 border border-white/5 text-white/40 hover:text-red-500 hover:bg-red-500/10 transition-all"
+                                        >
+                                            <Trash2 size={20} />
+                                        </button>
+                                        {!isFirst && (
+                                            <button
+                                                onClick={() => setActiveTab(tabIds[currentIdx - 1])}
+                                                className="px-4 md:px-6 py-3 md:py-5 rounded-2xl bg-white/5 border border-white/10 text-white/60 hover:text-white hover:bg-white/10 transition-all flex items-center gap-2"
+                                            >
+                                                <ChevronLeft size={18} />
+                                                <span className="font-black text-xs uppercase tracking-widest">Back</span>
+                                            </button>
+                                        )}
+                                        {isLast ? (
+                                            <button
+                                                onClick={() => saveConfig(editingAgent)}
+                                                disabled={isSaving}
+                                                className="btn-primary-modern px-6 md:px-10 py-3 md:py-5 flex items-center gap-2 md:gap-3 shadow-2xl shadow-primary/20"
+                                            >
+                                                {isSaving ? <Loader2 className="animate-spin" size={20} /> : <Rocket size={20} />}
+                                                <span className="font-black text-xs md:text-sm uppercase tracking-widest">Deploy Mission</span>
+                                            </button>
+                                        ) : (
+                                            <button
+                                                onClick={() => setActiveTab(tabIds[currentIdx + 1])}
+                                                className="btn-primary-modern px-6 md:px-10 py-3 md:py-5 flex items-center gap-2 md:gap-3 shadow-2xl shadow-primary/20"
+                                            >
+                                                <span className="font-black text-xs md:text-sm uppercase tracking-widest">Next Step</span>
+                                                <ChevronRight size={18} />
+                                            </button>
+                                        )}
+                                    </div>
+                                );
+                            })()}
                         </main>
                     </motion.div>
                 )}

@@ -483,4 +483,70 @@ router.post('/bots/restart-paid', async (req, res) => {
     }
 });
 
+// ========================
+// Email Drip Campaign — Bulk Enroll
+// ========================
+
+/**
+ * POST /api/admin/drip/enroll-all
+ * Enroll ALL existing users into the drip campaign.
+ * Idempotent — skips users already enrolled.
+ */
+router.post('/drip/enroll-all', async (req, res) => {
+    try {
+        const users = await prisma.user.findMany({
+            select: { id: true, email: true, full_name: true }
+        });
+
+        const { enrollUser } = await import('../lib/drip-engine.js');
+
+        let enrolled = 0;
+        let skipped = 0;
+
+        for (const user of users) {
+            try {
+                await enrollUser(user.id, user.email);
+                enrolled++;
+            } catch (err: any) {
+                if (err.message?.includes('already enrolled')) {
+                    skipped++;
+                } else {
+                    console.error(`[Drip] Failed to enroll ${user.email}:`, err.message);
+                    skipped++;
+                }
+            }
+        }
+
+        res.json({
+            success: true,
+            total: users.length,
+            enrolled,
+            skipped,
+            message: `Enrolled ${enrolled} users, skipped ${skipped} (already enrolled or error)`
+        });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+/**
+ * GET /api/admin/drip/stats
+ * Get drip campaign statistics
+ */
+router.get('/drip/stats', async (req, res) => {
+    try {
+        const [total, sent, pending, failed, skipped] = await Promise.all([
+            prisma.emailDrip.count(),
+            prisma.emailDrip.count({ where: { status: 'sent' } }),
+            prisma.emailDrip.count({ where: { status: 'pending' } }),
+            prisma.emailDrip.count({ where: { status: 'failed' } }),
+            prisma.emailDrip.count({ where: { status: 'skipped' } }),
+        ]);
+
+        res.json({ total, sent, pending, failed, skipped });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 export default router;

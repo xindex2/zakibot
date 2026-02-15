@@ -185,3 +185,23 @@ model Order {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 }
+
+model PasswordReset {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model EmailDrip {
+  id           String    @id @default(cuid())
+  userId       String
+  email        String
+  step         Int       // 0=welcome, 1=setup-nudge, 2=help, 3=multi-agent, 4=upgrade, 5=price-rising, 6=last-chance, 7=deletion-warning
+  sentAt       DateTime?
+  scheduledFor DateTime
+  status       String    @default("pending") // pending, sent, failed, skipped
+  createdAt    DateTime  @default(now())
+}

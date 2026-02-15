@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { PrismaClient } from '@prisma/client';
+import crypto from 'node:crypto';
 import os from 'os';
 import { startBot, stopBot, getBotStatus, killAllUserProcesses } from './src/lib/bot-executor.js';
 import whopRoutes from './src/routes/webhooks/whop.js';
@@ -142,6 +143,15 @@ app.post('/api/register', async (req, res) => {
                 avatar_url: (user as any).avatar_url
             }
         });
+
+        // ── Enroll user in drip campaign ──
+        try {
+            const { enrollUser } = await import('./src/lib/drip-engine.js');
+            await enrollUser(user.id, user.email);
+        } catch (dripErr: any) {
+            console.error('[Drip] Enrollment failed:', dripErr.message);
+        }
+
     } catch (e: any) {
         res.status(500).json({ error: e.message });
     }
@@ -194,6 +204,75 @@ app.post('/api/login', async (req, res) => {
                 avatar_url: (user as any).avatar_url
             }
         });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// --- Forgot Password ---
+
+app.post('/api/auth/forgot-password', async (req, res) => {
+    try {
+        const { email } = req.body;
+        if (!email) return res.status(400).json({ error: 'Email is required' });
+
+        const user = await prisma.user.findUnique({ where: { email } });
+
+        // Always return success (don't reveal if email exists)
+        if (!user) return res.json({ message: 'If an account exists, a reset link has been sent.' });
+
+        // Generate token
+        const token = crypto.randomBytes(32).toString('hex');
+        const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+        await prisma.passwordReset.create({
+            data: { userId: user.id, token, expiresAt }
+        });
+
+        // Send reset email
+        const FRONTEND_URL = process.env.FRONTEND_URL || 'https://openclaw-host.com';
+        const resetUrl = `${FRONTEND_URL}/reset-password?token=${token}`;
+
+        try {
+            const { sendEmail } = await import('./src/lib/email-service.js');
+            const { passwordResetEmail } = await import('./src/lib/email-templates.js');
+            const template = passwordResetEmail(user.full_name || 'there', resetUrl);
+            await sendEmail(user.email, template.subject, template.html);
+        } catch (emailErr: any) {
+            console.error('[ForgotPwd] Email send failed:', emailErr.message);
+        }
+
+        res.json({ message: 'If an account exists, a reset link has been sent.' });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.post('/api/auth/reset-password', async (req, res) => {
+    try {
+        const { token, password } = req.body;
+        if (!token || !password) return res.status(400).json({ error: 'Token and password are required' });
+        if (password.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters' });
+
+        const resetRecord = await prisma.passwordReset.findUnique({ where: { token } });
+        if (!resetRecord || resetRecord.used || resetRecord.expiresAt < new Date()) {
+            return res.status(400).json({ error: 'Invalid or expired reset link. Please request a new one.' });
+        }
+
+        // Hash and update
+        const hashedPassword = await bcrypt.hash(password, 10);
+        await prisma.user.update({
+            where: { id: resetRecord.userId },
+            data: { password: hashedPassword }
+        });
+
+        // Mark token as used
+        await prisma.passwordReset.update({
+            where: { id: resetRecord.id },
+            data: { used: true }
+        });
+
+        res.json({ message: 'Password updated successfully.' });
     } catch (e: any) {
         res.status(500).json({ error: e.message });
     }
@@ -1301,4 +1380,21 @@ app.listen(PORT, async () => {
         }
     }, WATCHDOG_INTERVAL_MS);
     console.log(`🐕 Watchdog started (checking every ${WATCHDOG_INTERVAL_MS / 1000}s)`);
+
+    // ─── Email Drip Campaign Scheduler ──────────────────────────────────────
+    const DRIP_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes
+    setInterval(async () => {
+        try {
+            const { processPendingDrips } = await import('./src/lib/drip-engine.js');
+            await processPendingDrips();
+        } catch (e: any) {
+            console.error('[Drip Scheduler] Error:', e.message);
+        }
+    }, DRIP_INTERVAL_MS);
+    console.log(`📧 Drip scheduler started (checking every ${DRIP_INTERVAL_MS / 60000}min)`);
+
+    // Run immediately on startup too (don't wait 15 min for first batch)
+    import('./src/lib/drip-engine.js')
+        .then(({ processPendingDrips }) => processPendingDrips())
+        .catch((e: any) => console.error('[Drip] Initial run failed:', e.message));
 });

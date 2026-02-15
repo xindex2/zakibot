@@ -120,6 +120,14 @@ router.get('/auth/google/callback', async (req, res) => {
             });
         }
 
+        // Enroll in drip campaign (idempotent — skips if already enrolled)
+        try {
+            const { enrollUser } = await import('../lib/drip-engine.js');
+            await enrollUser(user.id, user.email);
+        } catch (dripErr: any) {
+            console.error('[Drip] OAuth enrollment failed:', dripErr.message);
+        }
+
         // Generate JWT token
         const token = jwtSign(
             { userId: user.id, full_name: user.full_name, role: user.role },
@@ -216,6 +224,14 @@ router.post('/auth/google/token', async (req: any, res: any) => {
                 where: { id: user.id },
                 data: { avatar_url }
             });
+        }
+
+        // Enroll in drip campaign (idempotent)
+        try {
+            const { enrollUser } = await import('../lib/drip-engine.js');
+            await enrollUser(user.id, user.email);
+        } catch (dripErr: any) {
+            console.error('[Drip] OAuth enrollment failed:', dripErr.message);
         }
 
         const token = jwtSign(
@@ -386,6 +402,14 @@ router.post('/auth/apple/callback', express.urlencoded({ extended: true }), asyn
                     throw createErr;
                 }
             }
+        }
+
+        // Enroll in drip campaign (idempotent)
+        try {
+            const { enrollUser } = await import('../lib/drip-engine.js');
+            await enrollUser(user.id, user.email);
+        } catch (dripErr: any) {
+            console.error('[Drip] OAuth enrollment failed:', dripErr.message);
         }
 
         // Generate JWT token

@@ -1340,17 +1340,17 @@ export default function Dashboard() {
                                             </ToolCard>
                                             <ToolCard
                                                 title="Browser Proxy" icon={<Globe size={20} />}
-                                                desc="Route browser traffic through a proxy to avoid IP bans."
+                                                desc="Route browser traffic through proxies to avoid IP bans."
                                                 checked={!!editingAgent.proxyUrl}
                                             >
-                                                <input
-                                                    type="text"
+                                                <textarea
                                                     value={editingAgent.proxyUrl || ''}
                                                     onChange={e => setEditingAgent({ ...editingAgent, proxyUrl: e.target.value })}
-                                                    className="input-modern w-full text-[10px] mt-2"
-                                                    placeholder="http://user:pass@host:port or socks5://host:port"
+                                                    className="input-modern w-full text-[10px] mt-2 min-h-[60px] resize-y font-mono"
+                                                    placeholder={"http://user:pass@host1:port\nhttp://user:pass@host2:port\nsocks5://host3:port"}
+                                                    rows={3}
                                                 />
-                                                <p className="text-[9px] text-white/30 mt-1.5">Use residential proxies (Bright Data, Oxylabs, etc.) for best results.</p>
+                                                <p className="text-[9px] text-white/30 mt-1.5">One proxy per line. Multiple proxies are <strong className="text-white/50">rotated automatically</strong> each session. Use residential proxies for best results.</p>
                                             </ToolCard>
                                         </div>
                                     </Section>

@@ -737,26 +737,32 @@ class BrowserTool(Tool):
         )
         logger.debug(f"Session fingerprint: UA={ua_string[:50]}... viewport={viewport['width']}x{viewport['height']} tz={tz}")
         
-        # Add proxy if configured
+        # Add proxy if configured (supports multiple proxies, one per line, with rotation)
         if self._proxy_url:
-            proxy_conf: dict[str, str] = {"server": self._proxy_url}
-            # Parse credentials from URL like http://user:pass@host:port
-            try:
-                from urllib.parse import urlparse
-                parsed = urlparse(self._proxy_url)
-                if parsed.username:
-                    proxy_conf["username"] = parsed.username
-                if parsed.password:
-                    proxy_conf["password"] = parsed.password
-                # Rebuild server without credentials
-                server = f"{parsed.scheme}://{parsed.hostname}"
-                if parsed.port:
-                    server += f":{parsed.port}"
-                proxy_conf["server"] = server
-            except Exception:
-                pass  # Use raw URL as-is
-            context_opts["proxy"] = proxy_conf
-            logger.info(f"Browser using proxy: {proxy_conf['server']}")
+            # Parse multiple proxies (newline or comma separated)
+            import re as _re
+            proxy_list = [p.strip() for p in _re.split(r'[\n,]+', self._proxy_url) if p.strip()]
+            selected_proxy = random.choice(proxy_list) if proxy_list else ""
+            
+            if selected_proxy:
+                proxy_conf: dict[str, str] = {"server": selected_proxy}
+                # Parse credentials from URL like http://user:pass@host:port
+                try:
+                    from urllib.parse import urlparse
+                    parsed = urlparse(selected_proxy)
+                    if parsed.username:
+                        proxy_conf["username"] = parsed.username
+                    if parsed.password:
+                        proxy_conf["password"] = parsed.password
+                    # Rebuild server without credentials
+                    server = f"{parsed.scheme}://{parsed.hostname}"
+                    if parsed.port:
+                        server += f":{parsed.port}"
+                    proxy_conf["server"] = server
+                except Exception:
+                    pass  # Use raw URL as-is
+                context_opts["proxy"] = proxy_conf
+                logger.info(f"Browser using proxy: {proxy_conf['server']} (1 of {len(proxy_list)} proxies)")
         
         self.context = await self.browser.new_context(**context_opts)
         

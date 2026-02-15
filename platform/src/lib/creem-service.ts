@@ -133,6 +133,16 @@ export class CreemService {
             }
         });
 
+        // Cancel drip emails when user upgrades to a paid plan
+        if (status === 'active' && planName !== 'Free') {
+            try {
+                const { cancelPendingDrips } = await import('./drip-engine.js');
+                await cancelPendingDrips(user.id);
+            } catch (e: any) {
+                console.error('[Creem] Failed to cancel drips on upgrade:', e.message);
+            }
+        }
+
         // --- Order Tracking ---
         const checkoutId = data?.id || data?.checkout?.id;
         const requestId = data?.request_id; // Our order ID passed during checkout creation

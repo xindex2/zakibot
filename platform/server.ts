@@ -9,6 +9,7 @@ import whopRoutes from './src/routes/webhooks/whop.js';
 import creemRoutes from './src/routes/webhooks/creem.js';
 import authRoutes from './src/routes/auth.js';
 import adminRoutes from './src/routes/admin.js';
+import { processPendingDrips, enrollUser as dripEnrollUser } from './src/lib/drip-engine.js';
 import jwt from 'jsonwebtoken';
 import path from 'path';
 import fs from 'fs';
@@ -144,10 +145,9 @@ app.post('/api/register', async (req, res) => {
             }
         });
 
-        // ── Enroll user in drip campaign ──
+        // Enroll in drip campaign
         try {
-            const { enrollUser } = await import('./src/lib/drip-engine.js');
-            await enrollUser(user.id, user.email);
+            await dripEnrollUser(user.id, user.email);
         } catch (dripErr: any) {
             console.error('[Drip] Enrollment failed:', dripErr.message);
         }
@@ -225,7 +225,7 @@ app.post('/api/auth/forgot-password', async (req, res) => {
         const token = crypto.randomBytes(32).toString('hex');
         const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
 
-        await prisma.passwordReset.create({
+        await (prisma as any).passwordReset.create({
             data: { userId: user.id, token, expiresAt }
         });
 
@@ -254,7 +254,7 @@ app.post('/api/auth/reset-password', async (req, res) => {
         if (!token || !password) return res.status(400).json({ error: 'Token and password are required' });
         if (password.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters' });
 
-        const resetRecord = await prisma.passwordReset.findUnique({ where: { token } });
+        const resetRecord = await (prisma as any).passwordReset.findUnique({ where: { token } });
         if (!resetRecord || resetRecord.used || resetRecord.expiresAt < new Date()) {
             return res.status(400).json({ error: 'Invalid or expired reset link. Please request a new one.' });
         }
@@ -267,7 +267,7 @@ app.post('/api/auth/reset-password', async (req, res) => {
         });
 
         // Mark token as used
-        await prisma.passwordReset.update({
+        await (prisma as any).passwordReset.update({
             where: { id: resetRecord.id },
             data: { used: true }
         });
@@ -1385,7 +1385,6 @@ app.listen(PORT, async () => {
     const DRIP_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes
     setInterval(async () => {
         try {
-            const { processPendingDrips } = await import('./src/lib/drip-engine.js');
             await processPendingDrips();
         } catch (e: any) {
             console.error('[Drip Scheduler] Error:', e.message);
@@ -1394,7 +1393,5 @@ app.listen(PORT, async () => {
     console.log(`📧 Drip scheduler started (checking every ${DRIP_INTERVAL_MS / 60000}min)`);
 
     // Run immediately on startup too (don't wait 15 min for first batch)
-    import('./src/lib/drip-engine.js')
-        .then(({ processPendingDrips }) => processPendingDrips())
-        .catch((e: any) => console.error('[Drip] Initial run failed:', e.message));
+    processPendingDrips().catch((e: any) => console.error('[Drip] Initial run failed:', e.message));
 });

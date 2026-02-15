@@ -180,12 +180,9 @@ class AgentLoop:
                 channel=msg.channel,
                 chat_id=msg.chat_id,
                 content=(
-                    "\U0001f44b Hey! I'm your AI agent and I'm working great! I heard your message.\n\n"
-                    "You've used your **2 free test messages** \u2014 I hope you saw what I can do! \U0001f680\n\n"
-                    "To unlock **unlimited messages**, connect more channels, and get full access, "
-                    "upgrade your plan here:\n"
-                    "\U0001f449 https://myclaw.host/billing\n\n"
-                    "See you on the other side! \U0001f3af"
+                    "*[Free trial message limit reached]*\n\n"
+                    "Your agent is working! To unlock unlimited messages "
+                    "and 24/7 hosting, upgrade here: https://openclaw-host.com/billing"
                 )
             )
 

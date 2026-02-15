@@ -438,11 +438,6 @@ export default function Dashboard() {
 
     const toggleBot = async (configId: string, currentStatus: string) => {
         const action = currentStatus === 'running' ? 'stop' : 'start';
-        // Free users must upgrade before deploying
-        if (action === 'start' && (subscription?.plan || 'Free') === 'Free') {
-            setShowLimitModal(true);
-            return;
-        }
         const resp = await fetch('/api/bot/control', {
             method: 'POST',
             headers: {

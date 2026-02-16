@@ -701,6 +701,27 @@ class BrowserTool(Tool):
                 '--window-size=1920,1080',
                 '--disable-web-security',
                 '--disable-features=VizDisplayCompositor',
+                # ── Memory reduction flags ──
+                '--disable-gpu',
+                '--single-process',
+                '--disable-extensions',
+                '--disable-background-networking',
+                '--disable-background-timer-throttling',
+                '--disable-renderer-backgrounding',
+                '--disable-backgrounding-occluded-windows',
+                '--disable-component-extensions-with-background-pages',
+                '--disable-default-apps',
+                '--disable-translate',
+                '--disable-sync',
+                '--metrics-recording-only',
+                '--no-first-run',
+                '--disable-hang-monitor',
+                '--disable-popup-blocking',
+                '--disable-prompt-on-repost',
+                '--disable-domain-reliability',
+                '--disable-client-side-phishing-detection',
+                '--disable-ipc-flooding-protection',
+                '--js-flags=--max-old-space-size=128',
             ]
         )
         

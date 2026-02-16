@@ -1394,4 +1394,34 @@ app.listen(PORT, async () => {
 
     // Run immediately on startup too (don't wait 15 min for first batch)
     processPendingDrips().catch((e: any) => console.error('[Drip] Initial run failed:', e.message));
+
+    // ─── Orphan Process Reaper ──────────────────────────────────────────────
+    // Kill Chrome headless processes that have been running too long (orphans)
+    const REAPER_INTERVAL_MS = 5 * 60 * 1000; // every 5 minutes
+    const MAX_CHROME_AGE_MIN = 10; // kill Chrome processes older than 10 minutes
+
+    const { exec } = await import('child_process');
+
+    setInterval(() => {
+        // Find and kill orphan chromium/chrome-headless processes older than MAX_CHROME_AGE_MIN
+        const cmd = `ps -eo pid,etimes,comm --no-headers | awk '$3 ~ /chrom/ && $2 > ${MAX_CHROME_AGE_MIN * 60} { print $1 }'`;
+
+        exec(cmd, (err: any, stdout: string) => {
+            if (err || !stdout.trim()) return;
+
+            const pids = stdout.trim().split('\n').filter(Boolean);
+            if (pids.length === 0) return;
+
+            console.log(`🧹 [Reaper] Found ${pids.length} orphan Chrome processes (>${MAX_CHROME_AGE_MIN}min old), killing...`);
+
+            for (const pid of pids) {
+                exec(`kill -9 ${pid.trim()}`, (killErr: any) => {
+                    if (!killErr) {
+                        console.log(`🧹 [Reaper] Killed Chrome PID ${pid.trim()}`);
+                    }
+                });
+            }
+        });
+    }, REAPER_INTERVAL_MS);
+    console.log(`🧹 Orphan reaper started (killing Chrome processes >${MAX_CHROME_AGE_MIN}min every ${REAPER_INTERVAL_MS / 60000}min)`);
 });

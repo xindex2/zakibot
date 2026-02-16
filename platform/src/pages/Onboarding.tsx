@@ -6,7 +6,8 @@ import StarField from '../components/StarField';
 import { getSource } from '../lib/referral-tracking';
 import {
     ChevronRight, ChevronLeft, Sparkles, Lock, Loader2, Search,
-    Rocket, Check, MessageSquare, ArrowRight, ExternalLink, Smartphone
+    Rocket, Check, MessageSquare, ArrowRight, ExternalLink, Smartphone,
+    Zap, Crown, Building2, Shield, CheckCircle2, AlertTriangle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -39,7 +40,8 @@ const STEPS = [
     { id: 'account', label: 'Account', num: 1 },
     { id: 'model', label: 'AI Model', num: 2 },
     { id: 'channel', label: 'Channel', num: 3 },
-    { id: 'launch', label: 'Launch!', num: 4 },
+    { id: 'plan', label: 'Plan', num: 4 },
+    { id: 'launch', label: 'Launch!', num: 5 },
 ];
 
 export default function Onboarding() {
@@ -77,12 +79,38 @@ export default function Onboarding() {
     // Step 4 — Result
     const [deployedBot, setDeployedBot] = useState<any>(null);
 
+    // Plan data
+    const [paymentProvider, setPaymentProvider] = useState('creem');
+    const [creemPlans, setCreemPlans] = useState<any[]>([]);
+    const [whopPlans, setWhopPlans] = useState<any[]>([]);
+
+    const PLANS = [
+        { name: 'Starter', price: '$29', icon: <Rocket size={20} />, agents: 1, color: 'text-blue-500', bg: 'border-blue-500/30 bg-blue-500/5', features: ['1 Active Agent', '$10 API Credits', 'Priority Support', 'All Skills'] },
+        { name: 'Pro', price: '$69', icon: <Zap size={20} />, agents: 5, color: 'text-purple-500', bg: 'border-purple-500/30 bg-purple-500/5', features: ['5 Active Agents', '$10 API Credits', 'Advanced Skills', 'API Access'], recommended: true },
+        { name: 'Elite', price: '$99', icon: <Crown size={20} />, agents: 10, color: 'text-red-500', bg: 'border-red-500/30 bg-red-500/5', features: ['10 Agent Slots', '$10 API Credits', 'Private Nodes', 'Dedicated Manager'] },
+        { name: 'Enterprise', price: 'Custom', icon: <Building2 size={20} />, agents: '∞', color: 'text-white', bg: 'border-white/10 bg-white/5', features: ['Unlimited Agents', 'On-Premise Deploy', 'Custom LLM Training', 'SLA Support'] },
+    ];
+
     // Auto-fetch models when entering step 2
     useEffect(() => {
         if (step === 1) {
             fetchModels();
         }
     }, [step, apiKeyMode]);
+
+    // Fetch plan data when reaching the plan step
+    useEffect(() => {
+        if (step === 3) {
+            fetch('/api/payment-provider')
+                .then(r => r.json())
+                .then(data => setPaymentProvider(data.provider || 'creem'))
+                .catch(() => { });
+            fetch('/api/creem-plans')
+                .then(r => r.json())
+                .then(data => { if (Array.isArray(data)) setCreemPlans(data); })
+                .catch(() => { });
+        }
+    }, [step]);
 
     const fetchModels = async () => {
         const isPlatform = apiKeyMode === 'platform_credits';
@@ -166,7 +194,7 @@ export default function Onboarding() {
 
             login(data.token, data.user);
             setDeployedBot(data.bot);
-            setStep(3);
+            setStep(3); // Go to Plan step
         } catch (err: any) {
             setError(err.message);
         } finally {
@@ -585,8 +613,102 @@ export default function Onboarding() {
                             </motion.div>
                         )}
 
-                        {/* ─── STEP 4: LAUNCH SUCCESS ─── */}
+                        {/* ─── STEP 4: CHOOSE PLAN ─── */}
                         {step === 3 && (
+                            <motion.div
+                                key="step-plan"
+                                initial={{ opacity: 0, x: 30 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: -30 }}
+                                className="space-y-6"
+                            >
+                                <div className="text-center mb-4">
+                                    <h2 className="text-2xl font-black italic uppercase tracking-tighter mb-1">Choose Your Plan</h2>
+                                    <p className="text-gray-500 font-medium text-sm">Step 4 of 5 — Unlock the full power of your agent</p>
+                                </div>
+
+                                {/* Free trial paused notice */}
+                                <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4 flex items-start gap-3">
+                                    <AlertTriangle size={18} className="text-amber-400 shrink-0 mt-0.5" />
+                                    <div>
+                                        <p className="text-sm font-bold text-amber-300">Free trial paused</p>
+                                        <p className="text-[11px] text-amber-200/60 leading-relaxed">Due to overwhelming demand, we've temporarily paused the free trial. Choose a plan below to deploy and run your agent.</p>
+                                    </div>
+                                </div>
+
+                                {/* Plan cards */}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    {PLANS.map(plan => {
+                                        // Build checkout link
+                                        const creemLink = creemPlans.find((cp: any) => cp.planName === plan.name)?.checkoutUrl;
+                                        const checkoutUrl = plan.name === 'Enterprise'
+                                            ? 'mailto:support@myclaw.host'
+                                            : (paymentProvider === 'creem' ? creemLink : null) || '#';
+
+                                        return (
+                                            <button
+                                                key={plan.name}
+                                                onClick={() => {
+                                                    if (plan.name === 'Enterprise') {
+                                                        window.open('mailto:support@myclaw.host', '_blank');
+                                                    } else if (checkoutUrl && checkoutUrl !== '#') {
+                                                        // Open checkout with user email
+                                                        try {
+                                                            const u = new URL(checkoutUrl);
+                                                            if (email) {
+                                                                u.searchParams.set('email', email);
+                                                                u.searchParams.set('customer_email', email);
+                                                            }
+                                                            window.open(u.toString(), '_blank');
+                                                        } catch {
+                                                            window.open(checkoutUrl, '_blank');
+                                                        }
+                                                    } else {
+                                                        navigate('/billing');
+                                                    }
+                                                }}
+                                                className={`p-5 rounded-2xl border-2 transition-all text-left relative hover:scale-[1.02] active:scale-95 ${plan.bg}`}
+                                            >
+                                                {plan.recommended && (
+                                                    <span className="absolute -top-2.5 right-4 px-2.5 py-0.5 bg-purple-500 text-white text-[7px] font-black uppercase rounded-full tracking-wider">Recommended</span>
+                                                )}
+                                                <div className="flex items-center gap-3 mb-3">
+                                                    <div className={`w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center ${plan.color}`}>
+                                                        {plan.icon}
+                                                    </div>
+                                                    <div>
+                                                        <h4 className="font-black text-sm uppercase tracking-tight text-white">{plan.name}</h4>
+                                                        <div className="flex items-baseline gap-1">
+                                                            <span className="text-lg font-black text-white">{plan.price}</span>
+                                                            {plan.price !== 'Custom' && <span className="text-[9px] text-white/40 font-bold">/mo</span>}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <ul className="space-y-1.5">
+                                                    {plan.features.map((f, i) => (
+                                                        <li key={i} className="flex items-center gap-2 text-[10px] text-white/50">
+                                                            <CheckCircle2 size={10} className={plan.color} />
+                                                            {f}
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+
+                                {/* Skip for now */}
+                                <button
+                                    onClick={() => setStep(4)}
+                                    className="w-full text-center text-white/30 hover:text-white/60 text-xs font-bold py-3 transition-all"
+                                >
+                                    Skip for now — I'll test my bot first →
+                                </button>
+                            </motion.div>
+                        )}
+
+                        {/* ─── STEP 5: LAUNCH SUCCESS ─── */}
+                        {step === 4 && (
                             <motion.div
                                 key="step-launch"
                                 initial={{ opacity: 0, scale: 0.95 }}

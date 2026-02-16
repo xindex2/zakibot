@@ -5,7 +5,7 @@ import {
     Trash2, Play, Square, Settings, LayoutDashboard, ChevronRight, CheckCircle, Plus, Rocket,
     Cloud, FileText, Lock, Sparkles, ChevronLeft, Edit3, Activity, Check, Info, Loader2, Zap, Layout, RefreshCw,
     MessageSquare, Smartphone, QrCode, ShieldAlert, Shield, Layers, Upload, FolderOpen, File, Image, Code,
-    Download, Eye, X, FilePlus, Video, Crown, ArrowUpRight
+    Download, Eye, X, FilePlus, Video, Crown, ArrowUpRight, AlertTriangle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { clsx, type ClassValue } from 'clsx';
@@ -510,6 +510,26 @@ export default function Dashboard() {
 
 
                         </header>
+
+                        {/* Free trial paused banner */}
+                        {(!subscription || subscription?.plan === 'Free') && (
+                            <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                                <div className="flex items-start gap-3">
+                                    <AlertTriangle size={18} className="text-amber-400 shrink-0 mt-0.5" />
+                                    <div>
+                                        <p className="text-sm font-bold text-amber-300">Free trial paused</p>
+                                        <p className="text-[11px] text-amber-200/60 leading-relaxed">Due to overwhelming demand, we've temporarily paused the free trial. Upgrade your plan to deploy and run your agents.</p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => navigate('/billing')}
+                                    className="shrink-0 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black font-black px-5 py-2.5 rounded-xl text-[10px] uppercase tracking-widest transition-all flex items-center gap-2 shadow-lg shadow-amber-900/20"
+                                >
+                                    <Zap size={14} strokeWidth={3} />
+                                    Upgrade Now
+                                </button>
+                            </div>
+                        )}
 
                         {agents.length === 0 ? (
                             <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -1980,6 +2000,31 @@ function AgentCard({ agent, onEdit, onDelete, onToggle }: any) {
                 <h3 className="text-[15px] font-semibold text-white/90 truncate mb-1 group-hover:text-white transition-colors">{agent.name}</h3>
                 <p className="text-[12px] text-white/35 font-normal line-clamp-2 leading-relaxed">{agent.description || 'No description.'}</p>
             </div>
+
+            {/* Configuration error banner */}
+            {(() => {
+                const issues: string[] = [];
+                if (!agent.model) issues.push('No AI model selected');
+                if (!agent.telegramEnabled && !agent.discordEnabled && !agent.whatsappEnabled && !agent.feishuEnabled && !agent.slackEnabled) issues.push('No channel connected');
+                if (issues.length === 0) return null;
+                return (
+                    <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 flex items-start gap-2.5">
+                        <AlertTriangle size={14} className="text-red-400 shrink-0 mt-0.5" />
+                        <div className="flex-1 min-w-0">
+                            <p className="text-[10px] font-bold text-red-300 uppercase tracking-wider mb-1">Setup incomplete</p>
+                            {issues.map((issue, i) => (
+                                <p key={i} className="text-[11px] text-red-200/60">• {issue}</p>
+                            ))}
+                        </div>
+                        <button
+                            onClick={(e) => { e.stopPropagation(); onEdit(); }}
+                            className="shrink-0 bg-red-500/20 hover:bg-red-500/30 text-red-300 hover:text-red-200 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all"
+                        >
+                            Fix Now
+                        </button>
+                    </div>
+                );
+            })()}
 
             {/* Model badge */}
             {agent.model && (

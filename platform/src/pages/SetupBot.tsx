@@ -5,7 +5,8 @@ import Logo from '../components/Logo';
 import StarField from '../components/StarField';
 import {
     ChevronRight, ChevronLeft, Sparkles, Lock, Loader2, Search,
-    Rocket, Check, ArrowRight, Smartphone, MessageSquare
+    Rocket, Check, ArrowRight, Smartphone, MessageSquare,
+    Zap, Crown, Building2, CheckCircle2, AlertTriangle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -37,11 +38,12 @@ const PROVIDERS = [
 const STEPS = [
     { id: 'model', label: 'AI Model', num: 1 },
     { id: 'channel', label: 'Channel', num: 2 },
-    { id: 'launch', label: 'Launch!', num: 3 },
+    { id: 'plan', label: 'Plan', num: 3 },
+    { id: 'launch', label: 'Launch!', num: 4 },
 ];
 
 /**
- * Post-OAuth onboarding: 3-step wizard for users who signed in via
+ * Post-OAuth onboarding: 4-step wizard for users who signed in via
  * Google / Apple and have no bots yet. Account already exists.
  */
 export default function SetupBot() {
@@ -73,6 +75,17 @@ export default function SetupBot() {
     // Step 3 — Result
     const [deployedBot, setDeployedBot] = useState<any>(null);
 
+    // Plan data
+    const [paymentProvider, setPaymentProvider] = useState('creem');
+    const [creemPlans, setCreemPlans] = useState<any[]>([]);
+
+    const PLANS = [
+        { name: 'Starter', price: '$29', icon: <Rocket size={20} />, color: 'text-blue-500', bg: 'border-blue-500/30 bg-blue-500/5', features: ['1 Active Agent', '$10 API Credits', 'Priority Support', 'All Skills'] },
+        { name: 'Pro', price: '$69', icon: <Zap size={20} />, color: 'text-purple-500', bg: 'border-purple-500/30 bg-purple-500/5', features: ['5 Active Agents', '$10 API Credits', 'Advanced Skills', 'API Access'], recommended: true },
+        { name: 'Elite', price: '$99', icon: <Crown size={20} />, color: 'text-red-500', bg: 'border-red-500/30 bg-red-500/5', features: ['10 Agent Slots', '$10 API Credits', 'Private Nodes', 'Dedicated Manager'] },
+        { name: 'Enterprise', price: 'Custom', icon: <Building2 size={20} />, color: 'text-white', bg: 'border-white/10 bg-white/5', features: ['Unlimited Agents', 'On-Premise Deploy', 'Custom LLM Training', 'SLA Support'] },
+    ];
+
     // Redirect if not logged in
     useEffect(() => {
         if (!token) navigate('/login');
@@ -82,6 +95,20 @@ export default function SetupBot() {
     useEffect(() => {
         if (step === 0) fetchModels();
     }, [step, apiKeyMode]);
+
+    // Fetch plan data when reaching the plan step
+    useEffect(() => {
+        if (step === 2) {
+            fetch('/api/payment-provider')
+                .then(r => r.json())
+                .then(data => setPaymentProvider(data.provider || 'creem'))
+                .catch(() => { });
+            fetch('/api/creem-plans')
+                .then(r => r.json())
+                .then(data => { if (Array.isArray(data)) setCreemPlans(data); })
+                .catch(() => { });
+        }
+    }, [step]);
 
     const fetchModels = async () => {
         const isPlatform = apiKeyMode === 'platform_credits';
@@ -246,7 +273,7 @@ export default function SetupBot() {
                             >
                                 <div className="text-center mb-6">
                                     <h2 className="text-2xl font-black italic uppercase tracking-tighter mb-1">Choose Your AI</h2>
-                                    <p className="text-gray-500 font-medium text-sm">Step 1 of 3 — Pick a model to power your bot</p>
+                                    <p className="text-gray-500 font-medium text-sm">Step 1 of 4 — Pick a model to power your bot</p>
                                 </div>
 
                                 {/* API Key Mode */}
@@ -375,7 +402,7 @@ export default function SetupBot() {
                             >
                                 <div className="text-center mb-6">
                                     <h2 className="text-2xl font-black italic uppercase tracking-tighter mb-1">Connect a Channel</h2>
-                                    <p className="text-gray-500 font-medium text-sm">Step 2 of 3 — Where should your bot live?</p>
+                                    <p className="text-gray-500 font-medium text-sm">Step 2 of 4 — Where should your bot live?</p>
                                 </div>
 
                                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -523,8 +550,100 @@ export default function SetupBot() {
                             </motion.div>
                         )}
 
-                        {/* ─── STEP 3: LAUNCH SUCCESS ─── */}
+                        {/* ─── STEP 3: CHOOSE PLAN ─── */}
                         {step === 2 && (
+                            <motion.div
+                                key="step-plan"
+                                initial={{ opacity: 0, x: 30 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: -30 }}
+                                className="space-y-6"
+                            >
+                                <div className="text-center mb-4">
+                                    <h2 className="text-2xl font-black italic uppercase tracking-tighter mb-1">Choose Your Plan</h2>
+                                    <p className="text-gray-500 font-medium text-sm">Step 3 of 4 — Unlock the full power of your agent</p>
+                                </div>
+
+                                {/* Free trial paused notice */}
+                                <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4 flex items-start gap-3">
+                                    <AlertTriangle size={18} className="text-amber-400 shrink-0 mt-0.5" />
+                                    <div>
+                                        <p className="text-sm font-bold text-amber-300">Free trial paused</p>
+                                        <p className="text-[11px] text-amber-200/60 leading-relaxed">Due to overwhelming demand, we've temporarily paused the free trial. Choose a plan below to deploy and run your agent.</p>
+                                    </div>
+                                </div>
+
+                                {/* Plan cards */}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    {PLANS.map(plan => {
+                                        const creemLink = creemPlans.find((cp: any) => cp.planName === plan.name)?.checkoutUrl;
+                                        const checkoutUrl = plan.name === 'Enterprise'
+                                            ? 'mailto:support@myclaw.host'
+                                            : (paymentProvider === 'creem' ? creemLink : null) || '#';
+
+                                        return (
+                                            <button
+                                                key={plan.name}
+                                                onClick={() => {
+                                                    if (plan.name === 'Enterprise') {
+                                                        window.open('mailto:support@myclaw.host', '_blank');
+                                                    } else if (checkoutUrl && checkoutUrl !== '#') {
+                                                        try {
+                                                            const u = new URL(checkoutUrl);
+                                                            if (user?.email) {
+                                                                u.searchParams.set('email', user.email);
+                                                                u.searchParams.set('customer_email', user.email);
+                                                            }
+                                                            window.open(u.toString(), '_blank');
+                                                        } catch {
+                                                            window.open(checkoutUrl, '_blank');
+                                                        }
+                                                    } else {
+                                                        navigate('/billing');
+                                                    }
+                                                }}
+                                                className={`p-5 rounded-2xl border-2 transition-all text-left relative hover:scale-[1.02] active:scale-95 ${plan.bg}`}
+                                            >
+                                                {plan.recommended && (
+                                                    <span className="absolute -top-2.5 right-4 px-2.5 py-0.5 bg-purple-500 text-white text-[7px] font-black uppercase rounded-full tracking-wider">Recommended</span>
+                                                )}
+                                                <div className="flex items-center gap-3 mb-3">
+                                                    <div className={`w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center ${plan.color}`}>
+                                                        {plan.icon}
+                                                    </div>
+                                                    <div>
+                                                        <h4 className="font-black text-sm uppercase tracking-tight text-white">{plan.name}</h4>
+                                                        <div className="flex items-baseline gap-1">
+                                                            <span className="text-lg font-black text-white">{plan.price}</span>
+                                                            {plan.price !== 'Custom' && <span className="text-[9px] text-white/40 font-bold">/mo</span>}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <ul className="space-y-1.5">
+                                                    {plan.features.map((f, i) => (
+                                                        <li key={i} className="flex items-center gap-2 text-[10px] text-white/50">
+                                                            <CheckCircle2 size={10} className={plan.color} />
+                                                            {f}
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+
+                                {/* Skip for now */}
+                                <button
+                                    onClick={() => setStep(3)}
+                                    className="w-full text-center text-white/30 hover:text-white/60 text-xs font-bold py-3 transition-all"
+                                >
+                                    Skip for now — I'll test my bot first →
+                                </button>
+                            </motion.div>
+                        )}
+
+                        {/* ─── STEP 4: LAUNCH SUCCESS ─── */}
+                        {step === 3 && (
                             <motion.div
                                 key="step-launch"
                                 initial={{ opacity: 0, scale: 0.95 }}
@@ -659,13 +778,7 @@ export default function SetupBot() {
                         </div>
                     )}
 
-                    {step < 2 && (
-                        <div className="mt-6 text-center">
-                            <button onClick={() => navigate('/dashboard')} className="text-gray-600 text-xs font-bold hover:text-white transition-colors">
-                                Skip for now →
-                            </button>
-                        </div>
-                    )}
+
                 </div>
             </div>
         </div>

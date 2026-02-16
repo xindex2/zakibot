@@ -53,6 +53,7 @@ router.get('/auth/google/callback', async (req, res) => {
         if (!email) throw new Error('No email from Google');
 
         // 1. Try to find by Google ID
+        let isNewUser = false;
         let user = await prisma.user.findUnique({ where: { google_id: googleId } });
 
         // 2. If not found, try to find by email and link
@@ -111,6 +112,7 @@ router.get('/auth/google/callback', async (req, res) => {
                         throw createErr;
                     }
                 }
+                isNewUser = true;
             }
         } else if (avatar_url && user.avatar_url !== avatar_url) {
             // Update avatar if it changed in Google
@@ -144,7 +146,7 @@ router.get('/auth/google/callback', async (req, res) => {
             email: user.email,
             avatar_url: user.avatar_url,
             role: user.role
-        }))}`);
+        }))}&isNewUser=${isNewUser ? '1' : '0'}`);
 
     } catch (error) {
         console.error('Google Auth Error:', error);
@@ -346,6 +348,7 @@ router.post('/auth/apple/callback', express.urlencoded({ extended: true }), asyn
             .join(' ') || undefined;
 
         // 1. Try to find by Apple ID
+        let isNewUser = false;
         let user = await prisma.user.findUnique({ where: { apple_id: appleId } });
 
         // 2. If not found, try to find by email and link
@@ -402,6 +405,7 @@ router.post('/auth/apple/callback', express.urlencoded({ extended: true }), asyn
                     throw createErr;
                 }
             }
+            isNewUser = true;
         }
 
         // Enroll in drip campaign (idempotent)
@@ -426,8 +430,7 @@ router.post('/auth/apple/callback', express.urlencoded({ extended: true }), asyn
             email: user.email,
             avatar_url: user.avatar_url,
             role: user.role
-        }))}`);
-
+        }))}&isNewUser=${isNewUser ? '1' : '0'}`);
     } catch (error) {
         console.error('Apple Auth Error:', error);
         res.redirect(`${frontendUrl}/login?error=apple_auth_failed`);

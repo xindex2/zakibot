@@ -30,7 +30,9 @@ export default function Login() {
                 login(token, user);
                 // Sync the pre-auth source to the server
                 syncSourceToServer(token);
-                navigate('/dashboard');
+                // New OAuth user? → send them to set up their first bot
+                const isNewUser = params.get('isNewUser') === '1';
+                navigate(isNewUser ? '/setup-bot' : '/dashboard');
             } catch (e) {
                 console.error('Failed to parse user data from Google', e);
                 setError('Authentication failed. Please try again.');

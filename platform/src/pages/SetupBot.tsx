@@ -9,11 +9,30 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const CHANNEL_ICONS = {
+const CHANNEL_ICONS: Record<string, string> = {
     telegram: 'https://cdn-icons-png.flaticon.com/512/2111/2111646.png',
     discord: 'https://favicon.im/discord.com?t=1770422839363',
     whatsapp: 'https://favicon.im/whatsapp.com?larger=true',
+    slack: 'https://a.slack-edge.com/80588/marketing/img/meta/favicon-32.png',
+    feishu: 'https://www.feishu.cn/favicon.ico',
 };
+
+const PROVIDERS = [
+    { id: 'openrouter', name: 'OpenRouter (Global)' },
+    { id: 'anthropic', name: 'Anthropic Claude' },
+    { id: 'openai', name: 'OpenAI GPT' },
+    { id: 'deepseek', name: 'DeepSeek' },
+    { id: 'google', name: 'Google Gemini' },
+    { id: 'xai', name: 'xAI Grok' },
+    { id: 'groq', name: 'Groq (Fast Inference)' },
+    { id: 'moonshot', name: 'Moonshot / Kimi' },
+    { id: 'dashscope', name: 'DashScope (Qwen)' },
+    { id: 'ollama', name: 'Ollama (Local)' },
+    { id: 'venice', name: 'Venice AI' },
+    { id: 'vllm', name: 'vLLM (Local)' },
+    { id: 'zhipu', name: 'Zhipu AI (GLM)' },
+    { id: 'aihubmix', name: 'AIHubMix' },
+];
 
 const STEPS = [
     { id: 'model', label: 'AI Model', num: 1 },
@@ -43,9 +62,13 @@ export default function SetupBot() {
     const [modelSearch, setModelSearch] = useState('');
 
     // Step 2 — Channel
-    const [selectedChannel, setSelectedChannel] = useState<'telegram' | 'discord' | 'whatsapp' | null>(null);
+    const [selectedChannel, setSelectedChannel] = useState<'telegram' | 'discord' | 'whatsapp' | 'slack' | 'feishu' | null>(null);
     const [telegramToken, setTelegramToken] = useState('');
     const [discordToken, setDiscordToken] = useState('');
+    const [slackBotToken, setSlackBotToken] = useState('');
+    const [slackAppToken, setSlackAppToken] = useState('');
+    const [feishuAppId, setFeishuAppId] = useState('');
+    const [feishuAppSecret, setFeishuAppSecret] = useState('');
 
     // Step 3 — Result
     const [deployedBot, setDeployedBot] = useState<any>(null);
@@ -96,6 +119,8 @@ export default function SetupBot() {
             case 1: return selectedChannel && (
                 (selectedChannel === 'telegram' && telegramToken) ||
                 (selectedChannel === 'discord' && discordToken) ||
+                (selectedChannel === 'slack' && slackBotToken && slackAppToken) ||
+                (selectedChannel === 'feishu' && feishuAppId && feishuAppSecret) ||
                 selectedChannel === 'whatsapp'
             );
             default: return true;
@@ -121,6 +146,12 @@ export default function SetupBot() {
                 discordEnabled: selectedChannel === 'discord',
                 discordToken: selectedChannel === 'discord' ? discordToken : '',
                 whatsappEnabled: selectedChannel === 'whatsapp',
+                slackEnabled: selectedChannel === 'slack',
+                slackBotToken: selectedChannel === 'slack' ? slackBotToken : '',
+                slackAppToken: selectedChannel === 'slack' ? slackAppToken : '',
+                feishuEnabled: selectedChannel === 'feishu',
+                feishuAppId: selectedChannel === 'feishu' ? feishuAppId : '',
+                feishuAppSecret: selectedChannel === 'feishu' ? feishuAppSecret : '',
             };
 
             const saveResp = await fetch('/api/config', {
@@ -223,8 +254,8 @@ export default function SetupBot() {
                                     <button
                                         onClick={() => setApiKeyMode('platform_credits')}
                                         className={`p-5 rounded-2xl border-2 transition-all text-left relative ${apiKeyMode === 'platform_credits'
-                                                ? 'border-emerald-500/50 bg-emerald-500/5'
-                                                : 'border-white/5 hover:border-white/10'
+                                            ? 'border-emerald-500/50 bg-emerald-500/5'
+                                            : 'border-white/5 hover:border-white/10'
                                             }`}
                                     >
                                         {apiKeyMode === 'platform_credits' && (
@@ -244,8 +275,8 @@ export default function SetupBot() {
                                     <button
                                         onClick={() => setApiKeyMode('own_key')}
                                         className={`p-5 rounded-2xl border-2 transition-all text-left ${apiKeyMode === 'own_key'
-                                                ? 'border-blue-500/50 bg-blue-500/5'
-                                                : 'border-white/5 hover:border-white/10'
+                                            ? 'border-blue-500/50 bg-blue-500/5'
+                                            : 'border-white/5 hover:border-white/10'
                                             }`}
                                     >
                                         <div className="flex items-center gap-3 mb-2">
@@ -267,12 +298,9 @@ export default function SetupBot() {
                                             <label className={labelClass}>Provider</label>
                                             <select value={provider} onChange={e => setProvider(e.target.value)}
                                                 className={inputClass + ' appearance-none'}>
-                                                <option value="openrouter">OpenRouter (Global)</option>
-                                                <option value="anthropic">Anthropic Claude</option>
-                                                <option value="openai">OpenAI GPT</option>
-                                                <option value="deepseek">DeepSeek</option>
-                                                <option value="google">Google Gemini</option>
-                                                <option value="groq">Groq (Fast Inference)</option>
+                                                {PROVIDERS.map(p => (
+                                                    <option key={p.id} value={p.id}>{p.name}</option>
+                                                ))}
                                             </select>
                                         </div>
                                         <div className="space-y-2">
@@ -350,16 +378,18 @@ export default function SetupBot() {
                                     <p className="text-gray-500 font-medium text-sm">Step 2 of 3 — Where should your bot live?</p>
                                 </div>
 
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                                     {[
                                         { id: 'telegram' as const, name: 'Telegram', desc: 'Easiest setup', badge: '⭐ Recommended' },
                                         { id: 'discord' as const, name: 'Discord', desc: 'For communities' },
                                         { id: 'whatsapp' as const, name: 'WhatsApp', desc: 'Personal chat' },
+                                        { id: 'slack' as const, name: 'Slack', desc: 'Workspace bot' },
+                                        { id: 'feishu' as const, name: 'Feishu', desc: 'Lark / Feishu' },
                                     ].map(ch => (
                                         <button key={ch.id} onClick={() => setSelectedChannel(ch.id)}
                                             className={`p-4 rounded-2xl border-2 transition-all text-center relative ${selectedChannel === ch.id
-                                                    ? 'border-[#ff6b6b]/50 bg-[#ff6b6b]/5'
-                                                    : 'border-white/5 hover:border-white/10'
+                                                ? 'border-[#ff6b6b]/50 bg-[#ff6b6b]/5'
+                                                : 'border-white/5 hover:border-white/10'
                                                 }`}>
                                             {ch.badge && selectedChannel === ch.id && (
                                                 <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 px-2.5 py-0.5 bg-[#ff6b6b] text-white text-[7px] font-black uppercase rounded-full tracking-wider whitespace-nowrap">{ch.badge}</span>
@@ -430,6 +460,63 @@ export default function SetupBot() {
                                                     <p className="text-amber-300/80"><strong className="text-amber-300">⚠️ Tip:</strong> Use a <strong className="text-white">dedicated phone number</strong> — it will auto-reply to all incoming messages.</p>
                                                 </div>
                                             </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {selectedChannel === 'slack' && (
+                                    <div className="space-y-4 mt-4">
+                                        <div className="bg-purple-500/5 p-4 rounded-2xl text-[11px] text-purple-300/80 leading-relaxed border border-purple-500/10">
+                                            <div className="flex items-start gap-3">
+                                                <MessageSquare size={16} className="text-purple-400 shrink-0 mt-0.5" />
+                                                <div>
+                                                    <p className="font-bold text-purple-300 mb-1">💼 Slack Setup:</p>
+                                                    <ol className="list-decimal list-inside space-y-1">
+                                                        <li>Go to <a href="https://api.slack.com/apps" target="_blank" className="text-purple-400 underline">Slack API Dashboard</a></li>
+                                                        <li>Create a New App → Enable Socket Mode → get App Token</li>
+                                                        <li>Go to OAuth & Permissions → Install to Workspace → get Bot Token</li>
+                                                        <li>Enable Events: <code className="bg-white/10 px-1 py-0.5 rounded text-white">message.im</code>, <code className="bg-white/10 px-1 py-0.5 rounded text-white">app_mention</code></li>
+                                                    </ol>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className={labelClass}>Slack Bot Token</label>
+                                            <input type="password" value={slackBotToken} onChange={e => setSlackBotToken(e.target.value)}
+                                                className={inputClass + ' font-mono text-sm'} placeholder="xoxb-..." />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className={labelClass}>Slack App Token</label>
+                                            <input type="password" value={slackAppToken} onChange={e => setSlackAppToken(e.target.value)}
+                                                className={inputClass + ' font-mono text-sm'} placeholder="xapp-..." />
+                                        </div>
+                                    </div>
+                                )}
+
+                                {selectedChannel === 'feishu' && (
+                                    <div className="space-y-4 mt-4">
+                                        <div className="bg-blue-500/5 p-4 rounded-2xl text-[11px] text-blue-300/80 leading-relaxed border border-blue-500/10">
+                                            <div className="flex items-start gap-3">
+                                                <MessageSquare size={16} className="text-blue-400 shrink-0 mt-0.5" />
+                                                <div>
+                                                    <p className="font-bold text-blue-300 mb-1">🐦 Feishu / Lark Setup:</p>
+                                                    <ol className="list-decimal list-inside space-y-1">
+                                                        <li>Go to <a href="https://open.feishu.cn/app" target="_blank" className="text-blue-400 underline">Feishu Open Platform</a></li>
+                                                        <li>Create a Custom App → get App ID and App Secret</li>
+                                                        <li>Enable Bot capability and set up Event subscriptions</li>
+                                                    </ol>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className={labelClass}>Feishu App ID</label>
+                                            <input value={feishuAppId} onChange={e => setFeishuAppId(e.target.value)}
+                                                className={inputClass + ' font-mono text-sm'} placeholder="cli_..." />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className={labelClass}>Feishu App Secret</label>
+                                            <input type="password" value={feishuAppSecret} onChange={e => setFeishuAppSecret(e.target.value)}
+                                                className={inputClass + ' font-mono text-sm'} placeholder="App secret..." />
                                         </div>
                                     </div>
                                 )}

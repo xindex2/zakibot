@@ -157,6 +157,141 @@ app.post('/api/register', async (req, res) => {
     }
 });
 
+// --- Register With First Bot (Onboarding Wizard) ---
+
+app.post('/api/register-with-bot', async (req, res) => {
+    try {
+        const {
+            email, password, full_name, acquisition_source,
+            botName, model, provider: botProvider, apiKeyMode, apiKey,
+            telegramEnabled, telegramToken,
+            discordEnabled, discordToken,
+            whatsappEnabled,
+        } = req.body;
+
+        if (!email || !password) return res.status(400).json({ error: 'Email and password are required' });
+
+        // Check if user already exists
+        const existingUser = await prisma.user.findUnique({ where: { email } });
+        if (existingUser) return res.status(400).json({ error: 'User already exists' });
+
+        // Hash password
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        // Create user + subscription
+        let user;
+        try {
+            user = await prisma.user.create({
+                data: {
+                    email,
+                    password: hashedPassword,
+                    full_name: full_name || 'User',
+                    acquisition_source: acquisition_source || 'Direct',
+                    subscription: {
+                        create: {
+                            plan: 'Free',
+                            maxInstances: 1,
+                            creditBalance: 10
+                        }
+                    }
+                },
+                include: { subscription: true }
+            });
+        } catch (createErr: any) {
+            if (createErr.message?.includes('creditBalance')) {
+                user = await prisma.user.create({
+                    data: {
+                        email,
+                        password: hashedPassword,
+                        full_name: full_name || 'User',
+                        acquisition_source: acquisition_source || 'Direct',
+                        subscription: {
+                            create: { plan: 'Free', maxInstances: 1 }
+                        }
+                    },
+                    include: { subscription: true }
+                });
+            } else {
+                throw createErr;
+            }
+        }
+
+        // Create first bot config
+        const botData: any = {
+            userId: user.id,
+            name: botName || `${full_name || 'My'}'s Agent`,
+            description: 'AI assistant created during signup.',
+            provider: botProvider || 'openrouter',
+            model: model || 'google/gemini-3-flash-preview',
+            apiKeyMode: apiKeyMode || 'platform_credits',
+            apiKey: apiKey || '',
+            telegramEnabled: !!telegramEnabled,
+            telegramToken: telegramToken || null,
+            discordEnabled: !!discordEnabled,
+            discordToken: discordToken || null,
+            whatsappEnabled: !!whatsappEnabled,
+            whatsappBridgeUrl: whatsappEnabled ? 'ws://localhost:3001' : null,
+            browserEnabled: true,
+            shellEnabled: true,
+            tmuxEnabled: true,
+            weatherEnabled: true,
+            summarizeEnabled: true,
+            cronEnabled: true,
+            skillCreatorEnabled: true,
+            restrictToWorkspace: true,
+            gatewayHost: '0.0.0.0',
+            gatewayPort: 18790,
+            maxToolIterations: 30,
+        };
+
+        // Encrypt sensitive fields before saving
+        const encryptedBotData = encryptSensitiveFields(botData);
+        const botConfig = await prisma.botConfig.create({ data: encryptedBotData });
+
+        // Auto-start the bot
+        try {
+            await startBot(botConfig.id);
+            await prisma.botConfig.update({ where: { id: botConfig.id }, data: { status: 'running' } });
+        } catch (startErr: any) {
+            console.error('[Onboarding] Bot auto-start failed:', startErr.message);
+        }
+
+        // Generate JWT
+        const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_key_change_this_openclaw_host';
+        const token = jwtSign(
+            { userId: user.id, full_name: user.full_name, role: user.role },
+            JWT_SECRET,
+            { expiresIn: '7d' }
+        );
+
+        res.json({
+            token,
+            user: {
+                id: user.id,
+                full_name: user.full_name,
+                email: user.email,
+                role: user.role,
+                avatar_url: (user as any).avatar_url
+            },
+            bot: {
+                id: botConfig.id,
+                name: botData.name,
+                channel: telegramEnabled ? 'telegram' : discordEnabled ? 'discord' : whatsappEnabled ? 'whatsapp' : null
+            }
+        });
+
+        // Enroll in drip campaign
+        try {
+            await dripEnrollUser(user.id, user.email);
+        } catch (dripErr: any) {
+            console.error('[Drip] Enrollment failed:', dripErr.message);
+        }
+
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // --- Login Route ---
 
 app.post('/api/login', async (req, res) => {

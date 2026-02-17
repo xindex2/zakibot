@@ -367,30 +367,53 @@ router.post('/credits/add', async (req, res) => {
 
 /**
  * GET /api/admin/credit-usage
- * Per-user credit usage summary with sorting
+ * Per-user credit usage summary with sorting, pagination, date filtering, and search
+ * Query params: sort, order, page, limit, from, to, search
  */
 router.get('/credit-usage', async (req, res) => {
     try {
         const sort = (req.query.sort as string) || 'total_used';
         const order = (req.query.order as string) || 'desc';
+        const page = parseInt(req.query.page as string) || 1;
+        const limit = parseInt(req.query.limit as string) || 20;
+        const skip = (page - 1) * limit;
+        const from = req.query.from ? new Date(req.query.from as string) : undefined;
+        const to = req.query.to ? new Date(req.query.to as string) : undefined;
+        const search = (req.query.search as string) || '';
 
-        // Get all users with subscriptions
-        const users = await prisma.user.findMany({
+        // Build date filter for transactions
+        const txDateFilter: any = {};
+        if (from) txDateFilter.gte = from;
+        if (to) {
+            const toEnd = new Date(to);
+            toEnd.setHours(23, 59, 59, 999);
+            txDateFilter.lte = toEnd;
+        }
+        const txWhere: any = { amount: { lt: 0 } };
+        if (from || to) txWhere.createdAt = txDateFilter;
+
+        // Build user search filter
+        const userWhere: any = {};
+        if (search) {
+            userWhere.OR = [
+                { email: { contains: search } },
+                { full_name: { contains: search } },
+            ];
+        }
+
+        // Get users with subscription info
+        const allUsers = await prisma.user.findMany({
+            where: userWhere,
             select: {
-                id: true,
-                email: true,
-                full_name: true,
-                createdAt: true,
-                subscription: {
-                    select: { plan: true, creditBalance: true }
-                }
+                id: true, email: true, full_name: true, createdAt: true,
+                subscription: { select: { plan: true, creditBalance: true } }
             }
         });
 
-        // Get per-user usage aggregates (negative amounts = debits)
+        // Get per-user usage aggregates (filtered by date)
         const usageAgg = await prisma.creditTransaction.groupBy({
             by: ['userId'],
-            where: { amount: { lt: 0 } },
+            where: txWhere,
             _sum: { amount: true },
             _count: { _all: true }
         });
@@ -402,7 +425,7 @@ router.get('/credit-usage', async (req, res) => {
             }])
         );
 
-        const result = users.map(u => ({
+        let result = allUsers.map(u => ({
             userId: u.id,
             email: u.email,
             name: u.full_name,
@@ -421,17 +444,23 @@ router.get('/credit-usage', async (req, res) => {
                 : (b as any)[field] - (a as any)[field];
         });
 
-        // Summary totals
+        // Summary totals (before pagination)
         const totalUsedAll = result.reduce((s, u) => s + u.totalUsed, 0);
         const totalBalanceAll = result.reduce((s, u) => s + u.currentBalance, 0);
+        const totalFiltered = result.length;
+
+        // Paginate
+        const paged = result.slice(skip, skip + limit);
 
         res.json({
-            users: result,
+            users: paged,
             summary: {
-                totalUsers: result.length,
+                totalUsers: totalFiltered,
                 totalUsed: totalUsedAll,
                 totalBalance: totalBalanceAll
-            }
+            },
+            page,
+            totalPages: Math.ceil(totalFiltered / limit)
         });
     } catch (e: any) {
         res.status(500).json({ error: e.message });

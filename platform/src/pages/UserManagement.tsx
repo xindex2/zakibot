@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Trash2, Shield, Gem, ChevronLeft, ChevronRight, Edit2, Loader2, Save, X, ChevronDown, Bot, MessageSquare, CreditCard, Plus, Play, Square, RotateCw, ArrowUpDown, DollarSign } from 'lucide-react';
+import { Search, Trash2, Shield, Gem, ChevronLeft, ChevronRight, Edit2, Loader2, Save, X, ChevronDown, Bot, MessageSquare, CreditCard, Plus, Play, Square, RotateCw, ArrowUpDown, DollarSign, Calendar, Filter } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -56,6 +56,10 @@ export default function UserManagement() {
     const [creditLoading, setCreditLoading] = useState(false);
     const [creditSort, setCreditSort] = useState<'total_used' | 'balance'>('total_used');
     const [creditOrder, setCreditOrder] = useState<'asc' | 'desc'>('desc');
+    const [creditPage, setCreditPage] = useState(1);
+    const [creditTotalPages, setCreditTotalPages] = useState(1);
+    const [creditSearch, setCreditSearch] = useState('');
+    const [creditDateFilter, setCreditDateFilter] = useState<'today' | 'yesterday' | 'week' | 'month' | 'all'>('all');
 
     // Edit State
     const [editingUser, setEditingUser] = useState<UserData | null>(null);
@@ -71,17 +75,54 @@ export default function UserManagement() {
 
     useEffect(() => {
         if (activeView === 'credits') loadCreditUsage();
-    }, [activeView, creditSort, creditOrder]);
+    }, [activeView, creditSort, creditOrder, creditPage, creditDateFilter]);
+
+    // Debounce credit search
+    useEffect(() => {
+        if (activeView !== 'credits') return;
+        const t = setTimeout(() => { setCreditPage(1); loadCreditUsage(); }, 400);
+        return () => clearTimeout(t);
+    }, [creditSearch]);
+
+    const getDateRange = () => {
+        const now = new Date();
+        const startOfDay = (d: Date) => { const c = new Date(d); c.setHours(0, 0, 0, 0); return c; };
+        switch (creditDateFilter) {
+            case 'today': return { from: startOfDay(now).toISOString() };
+            case 'yesterday': {
+                const y = new Date(now); y.setDate(y.getDate() - 1);
+                return { from: startOfDay(y).toISOString(), to: startOfDay(y).toISOString() };
+            }
+            case 'week': {
+                const w = new Date(now); w.setDate(w.getDate() - 7);
+                return { from: startOfDay(w).toISOString() };
+            }
+            case 'month': {
+                const m = new Date(now); m.setDate(m.getDate() - 30);
+                return { from: startOfDay(m).toISOString() };
+            }
+            default: return {};
+        }
+    };
 
     const loadCreditUsage = async () => {
         setCreditLoading(true);
         try {
-            const res = await fetch(`/api/admin/credit-usage?sort=${creditSort}&order=${creditOrder}`, {
+            const dateRange = getDateRange();
+            const params = new URLSearchParams({
+                sort: creditSort, order: creditOrder,
+                page: creditPage.toString(), limit: '20',
+                ...(creditSearch && { search: creditSearch }),
+                ...(dateRange.from && { from: dateRange.from }),
+                ...(dateRange.to && { to: dateRange.to }),
+            });
+            const res = await fetch(`/api/admin/credit-usage?${params}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const data = await res.json();
             setCreditUsage(data.users || []);
             setCreditSummary(data.summary || null);
+            setCreditTotalPages(data.totalPages || 1);
         } catch (e) {
             console.error('Failed to load credit usage:', e);
         } finally {
@@ -297,11 +338,11 @@ export default function UserManagement() {
                     {creditSummary && (
                         <div className="grid grid-cols-3 gap-px bg-white/5 border-b border-white/5">
                             <div className="bg-black/20 p-5">
-                                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30 mb-1">Total Users</p>
+                                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30 mb-1">Users{creditDateFilter !== 'all' ? ` (${creditDateFilter})` : ''}</p>
                                 <p className="text-2xl font-black text-white">{creditSummary.totalUsers}</p>
                             </div>
                             <div className="bg-black/20 p-5">
-                                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-red-400/60 mb-1">Total Credits Used</p>
+                                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-red-400/60 mb-1">Credits Used{creditDateFilter !== 'all' ? ` (${creditDateFilter})` : ''}</p>
                                 <p className="text-2xl font-black text-red-400">${creditSummary.totalUsed?.toFixed(4)}</p>
                             </div>
                             <div className="bg-black/20 p-5">
@@ -310,6 +351,35 @@ export default function UserManagement() {
                             </div>
                         </div>
                     )}
+
+                    {/* Filter Bar */}
+                    <div className="flex flex-wrap items-center gap-3 px-6 py-4 border-b border-white/5 bg-white/[0.01]">
+                        <div className="flex items-center gap-1">
+                            <Calendar size={12} className="text-white/30" />
+                            {(['all', 'today', 'yesterday', 'week', 'month'] as const).map(f => (
+                                <button
+                                    key={f}
+                                    onClick={() => { setCreditDateFilter(f); setCreditPage(1); }}
+                                    className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${creditDateFilter === f
+                                            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                                            : 'bg-white/[0.03] text-white/40 hover:text-white/60 border border-transparent'
+                                        }`}
+                                >
+                                    {f === 'all' ? 'All Time' : f === 'week' ? '7 Days' : f === 'month' ? '30 Days' : f.charAt(0).toUpperCase() + f.slice(1)}
+                                </button>
+                            ))}
+                        </div>
+                        <div className="flex-1 min-w-[200px] relative">
+                            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/20" />
+                            <input
+                                type="text"
+                                placeholder="Search by email or name..."
+                                value={creditSearch}
+                                onChange={e => setCreditSearch(e.target.value)}
+                                className="w-full bg-white/[0.03] border border-white/5 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder:text-white/20 focus:outline-none focus:border-emerald-500/30"
+                            />
+                        </div>
+                    </div>
 
                     <div className="overflow-x-auto">
                         <table className="w-full">
@@ -371,13 +441,38 @@ export default function UserManagement() {
                                 {creditUsage.length === 0 && !creditLoading && (
                                     <tr>
                                         <td colSpan={5} className="px-6 py-12 text-center text-white/30 text-sm">
-                                            No credit usage data found
+                                            No credit usage data found{creditDateFilter !== 'all' ? ` for ${creditDateFilter}` : ''}
                                         </td>
                                     </tr>
                                 )}
                             </tbody>
                         </table>
                     </div>
+
+                    {/* Pagination */}
+                    {creditTotalPages > 1 && (
+                        <div className="flex items-center justify-between px-6 py-4 border-t border-white/5">
+                            <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest">
+                                Page {creditPage} of {creditTotalPages}
+                            </span>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={() => setCreditPage(p => Math.max(1, p - 1))}
+                                    disabled={creditPage <= 1}
+                                    className="p-2 rounded-xl bg-white/[0.03] border border-white/5 text-white/40 hover:text-white disabled:opacity-30 transition-colors"
+                                >
+                                    <ChevronLeft size={14} />
+                                </button>
+                                <button
+                                    onClick={() => setCreditPage(p => Math.min(creditTotalPages, p + 1))}
+                                    disabled={creditPage >= creditTotalPages}
+                                    className="p-2 rounded-xl bg-white/[0.03] border border-white/5 text-white/40 hover:text-white disabled:opacity-30 transition-colors"
+                                >
+                                    <ChevronRight size={14} />
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
             ) : (
                 <>

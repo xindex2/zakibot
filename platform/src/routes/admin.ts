@@ -142,7 +142,7 @@ router.post('/config', async (req, res) => {
         // Encrypt sensitive keys before storing
         const SENSITIVE_KEYS = ['OPENROUTER_API_KEY', 'WHOP_API_KEY', 'CREEM_API_KEY'];
         const operations = Object.entries(data).map(([key, value]) => {
-            const storedValue = SENSITIVE_KEYS.includes(key) ? encrypt(String(value)) : String(value);
+            const storedValue = SENSITIVE_KEYS.includes(key) ? encrypt(String(value).trim()) : String(value);
             return prisma.systemConfig.upsert({
                 where: { key },
                 update: { value: storedValue },

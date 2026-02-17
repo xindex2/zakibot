@@ -467,6 +467,121 @@ router.get('/credit-usage', async (req, res) => {
     }
 });
 
+/**
+ * GET /api/admin/api-activity
+ * Recent individual API credit transactions (live log)
+ * Query params: page, limit, search
+ */
+router.get('/api-activity', async (req, res) => {
+    try {
+        const page = parseInt(req.query.page as string) || 1;
+        const limit = parseInt(req.query.limit as string) || 50;
+        const skip = (page - 1) * limit;
+        const search = (req.query.search as string) || '';
+
+        // Build where clause
+        const where: any = { type: 'usage', amount: { lt: 0 } };
+
+        // If searching, find matching user IDs first
+        let userMap = new Map<string, { email: string; name: string; plan: string }>();
+        if (search) {
+            const matchingUsers = await prisma.user.findMany({
+                where: {
+                    OR: [
+                        { email: { contains: search } },
+                        { full_name: { contains: search } },
+                    ]
+                },
+                select: { id: true, email: true, full_name: true, subscription: { select: { plan: true } } }
+            });
+            const userIds = matchingUsers.map(u => u.id);
+            if (userIds.length === 0) {
+                return res.json({ transactions: [], total: 0, page, totalPages: 0, todayCost: 0 });
+            }
+            where.userId = { in: userIds };
+            matchingUsers.forEach(u => userMap.set(u.id, {
+                email: u.email,
+                name: u.full_name || '',
+                plan: u.subscription?.plan || 'Free'
+            }));
+        }
+
+        const [transactions, total] = await Promise.all([
+            prisma.creditTransaction.findMany({
+                where,
+                orderBy: { createdAt: 'desc' },
+                take: limit,
+                skip
+            }),
+            prisma.creditTransaction.count({ where })
+        ]);
+
+        // Get today's total cost
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+        const todayAgg = await prisma.creditTransaction.aggregate({
+            where: { type: 'usage', amount: { lt: 0 }, createdAt: { gte: todayStart } },
+            _sum: { amount: true }
+        });
+        const todayCost = Math.abs(todayAgg._sum.amount || 0);
+
+        // Fetch user info for all unique userIds if not already loaded
+        if (!search) {
+            const uniqueIds = [...new Set(transactions.map((t: any) => t.userId))];
+            const users = await prisma.user.findMany({
+                where: { id: { in: uniqueIds } },
+                select: { id: true, email: true, full_name: true, subscription: { select: { plan: true } } }
+            });
+            users.forEach(u => userMap.set(u.id, {
+                email: u.email,
+                name: u.full_name || '',
+                plan: u.subscription?.plan || 'Free'
+            }));
+        }
+
+        // Also try to find bot names for each user
+        const uniqueUserIds = [...new Set(transactions.map((t: any) => t.userId))];
+        const botConfigs = await prisma.botConfig.findMany({
+            where: { userId: { in: uniqueUserIds } },
+            select: { userId: true, name: true }
+        });
+        const botNameMap = new Map<string, string>();
+        botConfigs.forEach((b: any) => botNameMap.set(b.userId, b.name));
+
+        // Parse description to extract model name
+        const enriched = transactions.map((tx: any) => {
+            const user = userMap.get(tx.userId);
+            let model = '';
+            if (tx.description) {
+                const modelMatch = tx.description.match(/^([^:]+):/);
+                if (modelMatch) model = modelMatch[1].trim();
+            }
+            return {
+                id: tx.id,
+                userId: tx.userId,
+                email: user?.email || 'Unknown',
+                userName: user?.name || '',
+                plan: user?.plan || 'Free',
+                botName: botNameMap.get(tx.userId) || '',
+                model,
+                amount: Math.abs(tx.amount),
+                description: tx.description,
+                createdAt: tx.createdAt
+            };
+        });
+
+        res.json({
+            transactions: enriched,
+            total,
+            page,
+            totalPages: Math.ceil(total / limit),
+            todayCost
+        });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // ========================
 // Orders
 // ========================

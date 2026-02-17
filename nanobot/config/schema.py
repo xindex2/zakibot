@@ -47,6 +47,14 @@ class SlackConfig(BaseModel):
     allow_from: list[str] = Field(default_factory=list)  # Allowed user IDs
 
 
+class TeamsConfig(BaseModel):
+    """Microsoft Teams channel configuration using Bot Framework."""
+    enabled: bool = False
+    app_id: str = ""        # Microsoft App ID (from Azure Bot registration)
+    app_password: str = ""  # Microsoft App Password/Client Secret
+    allow_from: list[str] = Field(default_factory=list)  # Allowed user IDs
+
+
 
 class ChannelsConfig(BaseModel):
     """Configuration for chat channels."""
@@ -55,6 +63,8 @@ class ChannelsConfig(BaseModel):
     discord: DiscordConfig = Field(default_factory=DiscordConfig)
     feishu: FeishuConfig = Field(default_factory=FeishuConfig)
     slack: SlackConfig = Field(default_factory=SlackConfig)
+    teams: TeamsConfig = Field(default_factory=TeamsConfig)
+
 
 
 

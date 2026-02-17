@@ -90,6 +90,17 @@ class ChannelManager:
             except ImportError as e:
                 logger.warning(f"Slack channel not available: {e}")
 
+        # Microsoft Teams channel
+        if self.config.channels.teams.enabled:
+            try:
+                from nanobot.channels.teams import TeamsChannel
+                self.channels["teams"] = TeamsChannel(
+                    self.config.channels.teams, self.bus, workspace=self.config.workspace_path
+                )
+                logger.info("Teams channel enabled")
+            except ImportError as e:
+                logger.warning(f"Teams channel not available: {e}")
+
     
     async def start_all(self) -> None:
         """Start WhatsApp channel and the outbound dispatcher."""

@@ -235,6 +235,12 @@ export async function startBot(configId: string) {
                 bot_token: (decryptedConfig as any).slackBotToken || "",
                 app_token: (decryptedConfig as any).slackAppToken || "",
                 allow_from: (decryptedConfig as any).slackAllowFrom ? (decryptedConfig as any).slackAllowFrom.split(',').map((s: string) => s.trim()) : []
+            },
+            teams: {
+                enabled: (decryptedConfig as any).teamsEnabled || false,
+                app_id: (decryptedConfig as any).teamsAppId || "",
+                app_password: (decryptedConfig as any).teamsAppPassword || "",
+                allow_from: (decryptedConfig as any).teamsAllowFrom ? (decryptedConfig as any).teamsAllowFrom.split(',').map((s: string) => s.trim()) : []
             }
         },
         tools: {
@@ -278,6 +284,10 @@ export async function startBot(configId: string) {
     if (ch.slack.enabled && !ch.slack.bot_token) {
         ch.slack.enabled = false;
         console.log(`   ⚠️  [${config.name}] Slack auto-disabled (no bot_token)`);
+    }
+    if (ch.teams.enabled && (!ch.teams.app_id || !ch.teams.app_password)) {
+        ch.teams.enabled = false;
+        console.log(`   ⚠️  [${config.name}] Teams auto-disabled (missing app_id or app_password)`);
     }
 
     fs.writeFileSync(configPath, JSON.stringify(nanobotConfig, null, 2));

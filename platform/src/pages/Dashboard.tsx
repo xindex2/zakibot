@@ -24,7 +24,8 @@ const ICONS = {
     whatsapp: 'https://favicon.im/whatsapp.com?larger=true',
     feishu: 'https://www.feishu.cn/favicon.ico',
     github: 'https://github.com/favicon.ico',
-    slack: 'https://a.slack-edge.com/80588/marketing/img/meta/favicon-32.png'
+    slack: 'https://a.slack-edge.com/80588/marketing/img/meta/favicon-32.png',
+    teams: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c9/Microsoft_Office_Teams_%282018%E2%80%93present%29.svg/32px-Microsoft_Office_Teams_%282018%E2%80%93present%29.svg.png'
 };
 
 const PROVIDERS = [
@@ -75,6 +76,10 @@ interface AgentConfig {
     slackBotToken: string;
     slackAppToken: string;
     slackAllowFrom: string;
+    teamsEnabled: boolean;
+    teamsAppId: string;
+    teamsAppPassword: string;
+    teamsAllowFrom: string;
     webSearchApiKey: string;
     githubEnabled: boolean;
     githubToken: string;
@@ -315,6 +320,7 @@ export default function Dashboard() {
             whatsappEnabled: false,
             feishuEnabled: false,
             slackEnabled: false,
+            teamsEnabled: false,
             browserEnabled: true,
             shellEnabled: true,
             tmuxEnabled: true,
@@ -1327,6 +1333,44 @@ export default function Dashboard() {
                                                     </InputWrapper>
                                                 </div>
                                             </ChannelInput>
+
+                                            <ChannelInput
+                                                name="MS Teams" icon={ICONS.teams}
+                                                enabled={editingAgent.teamsEnabled}
+                                                onToggle={(v: boolean) => setEditingAgent({ ...editingAgent, teamsEnabled: v })}
+                                            >
+                                                <div className="space-y-4">
+                                                    <div className="bg-white/5 p-4 rounded-2xl text-[11px] text-white/60 leading-relaxed border border-white/5">
+                                                        Register a bot at <a href="https://dev.botframework.com/bots/new" target="_blank" className="text-primary hover:underline">Bot Framework</a> or via <a href="https://portal.azure.com" target="_blank" className="text-primary hover:underline">Azure Portal</a> (free tier). Copy the <span className="text-white font-bold">App ID</span> and <span className="text-white font-bold">App Password</span> (Client Secret). Set the messaging endpoint to your server URL + <code className="text-white/80">/api/messages</code>.
+                                                    </div>
+                                                    <InputWrapper label="Microsoft App ID">
+                                                        <input
+                                                            type="password"
+                                                            value={editingAgent.teamsAppId || ''}
+                                                            onChange={e => setEditingAgent({ ...editingAgent, teamsAppId: e.target.value })}
+                                                            className="input-modern w-full font-mono text-xs"
+                                                            placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                                                        />
+                                                    </InputWrapper>
+                                                    <InputWrapper label="App Password (Client Secret)">
+                                                        <input
+                                                            type="password"
+                                                            value={editingAgent.teamsAppPassword || ''}
+                                                            onChange={e => setEditingAgent({ ...editingAgent, teamsAppPassword: e.target.value })}
+                                                            className="input-modern w-full font-mono text-xs"
+                                                            placeholder="Your app password..."
+                                                        />
+                                                    </InputWrapper>
+                                                    <InputWrapper label="Allowed Users (IDs)">
+                                                        <input
+                                                            value={editingAgent.teamsAllowFrom || ''}
+                                                            onChange={e => setEditingAgent({ ...editingAgent, teamsAllowFrom: e.target.value })}
+                                                            className="input-modern w-full text-xs"
+                                                            placeholder="Leave empty to allow everyone"
+                                                        />
+                                                    </InputWrapper>
+                                                </div>
+                                            </ChannelInput>
                                         </div>
                                     </Section>
                                 )}
@@ -1608,6 +1652,7 @@ export default function Dashboard() {
                                                 if (editingAgent.telegramEnabled) channels.push('Telegram');
                                                 if (editingAgent.discordEnabled) channels.push('Discord');
                                                 if (editingAgent.whatsappEnabled) channels.push('WhatsApp');
+                                                if (editingAgent.teamsEnabled) channels.push('MS Teams');
                                                 const hasChannels = channels.length > 0;
                                                 return (
                                                     <div className={cn(
@@ -2028,7 +2073,7 @@ function AgentCard({ agent, onEdit, onDelete, onToggle }: any) {
             {(() => {
                 const issues: string[] = [];
                 if (!agent.model) issues.push('No AI model selected');
-                if (!agent.telegramEnabled && !agent.discordEnabled && !agent.whatsappEnabled && !agent.feishuEnabled && !agent.slackEnabled) issues.push('No channel connected');
+                if (!agent.telegramEnabled && !agent.discordEnabled && !agent.whatsappEnabled && !agent.feishuEnabled && !agent.slackEnabled && !agent.teamsEnabled) issues.push('No channel connected');
                 if (issues.length === 0) return null;
                 return (
                     <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 flex items-start gap-2.5">

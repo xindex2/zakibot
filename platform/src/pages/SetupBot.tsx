@@ -16,6 +16,7 @@ const CHANNEL_ICONS: Record<string, string> = {
     whatsapp: 'https://favicon.im/whatsapp.com?larger=true',
     slack: 'https://a.slack-edge.com/80588/marketing/img/meta/favicon-32.png',
     feishu: 'https://www.feishu.cn/favicon.ico',
+    teams: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c9/Microsoft_Office_Teams_%282018%E2%80%93present%29.svg/32px-Microsoft_Office_Teams_%282018%E2%80%93present%29.svg.png',
 };
 
 const PROVIDERS = [
@@ -64,13 +65,15 @@ export default function SetupBot() {
     const [modelSearch, setModelSearch] = useState('');
 
     // Step 2 — Channel
-    const [selectedChannel, setSelectedChannel] = useState<'telegram' | 'discord' | 'whatsapp' | 'slack' | 'feishu' | null>(null);
+    const [selectedChannel, setSelectedChannel] = useState<'telegram' | 'discord' | 'whatsapp' | 'slack' | 'feishu' | 'teams' | null>(null);
     const [telegramToken, setTelegramToken] = useState('');
     const [discordToken, setDiscordToken] = useState('');
     const [slackBotToken, setSlackBotToken] = useState('');
     const [slackAppToken, setSlackAppToken] = useState('');
     const [feishuAppId, setFeishuAppId] = useState('');
     const [feishuAppSecret, setFeishuAppSecret] = useState('');
+    const [teamsAppId, setTeamsAppId] = useState('');
+    const [teamsAppPassword, setTeamsAppPassword] = useState('');
 
     // Step 3 — Result
     const [deployedBot, setDeployedBot] = useState<any>(null);
@@ -148,6 +151,7 @@ export default function SetupBot() {
                 (selectedChannel === 'discord' && discordToken) ||
                 (selectedChannel === 'slack' && slackBotToken && slackAppToken) ||
                 (selectedChannel === 'feishu' && feishuAppId && feishuAppSecret) ||
+                (selectedChannel === 'teams' && teamsAppId && teamsAppPassword) ||
                 selectedChannel === 'whatsapp'
             );
             default: return true;
@@ -179,6 +183,9 @@ export default function SetupBot() {
                 feishuEnabled: selectedChannel === 'feishu',
                 feishuAppId: selectedChannel === 'feishu' ? feishuAppId : '',
                 feishuAppSecret: selectedChannel === 'feishu' ? feishuAppSecret : '',
+                teamsEnabled: selectedChannel === 'teams',
+                teamsAppId: selectedChannel === 'teams' ? teamsAppId : '',
+                teamsAppPassword: selectedChannel === 'teams' ? teamsAppPassword : '',
             };
 
             const saveResp = await fetch('/api/config', {
@@ -411,6 +418,7 @@ export default function SetupBot() {
                                         { id: 'discord' as const, name: 'Discord', desc: 'For communities' },
                                         { id: 'whatsapp' as const, name: 'WhatsApp', desc: 'Personal chat' },
                                         { id: 'slack' as const, name: 'Slack', desc: 'Workspace bot' },
+                                        { id: 'teams' as const, name: 'MS Teams', desc: 'Enterprise chat' },
                                         { id: 'feishu' as const, name: 'Feishu', desc: 'Lark / Feishu' },
                                     ].map(ch => (
                                         <button key={ch.id} onClick={() => setSelectedChannel(ch.id)}
@@ -516,6 +524,35 @@ export default function SetupBot() {
                                             <label className={labelClass}>Slack App Token</label>
                                             <input type="password" value={slackAppToken} onChange={e => setSlackAppToken(e.target.value)}
                                                 className={inputClass + ' font-mono text-sm'} placeholder="xapp-..." />
+                                        </div>
+                                    </div>
+                                )}
+
+                                {selectedChannel === 'teams' && (
+                                    <div className="space-y-4 mt-4">
+                                        <div className="bg-blue-500/5 p-4 rounded-2xl text-[11px] text-blue-300/80 leading-relaxed border border-blue-500/10">
+                                            <div className="flex items-start gap-3">
+                                                <MessageSquare size={16} className="text-blue-400 shrink-0 mt-0.5" />
+                                                <div>
+                                                    <p className="font-bold text-blue-300 mb-1">🏢 MS Teams Setup:</p>
+                                                    <ol className="list-decimal list-inside space-y-1">
+                                                        <li>Go to <a href="https://portal.azure.com" target="_blank" className="text-blue-400 underline">Azure Portal</a> → Create a Bot Channels Registration (free)</li>
+                                                        <li>Copy the <strong className="text-white">App ID</strong> and create an <strong className="text-white">App Password</strong> (Client Secret)</li>
+                                                        <li>Enable the <strong className="text-white">Microsoft Teams</strong> channel</li>
+                                                        <li>Set the messaging endpoint to your server URL</li>
+                                                    </ol>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className={labelClass}>Microsoft App ID</label>
+                                            <input type="password" value={teamsAppId} onChange={e => setTeamsAppId(e.target.value)}
+                                                className={inputClass + ' font-mono text-sm'} placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className={labelClass}>App Password (Client Secret)</label>
+                                            <input type="password" value={teamsAppPassword} onChange={e => setTeamsAppPassword(e.target.value)}
+                                                className={inputClass + ' font-mono text-sm'} placeholder="Your app password..." />
                                         </div>
                                     </div>
                                 )}
@@ -722,6 +759,23 @@ export default function SetupBot() {
                                             <div className="flex gap-3 items-start">
                                                 <div className="w-7 h-7 rounded-full bg-green-500/10 flex items-center justify-center shrink-0 text-green-400 text-xs font-black">3</div>
                                                 <p className="text-sm text-white/60">Send a message from another number — the AI replies! 📲</p>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {selectedChannel === 'teams' && (
+                                        <div className="space-y-3">
+                                            <div className="flex gap-3 items-start">
+                                                <div className="w-7 h-7 rounded-full bg-blue-500/10 flex items-center justify-center shrink-0 text-blue-400 text-xs font-black">1</div>
+                                                <p className="text-sm text-white/60">Open <strong className="text-white">Microsoft Teams</strong> on your desktop or browser</p>
+                                            </div>
+                                            <div className="flex gap-3 items-start">
+                                                <div className="w-7 h-7 rounded-full bg-blue-500/10 flex items-center justify-center shrink-0 text-blue-400 text-xs font-black">2</div>
+                                                <p className="text-sm text-white/60">Search for your bot by name or add it via the Teams app catalog</p>
+                                            </div>
+                                            <div className="flex gap-3 items-start">
+                                                <div className="w-7 h-7 rounded-full bg-blue-500/10 flex items-center justify-center shrink-0 text-blue-400 text-xs font-black">3</div>
+                                                <p className="text-sm text-white/60">Send a message in the chat — your AI agent will respond! 🏢</p>
                                             </div>
                                         </div>
                                     )}

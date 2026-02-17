@@ -701,9 +701,11 @@ class BrowserTool(Tool):
                 '--window-size=1920,1080',
                 '--disable-web-security',
                 '--disable-features=VizDisplayCompositor',
+                # ── Rendering: use software rendering to avoid black screenshots ──
+                '--disable-gpu-compositing',
+                '--force-color-profile=srgb',
+                '--disable-skia-runtime-opts',
                 # ── Memory reduction flags ──
-                '--disable-gpu',
-                '--single-process',
                 '--disable-extensions',
                 '--disable-background-networking',
                 '--disable-background-timer-throttling',
@@ -1093,6 +1095,8 @@ class BrowserTool(Tool):
                 full_page = kwargs.get("full_page", False)
                 ts = int(time.time())
                 path = self._screenshots_dir / f"screenshot_{ts}.png"
+                # Brief wait to ensure page has fully painted
+                await self.page.wait_for_timeout(500)
                 await self.page.screenshot(path=path, full_page=full_page)
                 return f"Screenshot saved to {path}"
             

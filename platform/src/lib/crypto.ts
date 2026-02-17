@@ -91,6 +91,7 @@ export const SENSITIVE_FIELDS = [
     'firecrawlApiKey',
     'apifyApiToken',
     'githubToken',
+    'teamsAppPassword',
 ];
 
 /**

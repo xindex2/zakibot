@@ -664,6 +664,7 @@ app.post('/api/config', async (req, res) => {
             'whatsappEnabled', 'whatsappBridgeUrl', 'whatsappAllowFrom',
             'feishuEnabled', 'feishuAppId', 'feishuAppSecret', 'feishuEncryptKey', 'feishuVerificationToken', 'feishuAllowFrom',
             'slackEnabled', 'slackBotToken', 'slackAppToken', 'slackAllowFrom',
+            'teamsEnabled', 'teamsAppId', 'teamsAppPassword', 'teamsAllowFrom',
             'webSearchApiKey',
             'githubEnabled', 'githubToken',
             'browserEnabled', 'captchaProvider', 'captchaApiKey',

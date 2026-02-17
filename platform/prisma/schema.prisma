@@ -109,6 +109,11 @@ model BotConfig {
   slackBotToken   String?
   slackAppToken   String?
   slackAllowFrom  String?
+
+  teamsEnabled      Boolean @default(false)
+  teamsAppId        String?
+  teamsAppPassword  String?
+  teamsAllowFrom    String?
   
   // Tools/Skills
   webSearchApiKey String?

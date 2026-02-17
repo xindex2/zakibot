@@ -16,7 +16,7 @@ const CHANNEL_ICONS: Record<string, string> = {
     whatsapp: 'https://favicon.im/whatsapp.com?larger=true',
     slack: 'https://a.slack-edge.com/80588/marketing/img/meta/favicon-32.png',
     feishu: 'https://www.feishu.cn/favicon.ico',
-    teams: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c9/Microsoft_Office_Teams_%282018%E2%80%93present%29.svg/32px-Microsoft_Office_Teams_%282018%E2%80%93present%29.svg.png',
+    teams: 'https://statics.teams.cdn.live.net/hashed/favicon/prod/favicon-f1722d9.ico',
 };
 
 const PROVIDERS = [

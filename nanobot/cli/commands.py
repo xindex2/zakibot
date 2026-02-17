@@ -196,7 +196,8 @@ def gateway(
     )
     
     # Create cron service first (callback set after agent creation)
-    cron_store_path = get_data_dir() / "cron" / "jobs.json"
+    # Use workspace-relative path so each bot has its own cron store
+    cron_store_path = config.workspace_path / "cron" / "jobs.json"
     cron = CronService(cron_store_path)
     
     # Create agent with cron service
@@ -489,10 +490,11 @@ def cron_list(
     all: bool = typer.Option(False, "--all", "-a", help="Include disabled jobs"),
 ):
     """List scheduled jobs."""
-    from nanobot.config.loader import get_data_dir
+    from nanobot.config.loader import load_config
     from nanobot.cron.service import CronService
     
-    store_path = get_data_dir() / "cron" / "jobs.json"
+    config = load_config()
+    store_path = config.workspace_path / "cron" / "jobs.json"
     service = CronService(store_path)
     
     jobs = service.list_jobs(include_disabled=all)
@@ -543,7 +545,7 @@ def cron_add(
     channel: str = typer.Option(None, "--channel", help="Channel for delivery (e.g. 'telegram', 'whatsapp')"),
 ):
     """Add a scheduled job."""
-    from nanobot.config.loader import get_data_dir
+    from nanobot.config.loader import load_config
     from nanobot.cron.service import CronService
     from nanobot.cron.types import CronSchedule
     
@@ -560,7 +562,8 @@ def cron_add(
         console.print("[red]Error: Must specify --every, --cron, or --at[/red]")
         raise typer.Exit(1)
     
-    store_path = get_data_dir() / "cron" / "jobs.json"
+    config = load_config()
+    store_path = config.workspace_path / "cron" / "jobs.json"
     service = CronService(store_path)
     
     job = service.add_job(
@@ -580,10 +583,11 @@ def cron_remove(
     job_id: str = typer.Argument(..., help="Job ID to remove"),
 ):
     """Remove a scheduled job."""
-    from nanobot.config.loader import get_data_dir
+    from nanobot.config.loader import load_config
     from nanobot.cron.service import CronService
     
-    store_path = get_data_dir() / "cron" / "jobs.json"
+    config = load_config()
+    store_path = config.workspace_path / "cron" / "jobs.json"
     service = CronService(store_path)
     
     if service.remove_job(job_id):
@@ -598,10 +602,11 @@ def cron_enable(
     disable: bool = typer.Option(False, "--disable", help="Disable instead of enable"),
 ):
     """Enable or disable a job."""
-    from nanobot.config.loader import get_data_dir
+    from nanobot.config.loader import load_config
     from nanobot.cron.service import CronService
     
-    store_path = get_data_dir() / "cron" / "jobs.json"
+    config = load_config()
+    store_path = config.workspace_path / "cron" / "jobs.json"
     service = CronService(store_path)
     
     job = service.enable_job(job_id, enabled=not disable)
@@ -618,10 +623,11 @@ def cron_run(
     force: bool = typer.Option(False, "--force", "-f", help="Run even if disabled"),
 ):
     """Manually run a job."""
-    from nanobot.config.loader import get_data_dir
+    from nanobot.config.loader import load_config
     from nanobot.cron.service import CronService
     
-    store_path = get_data_dir() / "cron" / "jobs.json"
+    config = load_config()
+    store_path = config.workspace_path / "cron" / "jobs.json"
     service = CronService(store_path)
     
     async def run():

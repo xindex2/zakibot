@@ -83,6 +83,7 @@ model BotConfig {
   apiKeyMode     String   @default("own_key") // "own_key" | "platform_credits"
   apiBase        String?
   model          String   @default("anthropic/claude-opus-4-5")
+  timezone       String   @default("UTC")
   
   // Channels
   telegramEnabled Boolean @default(false)

@@ -20,8 +20,9 @@ class ContextBuilder:
     
     BOOTSTRAP_FILES = ["AGENTS.md", "SOUL.md", "USER.md", "TOOLS.md", "IDENTITY.md"]
     
-    def __init__(self, workspace: Path):
+    def __init__(self, workspace: Path, timezone: str = "UTC"):
         self.workspace = workspace
+        self.timezone = timezone
         self.memory = MemoryStore(workspace)
         self.skills = SkillsLoader(workspace)
     
@@ -72,8 +73,14 @@ Skills with available="false" need dependencies installed first - you can try in
     
     def _get_identity(self) -> str:
         """Get the core identity section."""
-        from datetime import datetime
-        now = datetime.now().strftime("%Y-%m-%d %H:%M (%A)")
+        from datetime import datetime, timezone as tz_module
+        try:
+            from zoneinfo import ZoneInfo
+            tz = ZoneInfo(self.timezone)
+        except Exception:
+            tz = tz_module.utc
+        now = datetime.now(tz).strftime("%Y-%m-%d %H:%M (%A)")
+        tz_label = self.timezone
         workspace_path = str(self.workspace.expanduser().resolve())
         system = platform.system()
         runtime = f"{'macOS' if system == 'Darwin' else system} {platform.machine()}, Python {platform.python_version()}"
@@ -89,7 +96,7 @@ You are Agentchat, a helpful AI assistant. You have access to tools that allow y
 - Control a stealth web browser (navigate, click, type, fill forms, take screenshots)
 
 ## Current Time
-{now}
+{now} ({tz_label})
 
 ## Runtime
 {runtime}

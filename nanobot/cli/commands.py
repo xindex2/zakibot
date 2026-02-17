@@ -212,6 +212,7 @@ def gateway(
         cron_service=cron,
         restrict_to_workspace=config.tools.restrict_to_workspace,
         plan=config.agents.defaults.plan,
+        timezone=config.agents.defaults.timezone,
     )
     
     # Set cron callback (needs agent)

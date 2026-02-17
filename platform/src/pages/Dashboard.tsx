@@ -55,6 +55,7 @@ interface AgentConfig {
     apiKeyMode: string;
     apiBase: string;
     model: string;
+    timezone: string;
     telegramEnabled: boolean;
     telegramToken: string;
     telegramAllowFrom: string;
@@ -331,7 +332,8 @@ export default function Dashboard() {
             restrictToWorkspace: true,
             gatewayHost: '0.0.0.0',
             gatewayPort: 18790 + (agents.length * 10),
-            maxToolIterations: 30
+            maxToolIterations: 30,
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
         };
         setEditingAgent(newAgent);
     };
@@ -372,7 +374,8 @@ export default function Dashboard() {
             restrictToWorkspace: true,
             gatewayHost: '0.0.0.0',
             gatewayPort: 18790 + (agents.length * 10),
-            maxToolIterations: 30
+            maxToolIterations: 30,
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
         };
         await saveConfig(quickAgent);
     };
@@ -1456,6 +1459,26 @@ export default function Dashboard() {
                                                     onChange={e => setEditingAgent({ ...editingAgent, gatewayPort: parseInt(e.target.value) })}
                                                     className="input-modern w-full font-mono"
                                                 />
+                                            </InputWrapper>
+                                            <InputWrapper label="Agent Timezone">
+                                                <select
+                                                    value={editingAgent.timezone || 'UTC'}
+                                                    onChange={e => setEditingAgent({ ...editingAgent, timezone: e.target.value })}
+                                                    className="input-modern w-full"
+                                                >
+                                                    {[
+                                                        'UTC',
+                                                        'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles',
+                                                        'America/Toronto', 'America/Vancouver', 'America/Sao_Paulo', 'America/Mexico_City',
+                                                        'Europe/London', 'Europe/Paris', 'Europe/Berlin', 'Europe/Moscow', 'Europe/Istanbul',
+                                                        'Asia/Dubai', 'Asia/Kolkata', 'Asia/Bangkok', 'Asia/Singapore', 'Asia/Shanghai',
+                                                        'Asia/Tokyo', 'Asia/Seoul', 'Asia/Hong_Kong',
+                                                        'Australia/Sydney', 'Australia/Melbourne', 'Pacific/Auckland',
+                                                        'Africa/Cairo', 'Africa/Lagos', 'Africa/Johannesburg',
+                                                    ].map(tz => (
+                                                        <option key={tz} value={tz}>{tz.replace('_', ' ')}</option>
+                                                    ))}
+                                                </select>
                                             </InputWrapper>
                                         </div>
                                     </Section>

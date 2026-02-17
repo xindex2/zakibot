@@ -66,6 +66,7 @@ class AgentDefaults(BaseModel):
     temperature: float = 0.7
     max_tool_iterations: int = 20
     plan: str = "free"
+    timezone: str = "UTC"
 
 
 class AgentsConfig(BaseModel):

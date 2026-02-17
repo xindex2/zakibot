@@ -49,6 +49,7 @@ class AgentLoop:
         cron_service: "CronService | None" = None,
         restrict_to_workspace: bool = False,
         plan: str = "free",
+        timezone: str = "UTC",
     ):
         from nanobot.config.schema import ExecToolConfig, BrowserConfig
         from nanobot.cron.service import CronService
@@ -62,6 +63,7 @@ class AgentLoop:
         self.cron_service = cron_service
         self.restrict_to_workspace = restrict_to_workspace
         self.plan = plan
+        self.timezone = timezone
         self.message_count = 0
         
         # Load workspace .env (user-placed API keys like BRAVE_API_KEY)
@@ -89,7 +91,7 @@ class AgentLoop:
             brave_api_key = _os.environ.get("BRAVE_API_KEY") or None
         self.brave_api_key = brave_api_key
         
-        self.context = ContextBuilder(workspace)
+        self.context = ContextBuilder(workspace, timezone=timezone)
         self.sessions = SessionManager(workspace)
         self.tools = ToolRegistry()
         self.subagents = SubagentManager(

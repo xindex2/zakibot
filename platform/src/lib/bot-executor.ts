@@ -154,7 +154,33 @@ export async function startBot(configId: string) {
 
     const configPath = path.join(configsDir, `${decryptedConfig.id}.json`);
     const workspacePath = path.join(process.cwd(), 'workspaces', decryptedConfig.userId, decryptedConfig.id);
-    if (!fs.existsSync(workspacePath)) fs.mkdirSync(workspacePath, { recursive: true });
+    const isNewWorkspace = !fs.existsSync(workspacePath);
+    if (isNewWorkspace) fs.mkdirSync(workspacePath, { recursive: true });
+
+    // Bootstrap fresh workspace — write defaults only if files don't already exist
+    const bootstrapFiles: Record<string, string> = {
+        'SOUL.md': '# Soul\n\nDefine your agent\'s personality and behavior here.\n',
+        'AGENTS.md': '# Agents\n\nConfigure sub-agents and their roles here.\n',
+    };
+    const memoryDir = path.join(workspacePath, 'memory');
+    if (!fs.existsSync(memoryDir)) fs.mkdirSync(memoryDir, { recursive: true });
+    const memoryFile = path.join(memoryDir, 'MEMORY.md');
+    if (!fs.existsSync(memoryFile)) fs.writeFileSync(memoryFile, '# Memory\n\nAgent memory notes will be stored here.\n');
+
+    for (const [filename, defaultContent] of Object.entries(bootstrapFiles)) {
+        const filePath = path.join(workspacePath, filename);
+        if (!fs.existsSync(filePath)) fs.writeFileSync(filePath, defaultContent);
+    }
+
+    // For brand-new workspaces, also clear any stale session/cron data
+    if (isNewWorkspace) {
+        for (const subdir of ['sessions', 'cron']) {
+            const dirPath = path.join(workspacePath, subdir);
+            if (fs.existsSync(dirPath)) {
+                fs.rmSync(dirPath, { recursive: true, force: true });
+            }
+        }
+    }
 
     // Assign bridge port based on gateway port
     const gatewayPort = decryptedConfig.gatewayPort || 18790;
@@ -174,7 +200,8 @@ export async function startBot(configId: string) {
                 model: decryptedConfig.model,
                 workspace: workspacePath,
                 max_tool_iterations: decryptedConfig.maxToolIterations || 20,
-                plan: (decryptedConfig as any).user?.subscription?.plan?.toLowerCase() || "free"
+                plan: (decryptedConfig as any).user?.subscription?.plan?.toLowerCase() || "free",
+                timezone: (decryptedConfig as any).timezone || "UTC"
             }
         },
         channels: {

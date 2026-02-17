@@ -1661,6 +1661,8 @@ export default function Dashboard() {
                                                 if (editingAgent.telegramEnabled) channels.push('Telegram');
                                                 if (editingAgent.discordEnabled) channels.push('Discord');
                                                 if (editingAgent.whatsappEnabled) channels.push('WhatsApp');
+                                                if (editingAgent.slackEnabled) channels.push('Slack');
+                                                if (editingAgent.feishuEnabled) channels.push('Feishu');
                                                 if (editingAgent.teamsEnabled) channels.push('MS Teams');
                                                 const hasChannels = channels.length > 0;
                                                 return (
@@ -2119,7 +2121,9 @@ function AgentCard({ agent, onEdit, onDelete, onToggle }: any) {
                     {agent.discordEnabled && <ChannelIcon src={ICONS.discord} />}
                     {agent.whatsappEnabled && <ChannelIcon src={ICONS.whatsapp} />}
                     {agent.feishuEnabled && <ChannelIcon src={ICONS.feishu} />}
-                    {!agent.telegramEnabled && !agent.discordEnabled && !agent.whatsappEnabled && !agent.feishuEnabled && (
+                    {agent.slackEnabled && <ChannelIcon src={ICONS.slack} />}
+                    {agent.teamsEnabled && <ChannelIcon src={ICONS.teams} />}
+                    {!agent.telegramEnabled && !agent.discordEnabled && !agent.whatsappEnabled && !agent.feishuEnabled && !agent.slackEnabled && !agent.teamsEnabled && (
                         <span className="text-[10px] text-white/15 font-medium">No channels</span>
                     )}
                 </div>

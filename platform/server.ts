@@ -101,7 +101,7 @@ app.post('/api/register', async (req, res) => {
                         create: {
                             plan: 'Free',
                             maxInstances: 1,
-                            creditBalance: 10
+                            creditBalance: 0
                         }
                     }
                 },
@@ -191,7 +191,7 @@ app.post('/api/register-with-bot', async (req, res) => {
                         create: {
                             plan: 'Free',
                             maxInstances: 1,
-                            creditBalance: 10
+                            creditBalance: 0
                         }
                     }
                 },
@@ -1126,13 +1126,17 @@ app.get('/api/internal/credit-check/:userId', async (req: any, res: any) => {
     try {
         const sub = await prisma.subscription.findUnique({
             where: { userId: req.params.userId },
-            select: { creditBalance: true }
+            select: { creditBalance: true, plan: true }
         });
-        const balance = sub?.creditBalance ?? 0;
+        // Free users must not use platform credits at all
+        if (!sub || sub.plan === 'Free') {
+            return res.json({ ok: false, balance: 0, reason: 'free_plan' });
+        }
+        const balance = sub.creditBalance ?? 0;
         res.json({ ok: balance > 0.001, balance });
     } catch (e: any) {
-        // If check fails, allow the message (fail-open)
-        res.json({ ok: true, balance: -1 });
+        // If check fails, DENY the message (fail-closed to protect credits)
+        res.json({ ok: false, balance: 0, reason: 'check_failed' });
     }
 });
 

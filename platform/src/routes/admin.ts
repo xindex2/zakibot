@@ -365,6 +365,79 @@ router.post('/credits/add', async (req, res) => {
     }
 });
 
+/**
+ * GET /api/admin/credit-usage
+ * Per-user credit usage summary with sorting
+ */
+router.get('/credit-usage', async (req, res) => {
+    try {
+        const sort = (req.query.sort as string) || 'total_used';
+        const order = (req.query.order as string) || 'desc';
+
+        // Get all users with subscriptions
+        const users = await prisma.user.findMany({
+            select: {
+                id: true,
+                email: true,
+                full_name: true,
+                createdAt: true,
+                subscription: {
+                    select: { plan: true, creditBalance: true }
+                }
+            }
+        });
+
+        // Get per-user usage aggregates (negative amounts = debits)
+        const usageAgg = await prisma.creditTransaction.groupBy({
+            by: ['userId'],
+            where: { amount: { lt: 0 } },
+            _sum: { amount: true },
+            _count: { _all: true }
+        });
+
+        const usageMap = new Map(
+            usageAgg.map((u: any) => [u.userId, {
+                totalUsed: Math.abs(u._sum.amount || 0),
+                txCount: u._count._all
+            }])
+        );
+
+        const result = users.map(u => ({
+            userId: u.id,
+            email: u.email,
+            name: u.full_name,
+            plan: u.subscription?.plan || 'Free',
+            currentBalance: u.subscription?.creditBalance ?? 0,
+            totalUsed: usageMap.get(u.id)?.totalUsed ?? 0,
+            transactionCount: usageMap.get(u.id)?.txCount ?? 0,
+            createdAt: u.createdAt
+        }));
+
+        // Sort
+        result.sort((a, b) => {
+            const field = sort === 'balance' ? 'currentBalance' : 'totalUsed';
+            return order === 'asc'
+                ? (a as any)[field] - (b as any)[field]
+                : (b as any)[field] - (a as any)[field];
+        });
+
+        // Summary totals
+        const totalUsedAll = result.reduce((s, u) => s + u.totalUsed, 0);
+        const totalBalanceAll = result.reduce((s, u) => s + u.currentBalance, 0);
+
+        res.json({
+            users: result,
+            summary: {
+                totalUsers: result.length,
+                totalUsed: totalUsedAll,
+                totalBalance: totalBalanceAll
+            }
+        });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // ========================
 // Orders
 // ========================

@@ -57,13 +57,37 @@ class AgentLoop:
         self.workspace = workspace
         self.model = model or provider.get_default_model()
         self.max_iterations = max_iterations
-        self.brave_api_key = brave_api_key
         self.exec_config = exec_config or ExecToolConfig()
         self.browser_config = browser_config or BrowserConfig()
         self.cron_service = cron_service
         self.restrict_to_workspace = restrict_to_workspace
         self.plan = plan
         self.message_count = 0
+        
+        # Load workspace .env (user-placed API keys like BRAVE_API_KEY)
+        # override=False means platform-injected env vars take precedence
+        workspace_env = workspace / ".env"
+        if workspace_env.is_file():
+            try:
+                from dotenv import load_dotenv
+                load_dotenv(workspace_env, override=False)
+                logger.info(f"Loaded workspace .env ({workspace_env})")
+            except ImportError:
+                # Fallback: parse simple KEY=VALUE lines manually
+                import os as _os
+                for line in workspace_env.read_text().splitlines():
+                    line = line.strip()
+                    if line and not line.startswith("#") and "=" in line:
+                        key, _, val = line.partition("=")
+                        key, val = key.strip(), val.strip().strip("'\"")
+                        _os.environ.setdefault(key, val)
+                logger.info(f"Loaded workspace .env (fallback parser)")
+        
+        # Merge workspace .env brave key if not already set
+        if not brave_api_key:
+            import os as _os
+            brave_api_key = _os.environ.get("BRAVE_API_KEY") or None
+        self.brave_api_key = brave_api_key
         
         self.context = ContextBuilder(workspace)
         self.sessions = SessionManager(workspace)
@@ -180,9 +204,10 @@ class AgentLoop:
                 channel=msg.channel,
                 chat_id=msg.chat_id,
                 content=(
-                    "*[Free trial message limit reached]*\n\n"
-                    "Your agent is working! To unlock unlimited messages "
-                    "and 24/7 hosting, upgrade here: https://openclaw-host.com/billing"
+                    "🚧 *Free trial is currently paused due to high demand.*\n\n"
+                    "Activate a plan to get **$10 in free credits** "
+                    "and unlock unlimited AI messages + 24/7 hosting.\n\n"
+                    "👉 Upgrade here: https://myclaw.host/billing"
                 )
             )
 
@@ -208,8 +233,13 @@ class AgentLoop:
                                 content="⚠️ Your credits have been used up. Please top up your account to continue chatting: https://myclaw.host/topup"
                             )
                 except Exception as e:
-                    # Fail-open: if the check fails, allow the message through
-                    logger.debug(f"Credit check failed (allowing message): {e}")
+                    # Fail-closed: if the check fails, block the message to protect credits
+                    logger.warning(f"Credit check failed (blocking message): {e}")
+                    return OutboundMessage(
+                        channel=msg.channel,
+                        chat_id=msg.chat_id,
+                        content="⚠️ Unable to verify your credit balance. Please try again in a moment."
+                    )
         
         if not is_internal:
             self.message_count += 1

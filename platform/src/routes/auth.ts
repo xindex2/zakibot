@@ -84,7 +84,7 @@ router.get('/auth/google/callback', async (req, res) => {
                                 create: {
                                     plan: 'Free',
                                     maxInstances: 1,
-                                    creditBalance: 10
+                                    creditBalance: 0
                                 }
                             }
                         }
@@ -197,7 +197,7 @@ router.post('/auth/google/token', async (req: any, res: any) => {
                             avatar_url,
                             acquisition_source: 'Direct',
                             subscription: {
-                                create: { plan: 'Free', maxInstances: 1, creditBalance: 10 }
+                                create: { plan: 'Free', maxInstances: 1, creditBalance: 0 }
                             }
                         }
                     });
@@ -381,7 +381,7 @@ router.post('/auth/apple/callback', express.urlencoded({ extended: true }), asyn
                             create: {
                                 plan: 'Free',
                                 maxInstances: 1,
-                                creditBalance: 10
+                                creditBalance: 0
                             }
                         }
                     }

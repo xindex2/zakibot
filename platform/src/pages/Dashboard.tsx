@@ -517,8 +517,8 @@ export default function Dashboard() {
                                 <div className="flex items-start gap-3">
                                     <AlertTriangle size={18} className="text-amber-400 shrink-0 mt-0.5" />
                                     <div>
-                                        <p className="text-sm font-bold text-amber-300">Free trial paused</p>
-                                        <p className="text-[11px] text-amber-200/60 leading-relaxed">Due to overwhelming demand, we've temporarily paused the free trial. Upgrade your plan to deploy and run your agents.</p>
+                                        <p className="text-sm font-bold text-amber-300">🚧 Free trial paused due to high demand</p>
+                                        <p className="text-[11px] text-amber-200/60 leading-relaxed">Activate a plan to get <strong className="text-amber-200">$10 in free AI credits</strong> and unlock unlimited messages + 24/7 hosting for your agents.</p>
                                     </div>
                                 </div>
                                 <button
@@ -526,7 +526,7 @@ export default function Dashboard() {
                                     className="shrink-0 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black font-black px-5 py-2.5 rounded-xl text-[10px] uppercase tracking-widest transition-all flex items-center gap-2 shadow-lg shadow-amber-900/20"
                                 >
                                     <Zap size={14} strokeWidth={3} />
-                                    Upgrade Now
+                                    Activate Plan — Get $10 Free
                                 </button>
                             </div>
                         )}
@@ -574,7 +574,7 @@ export default function Dashboard() {
                                     <Plus size={18} strokeWidth={3} />
                                     Create My First Agent
                                 </button>
-                                <p className="text-[10px] text-white/25 mt-3">Free plan includes 2 test messages • Upgrade to unlock unlimited</p>
+                                <p className="text-[10px] text-white/25 mt-3">Activate a plan to get $10 in free credits • Upgrade to unlock unlimited agents</p>
                             </div>
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

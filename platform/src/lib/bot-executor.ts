@@ -372,8 +372,9 @@ export async function startBot(configId: string) {
             if (line.startsWith('[USAGE]')) {
                 try {
                     const usageJson = JSON.parse(line.substring(8));
-                    if (apiKeyMode === 'platform_credits' && config.userId) {
-                        // Get real pricing for this model and deduct
+                    const userPlan = (decryptedConfig as any).user?.subscription?.plan || 'Free';
+                    if (apiKeyMode === 'platform_credits' && config.userId && userPlan !== 'Free') {
+                        // Get real pricing for this model and deduct (paid users only)
                         getModelPricing(usageJson.model).then(pricing => {
                             const cost = (usageJson.prompt_tokens * pricing.prompt) + (usageJson.completion_tokens * pricing.completion);
                             if (cost > 0) {

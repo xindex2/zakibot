@@ -672,7 +672,7 @@ app.post('/api/config', async (req, res) => {
             'summarizeEnabled', 'firecrawlApiKey', 'apifyApiToken',
             'cronEnabled', 'skillCreatorEnabled',
             'gatewayHost', 'gatewayPort', 'maxToolIterations',
-            'status'
+            'status', 'timezone'
         ];
 
         const data: any = { userId };
@@ -1377,14 +1377,46 @@ app.get('/api/files/:userId/:configId/*', async (req: any, res: any) => {
     }
 });
 
+// --- Serve public screenshots (search across all workspaces) ---
+app.get('/screenshots/:filename', (req: any, res: any) => {
+    try {
+        const filename = req.params.filename;
+        // Sanitise: only allow alphanumeric, underscores, hyphens, dots
+        if (!/^[\w.-]+$/.test(filename)) return res.status(400).json({ error: 'Invalid filename' });
+
+        const workspacesRoot = path.join(process.cwd(), 'workspaces');
+        if (!fs.existsSync(workspacesRoot)) return res.status(404).json({ error: 'Not found' });
+
+        // Walk workspaces/{userId}/{botId}/screenshots/ for the file
+        const userDirs = fs.readdirSync(workspacesRoot).filter(d => {
+            try { return fs.statSync(path.join(workspacesRoot, d)).isDirectory(); } catch { return false; }
+        });
+        for (const userDir of userDirs) {
+            const userPath = path.join(workspacesRoot, userDir);
+            const botDirs = fs.readdirSync(userPath).filter(d => {
+                try { return fs.statSync(path.join(userPath, d)).isDirectory(); } catch { return false; }
+            });
+            for (const botDir of botDirs) {
+                const candidate = path.join(userPath, botDir, 'screenshots', filename);
+                if (fs.existsSync(candidate)) {
+                    return res.sendFile(path.resolve(candidate));
+                }
+            }
+        }
+        res.status(404).json({ error: 'Screenshot not found' });
+    } catch (e: any) {
+        res.status(500).json({ error: 'Failed to serve screenshot' });
+    }
+});
+
 // --- Serve Frontend ---
 const distPath = path.join(__dirname, 'dist');
 app.use(express.static(distPath));
 
 // For all other routes, serve index.html (SPA routing)
 app.get('*', (req, res, next) => {
-    // Skip if it's an API route
-    if (req.path.startsWith('/api')) {
+    // Skip API routes and screenshot direct links
+    if (req.path.startsWith('/api') || req.path.startsWith('/screenshots/')) {
         return next();
     }
     res.sendFile(path.join(distPath, 'index.html'));

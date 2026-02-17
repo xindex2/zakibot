@@ -204,17 +204,45 @@ class TelegramChannel(BaseChannel):
             # 1b) Detect markdown image syntax ![caption](path)
             md_image_pattern = re.compile(r'!\[([^\]]*)\]\(([^)]+)\)')
             md_image_matches = []
+            unresolved_images = []  # URLs/paths that couldn't be resolved to files
             for m in md_image_pattern.finditer(text_content):
+                caption = m.group(1).strip()
                 raw_path = m.group(2).strip()
+                resolved = False
+                
+                # Try direct path resolution
                 candidate_paths = [P(raw_path)]
                 if self.workspace:
                     candidate_paths.append(P(self.workspace) / raw_path)
+                
+                # If it's a URL with /screenshots/, extract filename and try local
+                if raw_path.startswith(('http://', 'https://')) and '/screenshots/' in raw_path:
+                    filename = raw_path.split('/screenshots/')[-1].split('?')[0]
+                    if self.workspace:
+                        candidate_paths.append(P(self.workspace) / 'screenshots' / filename)
+                
                 for p in candidate_paths:
-                    if p.is_file():
-                        md_image_matches.append((m.group(0), str(p)))
-                        break
+                    try:
+                        if p.is_file():
+                            md_image_matches.append((m.group(0), str(p)))
+                            resolved = True
+                            break
+                    except (OSError, ValueError):
+                        continue
+                
+                if not resolved:
+                    # Can't resolve to file — record for clean text replacement
+                    unresolved_images.append((m.group(0), caption, raw_path))
+            
             for (match_text, _) in md_image_matches:
                 text_content = text_content.replace(match_text, '')
+            
+            # Replace unresolved ![caption](url) with clean text instead of raw markdown
+            for (match_text, caption, url) in unresolved_images:
+                if url.startswith(('http://', 'https://')):
+                    text_content = text_content.replace(match_text, f"{caption}: {url}" if caption else url)
+                else:
+                    text_content = text_content.replace(match_text, f"📸 {caption}" if caption else '')
             
             # 2) Detect general file paths in the message text
             # Match absolute paths or relative workspace paths with file extensions

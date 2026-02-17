@@ -95,6 +95,39 @@ class DiscordChannel(BaseChannel):
             image_matches = image_pattern.findall(text_content)
             text_content = image_pattern.sub('', text_content)
             
+            # 1b) Detect markdown image syntax ![caption](path)
+            md_image_pattern = re.compile(r'!\[([^\]]*)\]\(([^)]+)\)')
+            md_image_matches = []
+            unresolved_images = []
+            for m in md_image_pattern.finditer(text_content):
+                caption = m.group(1).strip()
+                raw_path = m.group(2).strip()
+                resolved = False
+                candidate_paths = [Path(raw_path)]
+                if self.workspace:
+                    candidate_paths.append(Path(self.workspace) / raw_path)
+                if raw_path.startswith(('http://', 'https://')) and '/screenshots/' in raw_path:
+                    filename = raw_path.split('/screenshots/')[-1].split('?')[0]
+                    if self.workspace:
+                        candidate_paths.append(Path(self.workspace) / 'screenshots' / filename)
+                for p in candidate_paths:
+                    try:
+                        if p.is_file():
+                            md_image_matches.append((m.group(0), str(p)))
+                            resolved = True
+                            break
+                    except (OSError, ValueError):
+                        continue
+                if not resolved:
+                    unresolved_images.append((m.group(0), caption, raw_path))
+            for (match_text, _) in md_image_matches:
+                text_content = text_content.replace(match_text, '')
+            for (match_text, caption, url) in unresolved_images:
+                if url.startswith(('http://', 'https://')):
+                    text_content = text_content.replace(match_text, f"{caption}: {url}" if caption else url)
+                else:
+                    text_content = text_content.replace(match_text, f"📸 {caption}" if caption else '')
+            
             # 2) Detect general file paths in message text
             file_pattern = re.compile(
                 r'(?:`([^`]+\.\w{1,5})`'
@@ -130,6 +163,9 @@ class DiscordChannel(BaseChannel):
                     all_files.append(str(Path(self.workspace) / img_path))
                     
             for (_, file_path) in general_files:
+                if file_path not in all_files:
+                    all_files.append(file_path)
+            for (_, file_path) in md_image_matches:
                 if file_path not in all_files:
                     all_files.append(file_path)
             

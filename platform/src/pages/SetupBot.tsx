@@ -534,13 +534,16 @@ export default function SetupBot() {
                                             <div className="flex items-start gap-3">
                                                 <MessageSquare size={16} className="text-blue-400 shrink-0 mt-0.5" />
                                                 <div>
-                                                    <p className="font-bold text-blue-300 mb-1">🏢 MS Teams Setup:</p>
-                                                    <ol className="list-decimal list-inside space-y-1">
-                                                        <li>Go to <a href="https://portal.azure.com" target="_blank" className="text-blue-400 underline">Azure Portal</a> → Create a Bot Channels Registration (free)</li>
-                                                        <li>Copy the <strong className="text-white">App ID</strong> and create an <strong className="text-white">App Password</strong> (Client Secret)</li>
-                                                        <li>Enable the <strong className="text-white">Microsoft Teams</strong> channel</li>
-                                                        <li>Set the messaging endpoint to your server URL</li>
+                                                    <p className="font-bold text-blue-300 mb-2">📋 How to get your Teams credentials:</p>
+                                                    <ol className="list-decimal list-inside space-y-1.5">
+                                                        <li>Go to <a href="https://portal.azure.com" target="_blank" className="text-blue-400 underline">Azure Portal</a> → search <strong className="text-white">"Bot Services"</strong> → Create → <strong className="text-white">Azure Bot</strong></li>
+                                                        <li>Choose pricing tier <strong className="text-white">F0 (Free)</strong> → Create</li>
+                                                        <li>Open the bot → <strong className="text-white">Configuration</strong> → copy the <strong className="text-white">Microsoft App ID</strong></li>
+                                                        <li>Click <strong className="text-white">"Manage Password"</strong> → <strong className="text-white">"New client secret"</strong> → copy the <strong className="text-white">Value</strong> (App Password)</li>
+                                                        <li>Set <strong className="text-white">Messaging endpoint</strong> to: <code className="text-white/90 bg-white/10 px-1.5 py-0.5 rounded text-[10px]">https://openclaw-host.com/api/teams/messages</code></li>
+                                                        <li>Go to <strong className="text-white">Channels</strong> → click <strong className="text-white">Microsoft Teams</strong> → Save</li>
                                                     </ol>
+                                                    <p className="mt-2 text-[10px] text-blue-300/50">After deploying, users find your bot by name in Teams and message it directly.</p>
                                                 </div>
                                             </div>
                                         </div>

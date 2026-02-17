@@ -24,6 +24,48 @@ import Logo from '../components/Logo';
 import StarField from '../components/StarField';
 import Footer from '../components/Footer';
 
+function YouTubeFacade({ videoId, aspectRatio }: { videoId: string; aspectRatio: string }) {
+    const [playing, setPlaying] = useState(false);
+    if (playing) {
+        return (
+            <div style={{ position: 'relative', paddingBottom: aspectRatio, height: 0, borderRadius: 'var(--radius-lg)', overflow: 'hidden' }}>
+                <iframe
+                    src={`https://www.youtube.com/embed/${videoId}?autoplay=1`}
+                    title="OpenClaw Demo"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}
+                />
+            </div>
+        );
+    }
+    return (
+        <button
+            onClick={() => setPlaying(true)}
+            aria-label="Play video"
+            style={{
+                position: 'relative', display: 'block', width: '100%', paddingBottom: aspectRatio,
+                height: 0, borderRadius: 'var(--radius-lg)', overflow: 'hidden', cursor: 'pointer',
+                border: 'none', padding: 0, background: '#000',
+            }}
+        >
+            <img
+                src={`https://img.youtube.com/vi/${videoId}/hqdefault.jpg`}
+                alt="Video thumbnail"
+                loading="lazy"
+                style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', minWidth: '100%', minHeight: '100%', objectFit: 'cover' }}
+            />
+            <div style={{
+                position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)',
+                width: 68, height: 48, background: 'rgba(255,0,0,0.85)', borderRadius: 12,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z" /></svg>
+            </div>
+        </button>
+    );
+}
+
 export default function Landing() {
     const { isAuthenticated, login } = useAuth();
     const navigate = useNavigate();
@@ -427,27 +469,13 @@ export default function Landing() {
                     <div style={{ maxWidth: '800px', margin: '0 auto' }}>
                         {/* Desktop: 16:9 landscape video */}
                         <div className="hidden md:block card-glass" style={{ padding: 'var(--spacing-lg)', borderRadius: 'var(--radius-xl)' }}>
-                            <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0, borderRadius: 'var(--radius-lg)', overflow: 'hidden' }}>
-                                <iframe
-                                    src="https://www.youtube.com/embed/BoQAmvbViAg"
-                                    title="OpenClaw Demo"
-                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                    allowFullScreen
-                                    style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}
-                                />
-                            </div>
+                            <YouTubeFacade videoId="BoQAmvbViAg" aspectRatio="56.25%" />
                         </div>
 
                         {/* Mobile: 9:16 vertical short */}
                         <div className="md:hidden card-glass" style={{ padding: 'var(--spacing-lg)', borderRadius: 'var(--radius-xl)' }}>
-                            <div style={{ position: 'relative', paddingBottom: '177.78%', height: 0, borderRadius: 'var(--radius-lg)', overflow: 'hidden', maxWidth: '350px', margin: '0 auto' }}>
-                                <iframe
-                                    src="https://www.youtube.com/embed/HW83uf-BvBk"
-                                    title="OpenClaw Demo"
-                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                    allowFullScreen
-                                    style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}
-                                />
+                            <div style={{ maxWidth: '350px', margin: '0 auto' }}>
+                                <YouTubeFacade videoId="HW83uf-BvBk" aspectRatio="177.78%" />
                             </div>
                         </div>
                     </div>

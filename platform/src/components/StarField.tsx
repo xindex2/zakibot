@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 
 export default function StarField() {
     const stars = useMemo(() => {
-        return Array.from({ length: 150 }).map((_, i) => ({
+        return Array.from({ length: 60 }).map((_, i) => ({
             id: i,
             top: `${Math.random() * 100}%`,
             left: `${Math.random() * 100}%`,
@@ -17,15 +17,19 @@ export default function StarField() {
             {stars.map((star) => (
                 <div
                     key={star.id}
-                    className={`star star-${star.size} absolute bg-white rounded-full animate-pulse`}
+                    className={`star star-${star.size} absolute bg-white rounded-full`}
                     style={{
                         top: star.top,
                         left: star.left,
                         width: `${star.size}px`,
                         height: `${star.size}px`,
                         opacity: Math.random() * 0.7 + 0.3,
+                        animationName: 'pulse',
                         animationDuration: star.duration,
                         animationDelay: star.delay,
+                        animationTimingFunction: 'ease-in-out',
+                        animationIterationCount: 'infinite',
+                        willChange: 'opacity',
                         boxShadow: star.size > 2 ? '0 0 10px rgba(255, 255, 255, 0.5)' : 'none',
                     }}
                 />

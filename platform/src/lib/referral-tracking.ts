@@ -103,7 +103,7 @@ export function clearSource(): void {
  */
 export async function syncSourceToServer(token: string): Promise<void> {
     const source = getSource();
-    if (!source) return;
+    if (!source || source === 'Direct') return; // Don't overwrite server source with generic 'Direct'
 
     try {
         await fetch('/api/users/source', {

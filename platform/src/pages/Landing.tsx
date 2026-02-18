@@ -468,12 +468,12 @@ export default function Landing() {
 
                     <div style={{ maxWidth: '800px', margin: '0 auto' }}>
                         {/* Desktop: 16:9 landscape video */}
-                        <div className="hidden md:block card-glass" style={{ padding: 'var(--spacing-lg)', borderRadius: 'var(--radius-xl)' }}>
+                        <div className="hidden-mobile card-glass" style={{ padding: 'var(--spacing-lg)', borderRadius: 'var(--radius-xl)' }}>
                             <YouTubeFacade videoId="BoQAmvbViAg" aspectRatio="56.25%" />
                         </div>
 
                         {/* Mobile: 9:16 vertical short */}
-                        <div className="md:hidden card-glass" style={{ padding: 'var(--spacing-lg)', borderRadius: 'var(--radius-xl)' }}>
+                        <div className="visible-mobile-only card-glass" style={{ padding: 'var(--spacing-lg)', borderRadius: 'var(--radius-xl)' }}>
                             <div style={{ maxWidth: '350px', margin: '0 auto' }}>
                                 <YouTubeFacade videoId="HW83uf-BvBk" aspectRatio="177.78%" />
                             </div>

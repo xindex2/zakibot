@@ -46,7 +46,13 @@ export function captureSource(): void {
         try {
             const refUrl = new URL(referrer);
             const host = refUrl.hostname;
-            if (host.includes('google')) source = 'Google';
+            // Skip OAuth provider referrers — these are redirect bouncebacks, not real sources
+            const isOAuthBounce = host.includes('accounts.google.com') ||
+                host.includes('appleid.apple.com') ||
+                host.includes('myaccount.google.com');
+            if (isOAuthBounce) {
+                // Leave as 'Direct' — the real source was (or should have been) captured earlier
+            } else if (host.includes('google')) source = 'Google';
             else if (host.includes('bing')) source = 'Bing';
             else if (host.includes('facebook') || host.includes('fb.me')) source = 'Facebook';
             else if (host.includes('twitter.com') || host.includes('t.co') || host.includes('x.com')) source = 'Twitter';
@@ -97,7 +103,7 @@ export function clearSource(): void {
  */
 export async function syncSourceToServer(token: string): Promise<void> {
     const source = getSource();
-    if (!source || source === 'Direct') return; // nothing meaningful to sync
+    if (!source) return;
 
     try {
         await fetch('/api/users/source', {

@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Logo from '../components/Logo';
 import StarField from '../components/StarField';
-import { getSource } from '../lib/referral-tracking';
+import { captureSource, getSource } from '../lib/referral-tracking';
 import {
     ChevronRight, ChevronLeft, Sparkles, Lock, Loader2, Search,
     Rocket, Check, MessageSquare, ArrowRight, ExternalLink, Smartphone,
@@ -47,6 +47,9 @@ const STEPS = [
 export default function Onboarding() {
     const navigate = useNavigate();
     const { login } = useAuth();
+
+    // Capture source on page visit (survives OAuth redirect)
+    useEffect(() => { captureSource(); }, []);
 
     const [step, setStep] = useState(0);
     const [error, setError] = useState('');

@@ -35,6 +35,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
         { icon: <Activity size={18} />, label: 'Overview', path: '/admin' },
         { icon: <Users size={18} />, label: 'Users', path: '/admin/users' },
         { icon: <CreditCard size={18} />, label: 'Orders & Logs', path: '/admin/orders' },
+        { icon: <Zap size={18} />, label: 'API Activity', path: '/admin/api-activity' },
         { icon: <Mail size={18} />, label: 'Email Campaign', path: '/admin/emails' },
         { icon: <Settings size={18} />, label: 'Business Plans', path: '/admin/plans' },
         { icon: <Cpu size={18} />, label: 'Settings', path: '/admin/settings' },

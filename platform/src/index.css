@@ -345,8 +345,8 @@ h6 {
     display: none !important;
   }
 
-  /* Show hamburger on mobile */
+  /* Show on mobile */
   .visible-mobile-only {
-    display: flex !important;
+    display: block !important;
   }
 }

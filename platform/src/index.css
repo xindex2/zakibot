@@ -321,6 +321,11 @@ h6 {
    Mobile Responsive
    ========================================= */
 
+/* Elements that should only appear on mobile */
+.visible-mobile-only {
+  display: none !important;
+}
+
 @media (max-width: 768px) {
   .container {
     padding: 0 var(--spacing-md);

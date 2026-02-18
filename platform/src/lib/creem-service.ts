@@ -133,8 +133,45 @@ export class CreemService {
             }
         });
 
-        // Cancel drip emails when user upgrades to a paid plan
+        // Grant monthly credits & cancel drips when user upgrades/renews a paid plan
         if (status === 'active' && planName !== 'Free') {
+            // --- Grant $10 monthly credits (with dedup) ---
+            try {
+                const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+                const recentGrant = await prisma.creditTransaction.findFirst({
+                    where: {
+                        userId: user.id,
+                        type: 'subscription_grant',
+                        createdAt: { gte: oneHourAgo }
+                    }
+                });
+
+                if (!recentGrant) {
+                    const MONTHLY_CREDIT = 10;
+                    const currentSub = await prisma.subscription.findUnique({
+                        where: { userId: user.id }
+                    });
+                    await prisma.subscription.update({
+                        where: { userId: user.id },
+                        data: { creditBalance: (currentSub?.creditBalance || 0) + MONTHLY_CREDIT }
+                    });
+                    await prisma.creditTransaction.create({
+                        data: {
+                            userId: user.id,
+                            amount: MONTHLY_CREDIT,
+                            type: 'subscription_grant',
+                            description: `Monthly $${MONTHLY_CREDIT} credit — ${planName} plan`
+                        }
+                    });
+                    console.log(`[Creem] Granted $${MONTHLY_CREDIT} credits to ${email} (${planName} plan)`);
+                } else {
+                    console.log(`[Creem] Skipping duplicate credit grant for ${email} (already granted within last hour)`);
+                }
+            } catch (e: any) {
+                console.error('[Creem] Failed to grant monthly credits:', e.message);
+            }
+
+            // --- Cancel drip emails ---
             try {
                 const { cancelPendingDrips } = await import('./drip-engine.js');
                 await cancelPendingDrips(user.id);

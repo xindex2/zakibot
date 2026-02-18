@@ -40,13 +40,10 @@ function YouTubeFacade({ videoId, aspectRatio }: { videoId: string; aspectRatio:
         );
     }
     return (
-        <button
-            onClick={() => setPlaying(true)}
-            aria-label="Play video"
+        <div
             style={{
-                position: 'relative', display: 'block', width: '100%', paddingBottom: aspectRatio,
-                height: 0, borderRadius: 'var(--radius-lg)', overflow: 'hidden', cursor: 'pointer',
-                border: 'none', padding: 0, background: '#000',
+                position: 'relative', width: '100%', paddingBottom: aspectRatio,
+                borderRadius: 'var(--radius-lg)', overflow: 'hidden', background: '#000',
             }}
         >
             <img
@@ -55,14 +52,23 @@ function YouTubeFacade({ videoId, aspectRatio }: { videoId: string; aspectRatio:
                 loading="lazy"
                 style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', minWidth: '100%', minHeight: '100%', objectFit: 'cover' }}
             />
-            <div style={{
-                position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)',
-                width: 68, height: 48, background: 'rgba(255,0,0,0.85)', borderRadius: 12,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z" /></svg>
-            </div>
-        </button>
+            <button
+                onClick={() => setPlaying(true)}
+                aria-label="Play video"
+                style={{
+                    position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
+                    border: 'none', background: 'transparent', cursor: 'pointer',
+                }}
+            >
+                <div style={{
+                    position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)',
+                    width: 68, height: 48, background: 'rgba(255,0,0,0.85)', borderRadius: 12,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z" /></svg>
+                </div>
+            </button>
+        </div>
     );
 }
 

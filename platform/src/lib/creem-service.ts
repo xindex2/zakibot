@@ -34,7 +34,13 @@ export class CreemService {
         });
 
         switch (eventType) {
-            case 'checkout.completed':
+            case 'checkout.completed': {
+                // Validate payment amount — reject $0 / incomplete payments
+                const checkoutAmount = data?.amount ? parseFloat(data.amount) : 0;
+                if (checkoutAmount <= 0) {
+                    console.warn(`[Creem] Rejecting checkout with $0 amount for ${data?.customer?.email}. Payload amount: ${data?.amount}`);
+                    return;
+                }
                 // Check if this is a credit purchase (one-time) or a subscription
                 if (await this.isCreditPurchase(data)) {
                     await this.handleCreditPurchase(data, eventType);
@@ -42,11 +48,25 @@ export class CreemService {
                     await this.handleSubscriptionStatus(data, eventType, 'active');
                 }
                 break;
+            }
             case 'subscription.active':
             case 'subscription.paid':
-            case 'subscription.update':
                 await this.handleSubscriptionStatus(data, eventType, 'active');
                 break;
+
+            case 'subscription.update': {
+                // Read actual status from payload instead of blindly upgrading
+                const subStatus = data?.status;
+                if (subStatus === 'active' || subStatus === 'paid') {
+                    await this.handleSubscriptionStatus(data, eventType, 'active');
+                } else if (subStatus === 'canceled' || subStatus === 'expired' || subStatus === 'past_due') {
+                    await this.handleSubscriptionStatus(data, eventType, 'deactivated');
+                } else {
+                    // incomplete, trialing, paused, etc. — log only, don't change status
+                    console.log(`[Creem] subscription.update with status "${subStatus}" for ${data?.customer?.email} — no action taken`);
+                }
+                break;
+            }
 
             case 'subscription.canceled':
             case 'subscription.expired':

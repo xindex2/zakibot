@@ -1017,7 +1017,15 @@ router.post('/outreach/send', async (req, res) => {
         const results: { email: string; status: string; error?: string }[] = [];
         const HOST = process.env.APP_URL || 'https://openclaw-host.com';
 
-        for (const lead of leads) {
+        // Resend rate limit: 2 requests/sec — throttle to ~1.7/sec
+        const SEND_DELAY_MS = 600;
+
+        for (let i = 0; i < leads.length; i++) {
+            const lead = leads[i];
+
+            // Throttle: wait between sends (skip delay on first)
+            if (i > 0) await new Promise(r => setTimeout(r, SEND_DELAY_MS));
+
             // Replace {{name}} placeholder
             let personalBody = finalBody.replace(/\{\{name\}\}/gi, lead.name || 'there');
             let personalSubject = finalSubject.replace(/\{\{name\}\}/gi, lead.name || 'there');

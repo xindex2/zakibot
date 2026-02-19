@@ -1417,16 +1417,15 @@ const TRANSPARENT_PIXEL = Buffer.from(
     'Nl7BcQAAAABJRU5ErkJggg==', 'base64'
 );
 
-// Known bot/prefetcher User-Agent patterns
+// Bot User-Agents to ignore (only true crawlers/scanners, NOT image proxies)
+// Gmail's GoogleImageProxy and Apple's CFNetwork are how real opens work — don't block them.
 const BOT_UA_PATTERNS = [
-    /googleimageproxy/i, /gmail/i,
-    /outlooksafelinks/i, /outlook\.com/i,
-    /yahoo.*slurp/i, /yahoomailproxy/i,
-    /apple.*mail/i, /cfnetwork/i,          // Apple MPP
-    /bot/i, /crawler/i, /spider/i,
-    /prefetch/i, /preview/i,
-    /wget/i, /curl/i,
-    /microsoft office/i, /ms-office/i,
+    /outlooksafelinks/i,                    // Outlook link pre-scanner
+    /yahoo.*slurp/i,                        // Yahoo crawler
+    /spider/i, /crawler/i,                 // generic crawlers
+    /wget/i, /curl/i,                      // CLI tools
+    /microsoft office/i, /ms-office/i,     // Office link preview
+    /Slackbot/i, /Twitterbot/i, /facebookexternalhit/i, // social link preview
 ];
 
 app.get('/t/:emailId.png', async (req: any, res: any) => {
@@ -1441,14 +1440,14 @@ app.get('/t/:emailId.png', async (req: any, res: any) => {
         const emailId = req.params.emailId;
         const ua = req.headers['user-agent'] || '';
 
-        // Filter bot prefetch opens
+        // Filter known bot/scanner UAs
         const isBot = BOT_UA_PATTERNS.some(p => p.test(ua));
         if (isBot) return;
 
         const email = await prisma.outreachEmail.findUnique({ where: { id: emailId } });
         if (!email || email.status !== 'sent') return;
 
-        // Timing filter: ignore opens within 2 seconds of send (likely prefetch)
+        // Timing filter: ignore opens within 2 seconds of send (catches prefetch)
         if (email.sentAt) {
             const elapsed = Date.now() - new Date(email.sentAt).getTime();
             if (elapsed < 2000) return;
@@ -1462,6 +1461,8 @@ app.get('/t/:emailId.png', async (req: any, res: any) => {
                 openCount: { increment: 1 },
             }
         });
+
+        console.log(`[Outreach] Open tracked: ${emailId} (UA: ${ua.substring(0, 60)})`);
     } catch (e) {
         // Silent fail — tracking should never block the pixel response
     }

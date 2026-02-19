@@ -1154,4 +1154,77 @@ router.get('/outreach/emails', async (req, res) => {
     }
 });
 
+/**
+ * POST /api/admin/outreach/retry
+ * Retry sending failed emails
+ * Body: { emailIds: string[] }
+ */
+router.post('/outreach/retry', async (req, res) => {
+    try {
+        const { emailIds } = req.body;
+        if (!emailIds || !Array.isArray(emailIds) || emailIds.length === 0) {
+            return res.status(400).json({ error: 'emailIds array is required' });
+        }
+
+        const failedEmails = await prisma.outreachEmail.findMany({
+            where: { id: { in: emailIds }, status: 'failed' },
+            include: { lead: true }
+        });
+
+        if (failedEmails.length === 0) {
+            return res.status(400).json({ error: 'No failed emails found for the given IDs' });
+        }
+
+        const results: { email: string; status: string; error?: string }[] = [];
+        const HOST = process.env.APP_URL || 'https://openclaw-host.com';
+        const SEND_DELAY_MS = 600;
+
+        for (let i = 0; i < failedEmails.length; i++) {
+            const record = failedEmails[i];
+            if (i > 0) await new Promise(r => setTimeout(r, SEND_DELAY_MS));
+
+            // Re-inject tracking pixel
+            const trackingPixel = `<img src="${HOST}/t/${record.id}.png" width="1" height="1" style="display:none" alt="" />`;
+            // Fetch original template body if available, or use stored subject
+            const fromAddress = `${record.fromName} <${record.fromEmail}>`;
+
+            // We need the original body — fetch from template if templateId exists
+            let body = '';
+            if (record.templateId) {
+                const tpl = await prisma.outreachTemplate.findUnique({ where: { id: record.templateId } });
+                if (tpl) {
+                    body = tpl.body.replace(/\{\{name\}\}/gi, record.lead?.name || 'there');
+                }
+            }
+
+            // If no template body, use a minimal retry body
+            if (!body) {
+                body = `<p>This is a follow-up email.</p>`;
+            }
+            body += trackingPixel;
+
+            const result = await sendEmail(
+                record.lead?.email || '',
+                record.subject,
+                body,
+                { from: fromAddress, replyTo: record.fromEmail }
+            );
+
+            if (result.success) {
+                await prisma.outreachEmail.update({
+                    where: { id: record.id },
+                    data: { status: 'sent', resendId: result.id, sentAt: new Date() }
+                });
+                results.push({ email: record.lead?.email || '', status: 'sent' });
+            } else {
+                results.push({ email: record.lead?.email || '', status: 'failed', error: result.error });
+            }
+        }
+
+        res.json({ success: true, total: failedEmails.length, results });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 export default router;

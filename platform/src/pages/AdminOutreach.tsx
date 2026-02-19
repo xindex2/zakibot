@@ -429,6 +429,9 @@ function SendTrackTab({ headers }: { headers: Record<string, string> }) {
     const [sending, setSending] = useState(false);
     const [sendResult, setSendResult] = useState<any>(null);
     const [searchLeads, setSearchLeads] = useState('');
+    const [selectedFailed, setSelectedFailed] = useState<Set<string>>(new Set());
+    const [retrying, setRetrying] = useState(false);
+    const [retryResult, setRetryResult] = useState<any>(null);
 
     const fetchAll = useCallback(async () => {
         try {
@@ -486,6 +489,47 @@ function SendTrackTab({ headers }: { headers: Record<string, string> }) {
         }
         setSending(false);
     };
+
+    const toggleFailed = (id: string) => {
+        setSelectedFailed(prev => {
+            const next = new Set(prev);
+            next.has(id) ? next.delete(id) : next.add(id);
+            return next;
+        });
+    };
+
+    const selectAllFailed = () => {
+        const failedIds = emails.filter(e => e.status === 'failed').map(e => e.id);
+        if (selectedFailed.size === failedIds.length && failedIds.length > 0) {
+            setSelectedFailed(new Set());
+        } else {
+            setSelectedFailed(new Set(failedIds));
+        }
+    };
+
+    const handleRetry = async () => {
+        if (selectedFailed.size === 0) return;
+        if (!confirm(`Retry ${selectedFailed.size} failed email(s)?`)) return;
+
+        setRetrying(true);
+        setRetryResult(null);
+        try {
+            const res = await fetch('/api/admin/outreach/retry', {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({ emailIds: [...selectedFailed] }),
+            });
+            const data = await res.json();
+            setRetryResult(data);
+            setSelectedFailed(new Set());
+            fetchAll();
+        } catch (e: any) {
+            setRetryResult({ error: e.message });
+        }
+        setRetrying(false);
+    };
+
+    const failedCount = emails.filter(e => e.status === 'failed').length;
 
     return (
         <div>
@@ -617,13 +661,58 @@ function SendTrackTab({ headers }: { headers: Record<string, string> }) {
             </div>
 
             {/* Recent Email Activity */}
-            <h3 style={{ fontSize: 14, fontWeight: 700, marginTop: 24, marginBottom: 12 }}>
-                📧 Recent Email Activity
-            </h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 24, marginBottom: 12 }}>
+                <h3 style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>
+                    📧 Recent Email Activity
+                </h3>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    {failedCount > 0 && (
+                        <button onClick={selectAllFailed} style={{ ...btnSecondary, fontSize: 10, padding: '6px 10px' }}>
+                            {selectedFailed.size === failedCount ? 'Deselect All Failed' : `Select All Failed (${failedCount})`}
+                        </button>
+                    )}
+                    {selectedFailed.size > 0 && (
+                        <button
+                            onClick={handleRetry}
+                            disabled={retrying}
+                            style={{
+                                ...btnPrimary,
+                                background: '#f59e0b',
+                                fontSize: 11,
+                                padding: '6px 14px',
+                                opacity: retrying ? 0.5 : 1,
+                            }}
+                        >
+                            {retrying ? (
+                                <><RefreshCw size={12} style={{ animation: 'spin 1s linear infinite' }} /> Retrying...</>
+                            ) : (
+                                <><RefreshCw size={12} /> Retry {selectedFailed.size} Failed</>
+                            )}
+                        </button>
+                    )}
+                </div>
+            </div>
+
+            {retryResult && (
+                <div style={{ marginBottom: 12, padding: 12, borderRadius: 8, background: retryResult.error ? '#2d1919' : '#192d19', border: `1px solid ${retryResult.error ? '#7f1d1d' : '#1d7f1d'}`, fontSize: 12 }}>
+                    {retryResult.error ? (
+                        <span style={{ color: '#ef4444' }}>❌ {retryResult.error}</span>
+                    ) : (
+                        <span style={{ color: '#10b981' }}>
+                            ✅ Retried {retryResult.total} email(s)!
+                            {retryResult.results?.filter((r: any) => r.status === 'sent').length > 0 && (
+                                <span> ({retryResult.results.filter((r: any) => r.status === 'sent').length} succeeded)</span>
+                            )}
+                        </span>
+                    )}
+                </div>
+            )}
+
             <div style={{ overflowX: 'auto' }}>
                 <table style={tableStyle}>
                     <thead>
                         <tr>
+                            <th style={{ ...thStyle, width: 36 }}></th>
                             <th style={thStyle}>To</th>
                             <th style={thStyle}>Subject</th>
                             <th style={thStyle}>Status</th>
@@ -633,7 +722,17 @@ function SendTrackTab({ headers }: { headers: Record<string, string> }) {
                     </thead>
                     <tbody>
                         {emails.map(em => (
-                            <tr key={em.id} style={{ borderBottom: '1px solid #1e1e1e' }}>
+                            <tr key={em.id} style={{ borderBottom: '1px solid #1e1e1e', background: selectedFailed.has(em.id) ? '#2d1919' : 'transparent' }}>
+                                <td style={tdStyle}>
+                                    {em.status === 'failed' && (
+                                        <input
+                                            type="checkbox"
+                                            checked={selectedFailed.has(em.id)}
+                                            onChange={() => toggleFailed(em.id)}
+                                            style={{ accentColor: '#f59e0b' }}
+                                        />
+                                    )}
+                                </td>
                                 <td style={tdStyle}>
                                     <span>{em.lead?.email || '—'}</span>
                                     {em.lead?.name && <span style={{ color: '#71717a', fontSize: 10, marginLeft: 6 }}>{em.lead.name}</span>}
@@ -662,7 +761,7 @@ function SendTrackTab({ headers }: { headers: Record<string, string> }) {
                             </tr>
                         ))}
                         {emails.length === 0 && (
-                            <tr><td colSpan={5} style={{ ...tdStyle, textAlign: 'center', color: '#52525b', padding: 32 }}>
+                            <tr><td colSpan={6} style={{ ...tdStyle, textAlign: 'center', color: '#52525b', padding: 32 }}>
                                 No emails sent yet.
                             </td></tr>
                         )}

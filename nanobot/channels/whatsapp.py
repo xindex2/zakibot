@@ -29,6 +29,8 @@ class WhatsAppChannel(BaseChannel):
         self._ws = None
         self._connected = False
         self._typing_tasks: dict[str, asyncio.Task] = {}  # chat_id -> typing task
+        self._qr_count = 0  # Track QR code attempts for auto-stop
+        self._max_qr_attempts = 15  # ~5 minutes at 20s per QR
     
     async def start(self) -> None:
         """Start the WhatsApp channel by connecting to the bridge."""
@@ -330,6 +332,7 @@ class WhatsAppChannel(BaseChannel):
             
             if status == "connected":
                 self._connected = True
+                self._qr_count = 0  # Reset QR counter on successful connection
                 if self.workspace:
                     qr_path = Path(self.workspace) / "whatsapp_qr.txt"
                     if qr_path.exists():
@@ -340,6 +343,7 @@ class WhatsAppChannel(BaseChannel):
         
         elif msg_type == "qr":
             # QR code for authentication
+            self._qr_count += 1
             qr_string = data.get("qr")
             if qr_string and self.workspace:
                 qr_path = Path(self.workspace) / "whatsapp_qr.txt"
@@ -348,6 +352,13 @@ class WhatsAppChannel(BaseChannel):
                     logger.info(f"WhatsApp QR code written to {qr_path}")
                 except Exception as e:
                     logger.error(f"Failed to write WhatsApp QR code: {e}")
+            
+            # Auto-stop after too many unscanned QR codes (~5 minutes)
+            if self._qr_count >= self._max_qr_attempts:
+                logger.warning(f"WhatsApp QR not scanned after {self._qr_count} attempts (~{self._qr_count * 20}s). Auto-stopping channel.")
+                self._running = False
+                return
+            
             logger.info("Scan QR code in the bridge terminal to connect WhatsApp")
         
         elif msg_type == "error":

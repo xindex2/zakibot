@@ -276,6 +276,7 @@ class AgentLoop:
         final_content = None
         total_prompt_tokens = 0
         total_completion_tokens = 0
+        total_tool_failures = 0  # Track failures across ALL iterations
         
         while iteration < self.max_iterations:
             iteration += 1
@@ -322,13 +323,15 @@ class AgentLoop:
                         # Check for error signature in result
                         if isinstance(result, str) and result.startswith("Error:"):
                             sequential_failures += 1
-                            logger.warning(f"Tool {tool_call.name} failed ({sequential_failures}/{self.browser_config.max_tool_retries})")
+                            total_tool_failures += 1
+                            logger.warning(f"Tool {tool_call.name} failed ({sequential_failures}/{self.browser_config.max_tool_retries}, total: {total_tool_failures})")
                         else:
                             sequential_failures = 0
                             
                     except Exception as e:
                         result = f"Error: Tool execution crashed: {str(e)}"
                         sequential_failures += 1
+                        total_tool_failures += 1
                         logger.error(f"Tool {tool_call.name} crashed: {e}")
 
                     messages = self.context.add_tool_result(
@@ -336,11 +339,16 @@ class AgentLoop:
                     )
                     
                     # Stop if we hit too many failures in a row within this turn
-                    # This prevents the LLM from trying the same failing thing 20 times
                     max_fails = self.browser_config.max_tool_retries
                     if sequential_failures >= max_fails:
                         final_content = f"I've encountered repeated errors while trying to complete your request. The last error was: {result}. Please double-check the requirements or provide more details so I can assist better."
                         break
+                
+                # Stop if total failures across all iterations is too high
+                # This prevents infinite retry loops across LLM turns
+                if total_tool_failures >= 10:
+                    logger.warning(f"Total tool failures reached {total_tool_failures}, aborting agent loop")
+                    final_content = f"I've encountered too many errors ({total_tool_failures} total) across multiple attempts. The last error was: {result}. Please check the requirements or try a different approach."
                 
                 if final_content:
                     break

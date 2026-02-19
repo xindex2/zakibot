@@ -99,6 +99,12 @@ class CronTool(Tool):
         if not self._channel or not self._chat_id:
             return "Error: no session context (channel/chat_id)"
         
+        # Enforce max job limit per bot
+        MAX_CRON_JOBS = 10
+        existing_jobs = self._cron.list_jobs(include_disabled=True)
+        if len(existing_jobs) >= MAX_CRON_JOBS:
+            return f"Error: maximum of {MAX_CRON_JOBS} scheduled jobs reached. Remove old jobs before adding new ones."
+        
         # Build schedule
         delete_after = False
         if in_seconds:

@@ -424,33 +424,63 @@ function SendTrackTab({ headers }: { headers: Record<string, string> }) {
     const [templates, setTemplates] = useState<Template[]>([]);
     const [stats, setStats] = useState<Stats | null>(null);
     const [emails, setEmails] = useState<OutreachEmailRecord[]>([]);
+    const [emailsTotal, setEmailsTotal] = useState(0);
+    const [emailPage, setEmailPage] = useState(1);
+    const [emailStatus, setEmailStatus] = useState('');
     const [selectedLeads, setSelectedLeads] = useState<Set<string>>(new Set());
     const [selectedTemplate, setSelectedTemplate] = useState('');
     const [sending, setSending] = useState(false);
     const [sendResult, setSendResult] = useState<any>(null);
     const [searchLeads, setSearchLeads] = useState('');
+    const [tagFilter, setTagFilter] = useState('');
     const [selectedFailed, setSelectedFailed] = useState<Set<string>>(new Set());
     const [retrying, setRetrying] = useState(false);
     const [retryResult, setRetryResult] = useState<any>(null);
+    const [allTags, setAllTags] = useState<string[]>([]);
 
-    const fetchAll = useCallback(async () => {
+    const EMAILS_PER_PAGE = 50;
+
+    // Fetch leads, templates, stats
+    const fetchCore = useCallback(async () => {
         try {
-            const [leadsRes, tplRes, statsRes, emailsRes] = await Promise.all([
-                fetch(`/api/admin/outreach/leads?limit=200&search=${searchLeads}`, { headers }),
+            const leadsParams = new URLSearchParams({ limit: '500', search: searchLeads });
+            if (tagFilter) leadsParams.set('tag', tagFilter);
+
+            const [leadsRes, tplRes, statsRes] = await Promise.all([
+                fetch(`/api/admin/outreach/leads?${leadsParams}`, { headers }),
                 fetch('/api/admin/outreach/templates', { headers }),
                 fetch('/api/admin/outreach/stats', { headers }),
-                fetch('/api/admin/outreach/emails?limit=30', { headers }),
             ]);
             const leadsData = await leadsRes.json();
             setLeads(leadsData.leads || []);
             setTemplates(await tplRes.json());
             setStats(await statsRes.json());
+
+            // Extract unique tags from all leads (fetch without tag filter for the dropdown)
+            if (!tagFilter) {
+                const tags = new Set<string>();
+                (leadsData.leads || []).forEach((l: Lead) => {
+                    if (l.tags) l.tags.split(',').forEach(t => tags.add(t.trim()));
+                });
+                setAllTags([...tags].sort());
+            }
+        } catch { }
+    }, [searchLeads, tagFilter]);
+
+    // Fetch emails separately (has its own pagination/filter)
+    const fetchEmails = useCallback(async () => {
+        try {
+            const params = new URLSearchParams({ page: String(emailPage), limit: String(EMAILS_PER_PAGE) });
+            if (emailStatus) params.set('status', emailStatus);
+            const emailsRes = await fetch(`/api/admin/outreach/emails?${params}`, { headers });
             const emailsData = await emailsRes.json();
             setEmails(emailsData.emails || []);
+            setEmailsTotal(emailsData.total || 0);
         } catch { }
-    }, [searchLeads]);
+    }, [emailPage, emailStatus]);
 
-    useEffect(() => { fetchAll(); }, [fetchAll]);
+    useEffect(() => { fetchCore(); }, [fetchCore]);
+    useEffect(() => { fetchEmails(); }, [fetchEmails]);
 
     const toggleLead = (id: string) => {
         setSelectedLeads(prev => {
@@ -483,7 +513,8 @@ function SendTrackTab({ headers }: { headers: Record<string, string> }) {
             const data = await res.json();
             setSendResult(data);
             setSelectedLeads(new Set());
-            fetchAll();
+            fetchCore();
+            fetchEmails();
         } catch (e: any) {
             setSendResult({ error: e.message });
         }
@@ -498,13 +529,17 @@ function SendTrackTab({ headers }: { headers: Record<string, string> }) {
         });
     };
 
-    const selectAllFailed = () => {
-        const failedIds = emails.filter(e => e.status === 'failed').map(e => e.id);
-        if (selectedFailed.size === failedIds.length && failedIds.length > 0) {
+    // Select ALL failed across all pages using the backend endpoint
+    const selectAllFailed = async () => {
+        if (selectedFailed.size > 0) {
             setSelectedFailed(new Set());
-        } else {
-            setSelectedFailed(new Set(failedIds));
+            return;
         }
+        try {
+            const res = await fetch('/api/admin/outreach/emails/failed-ids', { headers });
+            const data = await res.json();
+            setSelectedFailed(new Set(data.ids || []));
+        } catch { }
     };
 
     const handleRetry = async () => {
@@ -522,14 +557,15 @@ function SendTrackTab({ headers }: { headers: Record<string, string> }) {
             const data = await res.json();
             setRetryResult(data);
             setSelectedFailed(new Set());
-            fetchAll();
+            fetchCore();
+            fetchEmails();
         } catch (e: any) {
             setRetryResult({ error: e.message });
         }
         setRetrying(false);
     };
 
-    const failedCount = emails.filter(e => e.status === 'failed').length;
+    const emailTotalPages = Math.ceil(emailsTotal / EMAILS_PER_PAGE);
 
     return (
         <div>
@@ -565,6 +601,16 @@ function SendTrackTab({ headers }: { headers: Record<string, string> }) {
                                     style={inputStyle({ paddingLeft: 28, fontSize: 11 })}
                                 />
                             </div>
+                            <select
+                                value={tagFilter}
+                                onChange={e => { setTagFilter(e.target.value); setSelectedLeads(new Set()); }}
+                                style={{ ...inputStyle(), width: 'auto', fontSize: 11, padding: '6px 10px', minWidth: 100 }}
+                            >
+                                <option value="">All tags</option>
+                                {allTags.map(t => (
+                                    <option key={t} value={t}>{t}</option>
+                                ))}
+                            </select>
                             <button onClick={selectAll} style={{ ...btnSecondary, fontSize: 10, padding: '6px 10px' }}>
                                 {selectedLeads.size === leads.length ? 'Deselect All' : 'Select All'}
                             </button>
@@ -661,16 +707,23 @@ function SendTrackTab({ headers }: { headers: Record<string, string> }) {
             </div>
 
             {/* Recent Email Activity */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 24, marginBottom: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 24, marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
                 <h3 style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>
-                    📧 Recent Email Activity
+                    📧 Email Activity ({emailsTotal})
                 </h3>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                    {failedCount > 0 && (
-                        <button onClick={selectAllFailed} style={{ ...btnSecondary, fontSize: 10, padding: '6px 10px' }}>
-                            {selectedFailed.size === failedCount ? 'Deselect All Failed' : `Select All Failed (${failedCount})`}
-                        </button>
-                    )}
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <select
+                        value={emailStatus}
+                        onChange={e => { setEmailStatus(e.target.value); setEmailPage(1); }}
+                        style={{ ...inputStyle(), width: 'auto', fontSize: 11, padding: '6px 10px' }}
+                    >
+                        <option value="">All statuses</option>
+                        <option value="sent">Sent</option>
+                        <option value="failed">Failed</option>
+                    </select>
+                    <button onClick={selectAllFailed} style={{ ...btnSecondary, fontSize: 10, padding: '6px 10px' }}>
+                        {selectedFailed.size > 0 ? `Deselect All (${selectedFailed.size})` : 'Select All Failed'}
+                    </button>
                     {selectedFailed.size > 0 && (
                         <button
                             onClick={handleRetry}
@@ -768,6 +821,19 @@ function SendTrackTab({ headers }: { headers: Record<string, string> }) {
                     </tbody>
                 </table>
             </div>
+
+            {/* Pagination */}
+            {emailTotalPages > 1 && (
+                <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 16, alignItems: 'center' }}>
+                    <button onClick={() => setEmailPage(1)} disabled={emailPage <= 1} style={btnSecondary}>«</button>
+                    <button onClick={() => setEmailPage(p => Math.max(1, p - 1))} disabled={emailPage <= 1} style={btnSecondary}>← Prev</button>
+                    <span style={{ color: '#71717a', fontSize: 12, lineHeight: '36px' }}>
+                        Page {emailPage} of {emailTotalPages} ({emailsTotal} total)
+                    </span>
+                    <button onClick={() => setEmailPage(p => Math.min(emailTotalPages, p + 1))} disabled={emailPage >= emailTotalPages} style={btnSecondary}>Next →</button>
+                    <button onClick={() => setEmailPage(emailTotalPages)} disabled={emailPage >= emailTotalPages} style={btnSecondary}>»</button>
+                </div>
+            )}
         </div>
     );
 }

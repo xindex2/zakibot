@@ -1137,18 +1137,39 @@ router.get('/outreach/emails', async (req, res) => {
         const page = parseInt(req.query.page as string) || 1;
         const limit = parseInt(req.query.limit as string) || 50;
         const skip = (page - 1) * limit;
+        const status = req.query.status as string;
+
+        const where: any = {};
+        if (status) where.status = status;
 
         const [emails, total] = await Promise.all([
             prisma.outreachEmail.findMany({
+                where,
                 orderBy: { createdAt: 'desc' },
                 skip,
                 take: limit,
                 include: { lead: { select: { email: true, name: true } } }
             }),
-            prisma.outreachEmail.count(),
+            prisma.outreachEmail.count({ where }),
         ]);
 
         res.json({ emails, total, page, totalPages: Math.ceil(total / limit) });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+/**
+ * GET /api/admin/outreach/emails/failed-ids
+ * Returns all failed email IDs (for select-all-failed across pages)
+ */
+router.get('/outreach/emails/failed-ids', async (_req, res) => {
+    try {
+        const failed = await prisma.outreachEmail.findMany({
+            where: { status: 'failed' },
+            select: { id: true },
+        });
+        res.json({ ids: failed.map((e: any) => e.id), total: failed.length });
     } catch (e: any) {
         res.status(500).json({ error: e.message });
     }

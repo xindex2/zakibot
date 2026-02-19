@@ -1410,14 +1410,93 @@ app.get('/screenshots/:filename', (req: any, res: any) => {
     }
 });
 
+// --- Outreach: Email Open Tracking Pixel ---
+// 1×1 transparent PNG served publicly (no auth)
+const TRANSPARENT_PIXEL = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVQI12NgAAIABQAB' +
+    'Nl7BcQAAAABJRU5ErkJggg==', 'base64'
+);
+
+// Known bot/prefetcher User-Agent patterns
+const BOT_UA_PATTERNS = [
+    /googleimageproxy/i, /gmail/i,
+    /outlooksafelinks/i, /outlook\.com/i,
+    /yahoo.*slurp/i, /yahoomailproxy/i,
+    /apple.*mail/i, /cfnetwork/i,          // Apple MPP
+    /bot/i, /crawler/i, /spider/i,
+    /prefetch/i, /preview/i,
+    /wget/i, /curl/i,
+    /microsoft office/i, /ms-office/i,
+];
+
+app.get('/t/:emailId.png', async (req: any, res: any) => {
+    res.setHeader('Content-Type', 'image/png');
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.send(TRANSPARENT_PIXEL);
+
+    // Fire-and-forget tracking update
+    try {
+        const emailId = req.params.emailId;
+        const ua = req.headers['user-agent'] || '';
+
+        // Filter bot prefetch opens
+        const isBot = BOT_UA_PATTERNS.some(p => p.test(ua));
+        if (isBot) return;
+
+        const email = await prisma.outreachEmail.findUnique({ where: { id: emailId } });
+        if (!email || email.status !== 'sent') return;
+
+        // Timing filter: ignore opens within 2 seconds of send (likely prefetch)
+        if (email.sentAt) {
+            const elapsed = Date.now() - new Date(email.sentAt).getTime();
+            if (elapsed < 2000) return;
+        }
+
+        // Record open
+        await prisma.outreachEmail.update({
+            where: { id: emailId },
+            data: {
+                openedAt: email.openedAt || new Date(), // first open only
+                openCount: { increment: 1 },
+            }
+        });
+    } catch (e) {
+        // Silent fail — tracking should never block the pixel response
+    }
+});
+
+// --- Android App Links: Digital Asset Links ---
+app.get('/.well-known/assetlinks.json', (_req, res) => {
+    const filePath = path.join(__dirname, 'dist', '.well-known', 'assetlinks.json');
+    if (fs.existsSync(filePath)) {
+        res.setHeader('Content-Type', 'application/json');
+        res.sendFile(filePath);
+    } else {
+        // Inline fallback in case the file is missing from dist
+        res.setHeader('Content-Type', 'application/json');
+        res.json([{
+            relation: ['delegate_permission/common.handle_all_urls'],
+            target: {
+                namespace: 'android_app',
+                package_name: 'com.openclaw.app',
+                sha256_cert_fingerprints: [
+                    'FB:92:3F:88:FA:87:8C:DF:80:4A:AF:CE:E4:72:21:8C:BC:0B:CF:43:18:BA:AD:76:E7:D4:1C:E6:68:40:23:F3'
+                ]
+            }
+        }]);
+    }
+});
+
 // --- Serve Frontend ---
 const distPath = path.join(__dirname, 'dist');
 app.use(express.static(distPath));
 
 // For all other routes, serve index.html (SPA routing)
 app.get('*', (req, res, next) => {
-    // Skip API routes and screenshot direct links
-    if (req.path.startsWith('/api') || req.path.startsWith('/screenshots/')) {
+    // Skip API routes, screenshot direct links, .well-known paths, and tracking pixel
+    if (req.path.startsWith('/api') || req.path.startsWith('/screenshots/') || req.path.startsWith('/.well-known') || req.path.startsWith('/t/')) {
         return next();
     }
     res.sendFile(path.join(distPath, 'index.html'));

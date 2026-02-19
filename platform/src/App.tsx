@@ -24,6 +24,7 @@ const Billing = lazy(() => import('./pages/Billing'));
 const TopUpCredits = lazy(() => import('./pages/TopUpCredits'));
 const EmailCampaign = lazy(() => import('./pages/EmailCampaign'));
 const AdminApiActivity = lazy(() => import('./pages/AdminApiActivity'));
+const AdminOutreach = lazy(() => import('./pages/AdminOutreach'));
 const Hosting = lazy(() => import('./pages/seo/Hosting'));
 const VPS = lazy(() => import('./pages/seo/VPS'));
 const Deploy = lazy(() => import('./pages/seo/Deploy'));
@@ -161,6 +162,11 @@ function AppRoutes() {
                 <Route path="/admin/api-activity" element={
                     <ProtectedRoute adminOnly>
                         <AdminApiActivity />
+                    </ProtectedRoute>
+                } />
+                <Route path="/admin/outreach" element={
+                    <ProtectedRoute adminOnly>
+                        <AdminOutreach />
                     </ProtectedRoute>
                 } />
 

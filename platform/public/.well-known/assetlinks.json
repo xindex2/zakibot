@@ -1,0 +1,14 @@
+[
+    {
+        "relation": [
+            "delegate_permission/common.handle_all_urls"
+        ],
+        "target": {
+            "namespace": "android_app",
+            "package_name": "com.openclaw.app",
+            "sha256_cert_fingerprints": [
+                "FB:92:3F:88:FA:87:8C:DF:80:4A:AF:CE:E4:72:21:8C:BC:0B:CF:43:18:BA:AD:76:E7:D4:1C:E6:68:40:23:F3"
+            ]
+        }
+    }
+]

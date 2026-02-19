@@ -23,7 +23,8 @@ function getResend(): Resend {
 export async function sendEmail(
     to: string,
     subject: string,
-    html: string
+    html: string,
+    options?: { from?: string; replyTo?: string }
 ): Promise<{ success: boolean; id?: string; error?: string }> {
     const apiKey = process.env.RESEND_API_KEY;
 
@@ -34,11 +35,11 @@ export async function sendEmail(
 
     try {
         const { data, error } = await getResend().emails.send({
-            from: FROM_ADDRESS,
+            from: options?.from || FROM_ADDRESS,
             to: [to],
             subject,
             html,
-            replyTo: 'support@openclaw-host.com',
+            replyTo: options?.replyTo || 'support@openclaw-host.com',
         });
 
         if (error) {

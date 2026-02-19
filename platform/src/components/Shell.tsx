@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { Bot, LayoutDashboard, User, Settings, LogOut, Activity, MessageSquare, Wallet, Cpu, Menu, X, Crown, Zap, Sparkles, Plus, Users, CreditCard, Mail } from 'lucide-react';
+import { Bot, LayoutDashboard, User, Settings, LogOut, Activity, MessageSquare, Wallet, Cpu, Menu, X, Crown, Zap, Sparkles, Plus, Users, CreditCard, Mail, Megaphone } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import Logo from './Logo';
 
@@ -37,6 +37,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
         { icon: <CreditCard size={18} />, label: 'Orders & Logs', path: '/admin/orders' },
         { icon: <Zap size={18} />, label: 'API Activity', path: '/admin/api-activity' },
         { icon: <Mail size={18} />, label: 'Email Campaign', path: '/admin/emails' },
+        { icon: <Megaphone size={18} />, label: 'Outreach', path: '/admin/outreach' },
         { icon: <Settings size={18} />, label: 'Business Plans', path: '/admin/plans' },
         { icon: <Cpu size={18} />, label: 'Settings', path: '/admin/settings' },
     ];

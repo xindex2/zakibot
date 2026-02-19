@@ -211,3 +211,44 @@ model EmailDrip {
   status       String    @default("pending") // pending, sent, failed, skipped
   createdAt    DateTime  @default(now())
 }
+
+// ─── Outreach CRM ───────────────────────────────────────────────────────────
+
+model OutreachLead {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  notes     String?
+  tags      String?            // comma-separated tags e.g. "youtuber,affiliate"
+  status    String   @default("new")  // new, contacted, replied, converted
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  emails    OutreachEmail[]
+}
+
+model OutreachTemplate {
+  id        String   @id @default(cuid())
+  name      String              // internal label e.g. "Affiliate Pitch v1"
+  fromName  String   @default("Ezzaky @ MyClaw")
+  fromEmail String   @default("ezzaky@myclaw.host")
+  subject   String
+  body      String              // HTML body (supports {{name}} placeholder)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model OutreachEmail {
+  id         String    @id @default(cuid())
+  leadId     String
+  lead       OutreachLead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  templateId String?
+  subject    String
+  fromName   String
+  fromEmail  String
+  status     String   @default("pending") // pending, sent, failed
+  resendId   String?
+  openedAt   DateTime?
+  openCount  Int      @default(0)
+  sentAt     DateTime?
+  createdAt  DateTime @default(now())
+}

@@ -811,4 +811,339 @@ router.get('/drip/stats', async (req, res) => {
     }
 });
 
+// ========================
+// Outreach CRM
+// ========================
+
+import { sendEmail } from '../lib/email-service.js';
+
+/**
+ * GET /api/admin/outreach/leads
+ * List leads with pagination, search, status/tag filter
+ */
+router.get('/outreach/leads', async (req, res) => {
+    try {
+        const page = parseInt(req.query.page as string) || 1;
+        const limit = parseInt(req.query.limit as string) || 50;
+        const skip = (page - 1) * limit;
+        const search = (req.query.search as string) || '';
+        const status = req.query.status as string;
+        const tag = req.query.tag as string;
+
+        const where: any = {};
+        if (search) {
+            where.OR = [
+                { email: { contains: search } },
+                { name: { contains: search } },
+                { notes: { contains: search } },
+            ];
+        }
+        if (status) where.status = status;
+        if (tag) where.tags = { contains: tag };
+
+        const [leads, total] = await Promise.all([
+            prisma.outreachLead.findMany({
+                where,
+                include: { _count: { select: { emails: true } } },
+                orderBy: { createdAt: 'desc' },
+                skip,
+                take: limit,
+            }),
+            prisma.outreachLead.count({ where }),
+        ]);
+
+        res.json({ leads, total, page, totalPages: Math.ceil(total / limit) });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+/**
+ * POST /api/admin/outreach/leads
+ * Create lead(s) — single or bulk
+ * Body: { email, name?, notes?, tags? } OR { bulk: "email1,name1\nemail2,name2" }
+ */
+router.post('/outreach/leads', async (req, res) => {
+    try {
+        const { email, name, notes, tags, bulk } = req.body;
+
+        if (bulk) {
+            // Bulk import: one lead per line, format: email or email,name
+            const lines = (bulk as string).split('\n').map(l => l.trim()).filter(Boolean);
+            let created = 0;
+            let skipped = 0;
+            for (const line of lines) {
+                const parts = line.split(',').map(p => p.trim());
+                const leadEmail = parts[0];
+                const leadName = parts[1] || null;
+                if (!leadEmail || !leadEmail.includes('@')) { skipped++; continue; }
+                try {
+                    await prisma.outreachLead.create({
+                        data: { email: leadEmail, name: leadName, tags }
+                    });
+                    created++;
+                } catch {
+                    skipped++; // duplicate
+                }
+            }
+            return res.json({ success: true, created, skipped });
+        }
+
+        if (!email) return res.status(400).json({ error: 'Email is required' });
+
+        const lead = await prisma.outreachLead.create({
+            data: { email, name, notes, tags }
+        });
+        res.json(lead);
+    } catch (e: any) {
+        if (e.code === 'P2002') return res.status(400).json({ error: 'Lead with this email already exists' });
+        res.status(500).json({ error: e.message });
+    }
+});
+
+/**
+ * PUT /api/admin/outreach/leads/:id
+ */
+router.put('/outreach/leads/:id', async (req, res) => {
+    try {
+        const { name, email, notes, tags, status } = req.body;
+        const lead = await prisma.outreachLead.update({
+            where: { id: req.params.id },
+            data: { name, email, notes, tags, status }
+        });
+        res.json(lead);
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+/**
+ * DELETE /api/admin/outreach/leads/:id
+ */
+router.delete('/outreach/leads/:id', async (req, res) => {
+    try {
+        await prisma.outreachLead.delete({ where: { id: req.params.id } });
+        res.json({ success: true });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// --- Templates ---
+
+/**
+ * GET /api/admin/outreach/templates
+ */
+router.get('/outreach/templates', async (req, res) => {
+    try {
+        const templates = await prisma.outreachTemplate.findMany({ orderBy: { createdAt: 'desc' } });
+        res.json(templates);
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+/**
+ * POST /api/admin/outreach/templates
+ * Create or update (if id provided)
+ */
+router.post('/outreach/templates', async (req, res) => {
+    try {
+        const { id, name, fromName, fromEmail, subject, body } = req.body;
+        if (!name || !subject || !body) return res.status(400).json({ error: 'name, subject, and body are required' });
+
+        if (id) {
+            const tpl = await prisma.outreachTemplate.update({
+                where: { id },
+                data: { name, fromName, fromEmail, subject, body }
+            });
+            return res.json(tpl);
+        }
+
+        const tpl = await prisma.outreachTemplate.create({
+            data: { name, fromName, fromEmail, subject, body }
+        });
+        res.json(tpl);
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+/**
+ * DELETE /api/admin/outreach/templates/:id
+ */
+router.delete('/outreach/templates/:id', async (req, res) => {
+    try {
+        await prisma.outreachTemplate.delete({ where: { id: req.params.id } });
+        res.json({ success: true });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// --- Send ---
+
+/**
+ * POST /api/admin/outreach/send
+ * Send email(s) to selected leads
+ * Body: { leadIds: string[], templateId?: string, subject?: string, body?: string, fromName?: string, fromEmail?: string }
+ */
+router.post('/outreach/send', async (req, res) => {
+    try {
+        const { leadIds, templateId, subject, body, fromName, fromEmail } = req.body;
+        if (!leadIds || !Array.isArray(leadIds) || leadIds.length === 0) {
+            return res.status(400).json({ error: 'leadIds array is required' });
+        }
+
+        let tpl: any = null;
+        if (templateId) {
+            tpl = await prisma.outreachTemplate.findUnique({ where: { id: templateId } });
+            if (!tpl) return res.status(404).json({ error: 'Template not found' });
+        }
+
+        const finalSubject = subject || tpl?.subject;
+        const finalBody = body || tpl?.body;
+        const finalFromName = fromName || tpl?.fromName || 'Ezzaky @ MyClaw';
+        const finalFromEmail = fromEmail || tpl?.fromEmail || 'ezzaky@myclaw.host';
+
+        if (!finalSubject || !finalBody) {
+            return res.status(400).json({ error: 'Subject and body are required (provide directly or via templateId)' });
+        }
+
+        const leads = await prisma.outreachLead.findMany({
+            where: { id: { in: leadIds } }
+        });
+
+        const results: { email: string; status: string; error?: string }[] = [];
+        const HOST = process.env.APP_URL || 'https://openclaw-host.com';
+
+        for (const lead of leads) {
+            // Replace {{name}} placeholder
+            let personalBody = finalBody.replace(/\{\{name\}\}/gi, lead.name || 'there');
+            let personalSubject = finalSubject.replace(/\{\{name\}\}/gi, lead.name || 'there');
+
+            // Create outreach email record first to get the ID for tracking
+            const outreachEmail = await prisma.outreachEmail.create({
+                data: {
+                    leadId: lead.id,
+                    templateId: templateId || null,
+                    subject: personalSubject,
+                    fromName: finalFromName,
+                    fromEmail: finalFromEmail,
+                    status: 'pending',
+                }
+            });
+
+            // Inject tracking pixel
+            const trackingPixel = `<img src="${HOST}/t/${outreachEmail.id}.png" width="1" height="1" style="display:none" alt="" />`;
+            personalBody += trackingPixel;
+
+            // Send via Resend
+            const fromAddress = `${finalFromName} <${finalFromEmail}>`;
+            const result = await sendEmail(lead.email, personalSubject, personalBody, { from: fromAddress, replyTo: finalFromEmail });
+
+            if (result.success) {
+                await prisma.outreachEmail.update({
+                    where: { id: outreachEmail.id },
+                    data: { status: 'sent', resendId: result.id, sentAt: new Date() }
+                });
+                // Update lead status if still "new"
+                if (lead.status === 'new') {
+                    await prisma.outreachLead.update({
+                        where: { id: lead.id },
+                        data: { status: 'contacted' }
+                    });
+                }
+                results.push({ email: lead.email, status: 'sent' });
+            } else {
+                await prisma.outreachEmail.update({
+                    where: { id: outreachEmail.id },
+                    data: { status: 'failed' }
+                });
+                results.push({ email: lead.email, status: 'failed', error: result.error });
+            }
+        }
+
+        res.json({ success: true, total: leads.length, results });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// --- Stats ---
+
+/**
+ * GET /api/admin/outreach/stats
+ * Outreach campaign statistics
+ */
+router.get('/outreach/stats', async (req, res) => {
+    try {
+        const [totalLeads, totalSent, totalOpened, totalFailed] = await Promise.all([
+            prisma.outreachLead.count(),
+            prisma.outreachEmail.count({ where: { status: 'sent' } }),
+            prisma.outreachEmail.count({ where: { openedAt: { not: null } } }),
+            prisma.outreachEmail.count({ where: { status: 'failed' } }),
+        ]);
+
+        // Lead status breakdown
+        const statusBreakdown = await prisma.outreachLead.groupBy({
+            by: ['status'],
+            _count: { _all: true }
+        });
+
+        // Recent activity
+        const recentSends = await prisma.outreachEmail.findMany({
+            where: { status: { in: ['sent', 'failed'] } },
+            orderBy: { createdAt: 'desc' },
+            take: 20,
+            include: { lead: { select: { email: true, name: true } } }
+        });
+
+        res.json({
+            overview: {
+                totalLeads,
+                totalSent,
+                totalOpened,
+                totalFailed,
+                openRate: totalSent > 0 ? ((totalOpened / totalSent) * 100).toFixed(1) : '0.0',
+            },
+            statusBreakdown: statusBreakdown.reduce((acc: any, s: any) => {
+                acc[s.status] = s._count._all;
+                return acc;
+            }, {}),
+            recentSends,
+        });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// --- Sent emails log ---
+
+/**
+ * GET /api/admin/outreach/emails
+ * List sent outreach emails with lead info
+ */
+router.get('/outreach/emails', async (req, res) => {
+    try {
+        const page = parseInt(req.query.page as string) || 1;
+        const limit = parseInt(req.query.limit as string) || 50;
+        const skip = (page - 1) * limit;
+
+        const [emails, total] = await Promise.all([
+            prisma.outreachEmail.findMany({
+                orderBy: { createdAt: 'desc' },
+                skip,
+                take: limit,
+                include: { lead: { select: { email: true, name: true } } }
+            }),
+            prisma.outreachEmail.count(),
+        ]);
+
+        res.json({ emails, total, page, totalPages: Math.ceil(total / limit) });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 export default router;

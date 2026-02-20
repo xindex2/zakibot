@@ -11,12 +11,14 @@ const prisma = new PrismaClient();
 const processes: Record<string, { bot: ChildProcess, bridge?: ChildProcess }> = {};
 // Prevent concurrent startBot calls for the same bot
 const startingLock: Record<string, boolean> = {};
+// Suppress auto-restart for intentional kills (set before pkill, cleared after new process spawns)
+const suppressRestart: Record<string, boolean> = {};
 
 // --- Auto-restart tracking for paid bots ---
 interface RestartState { count: number; firstAttemptAt: number; }
 const restartState: Record<string, RestartState> = {};
-const MAX_RESTARTS = 10;
-const RESTART_WINDOW_MS = 30 * 60 * 1000; // 30 minutes
+const MAX_RESTARTS = 5;
+const RESTART_WINDOW_MS = 10 * 60 * 1000; // 10 minutes
 const RESTART_DELAY_MS = 8000; // 8 seconds before restart (give port time to release)
 
 async function autoRestartBot(configId: string, botName: string): Promise<void> {
@@ -49,18 +51,6 @@ async function autoRestartBot(configId: string, botName: string): Promise<void> 
     console.log(`[AutoRestart] Bot "${botName}" crashed, restarting in ${RESTART_DELAY_MS / 1000}s (attempt ${state.count}/${MAX_RESTARTS})...`);
 
     await new Promise(resolve => setTimeout(resolve, RESTART_DELAY_MS));
-
-    // Kill any leftover process holding the gateway port
-    try {
-        const botCfg = await prisma.botConfig.findUnique({
-            where: { id: configId },
-            select: { gatewayPort: true }
-        });
-        const port = botCfg?.gatewayPort || 18790;
-        execSync(`fuser -k ${port}/tcp > /dev/null 2>&1 || true`, { stdio: 'ignore' });
-        // Extra wait for port to fully release
-        await new Promise(resolve => setTimeout(resolve, 1000));
-    } catch (e) { /* ignore cleanup errors */ }
 
     try {
         await startBot(configId, true);
@@ -126,6 +116,9 @@ export async function startBot(configId: string, isAutoRestart = false) {
     if (!isAutoRestart) {
         delete restartState[configId];
     }
+    // Suppress auto-restart for the old process we're about to kill
+    suppressRestart[configId] = true;
+
     try {
         // Cleanup existing processes with this config ID in command line
         const killCmd = `pkill -f "nanobot.*${configId}.json" > /dev/null 2>&1 || true`;
@@ -479,13 +472,30 @@ export async function startBot(configId: string, isAutoRestart = false) {
 
     child.stderr?.on('data', (data: any) => console.log(`[Bot log ${config.name}]: ${data}`));
 
+    // Clear suppress flag now that the new process is spawned
+    suppressRestart[configId] = false;
+
     child.on('close', async (code: any) => {
         const botName = config.name || configId;
 
-        // Only kill the bridge that was spawned WITH this bot, not a newer one
-        if (currentBridge && processes[configId]?.bridge === currentBridge) {
+        // If this is a STALE close handler (process was replaced by a newer one), ignore it
+        if (processes[configId]?.bot !== child) {
+            // Clean up bridge if it matches
+            if (currentBridge && processes[configId]?.bridge === currentBridge) {
+                currentBridge.kill('SIGTERM');
+            }
+            return;
+        }
+
+        // Kill the bridge that was spawned WITH this bot
+        if (currentBridge) {
             currentBridge.kill('SIGTERM');
-            delete processes[configId];
+        }
+        delete processes[configId];
+
+        // If this process was intentionally killed by startBot(), don't auto-restart
+        if (suppressRestart[configId]) {
+            return;
         }
 
         // Check if user has a paid plan — auto-restart if so

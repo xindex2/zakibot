@@ -675,6 +675,10 @@ class BrowserTool(Tool):
         self._screenshots_dir = self.workspace / "screenshots"
         self._screenshots_dir.mkdir(exist_ok=True)
         self._captcha_solver = CaptchaSolver(provider=captcha_provider, api_key=captcha_api_key)
+        # Idle auto-close: free RAM when browser isn't used
+        self._last_used: float = 0
+        self._idle_timeout: float = 120  # seconds (2 minutes)
+        self._idle_check_task: asyncio.Task | None = None
 
     # ------------------------------------------------------------------
     # Browser lifecycle
@@ -903,6 +907,10 @@ class BrowserTool(Tool):
     async def execute(self, action: str, **kwargs: Any) -> str:
         try:
             await self._ensure_browser()
+            self._last_used = time.time()
+            # Start idle checker if not running
+            if self._idle_check_task is None or self._idle_check_task.done():
+                self._idle_check_task = asyncio.create_task(self._idle_auto_close())
             
             # ---- Navigation ----
             if action == "goto":
@@ -1185,6 +1193,10 @@ class BrowserTool(Tool):
     async def close(self):
         """Close the browser instance."""
         try:
+            # Cancel idle checker
+            if self._idle_check_task and not self._idle_check_task.done():
+                self._idle_check_task.cancel()
+                self._idle_check_task = None
             if self.page and not self.page.is_closed():
                 await self.page.close()
             if self.context:
@@ -1200,3 +1212,15 @@ class BrowserTool(Tool):
             self.context = None
             self.browser = None
             self.playwright = None
+
+    async def _idle_auto_close(self):
+        """Background task: close browser after idle timeout to free RAM."""
+        while self.browser is not None:
+            await asyncio.sleep(30)  # Check every 30 seconds
+            if self.browser is None:
+                return
+            elapsed = time.time() - self._last_used
+            if elapsed >= self._idle_timeout:
+                logger.info(f"Browser idle for {int(elapsed)}s, auto-closing to free RAM")
+                await self.close()
+                return

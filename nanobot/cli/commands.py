@@ -198,7 +198,7 @@ def gateway(
     # Create cron service first (callback set after agent creation)
     # Use workspace-relative path so each bot has its own cron store
     cron_store_path = config.workspace_path / "cron" / "jobs.json"
-    cron = CronService(cron_store_path)
+    cron = CronService(cron_store_path, timezone=config.agents.defaults.timezone)
     
     # Create agent with cron service
     agent = AgentLoop(
@@ -264,6 +264,46 @@ def gateway(
     
     async def run():
         try:
+            # Start HTTP server for web chat
+            from aiohttp import web
+            import json as _json
+
+            async def handle_chat(request):
+                """Handle incoming web chat messages via HTTP."""
+                try:
+                    body = await request.json()
+                    message = body.get("message", "").strip()
+                    channel = body.get("channel", "webchat")
+                    chat_id = body.get("chat_id", "direct")
+                    session_key = body.get("session_key", f"{channel}:{chat_id}")
+
+                    if not message:
+                        return web.json_response({"error": "message is required"}, status=400)
+
+                    response = await agent.process_direct(
+                        message,
+                        session_key=session_key,
+                        channel=channel,
+                        chat_id=chat_id,
+                    )
+
+                    return web.json_response({"response": response or ""})
+                except Exception as e:
+                    return web.json_response({"error": str(e)}, status=500)
+
+            async def handle_health(request):
+                return web.json_response({"status": "ok", "port": port})
+
+            http_app = web.Application()
+            http_app.router.add_post("/chat", handle_chat)
+            http_app.router.add_get("/health", handle_health)
+
+            runner = web.AppRunner(http_app)
+            await runner.setup()
+            site = web.TCPSite(runner, "0.0.0.0", port)
+            await site.start()
+            console.print(f"[green]✓[/green] HTTP gateway listening on port {port}")
+
             await cron.start()
             await heartbeat.start()
             await asyncio.gather(

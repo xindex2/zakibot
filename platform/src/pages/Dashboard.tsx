@@ -591,9 +591,11 @@ export default function Dashboard() {
                                     <AgentCard
                                         key={agent.id}
                                         agent={agent}
+                                        token={token}
                                         onEdit={() => setEditingAgent(agent)}
                                         onDelete={() => deleteAgent(agent.id)}
                                         onToggle={() => toggleBot(agent.id, agent.status)}
+                                        onChat={() => navigate(`/chat/${agent.id}`)}
                                     />
                                 ))}
                             </div>
@@ -1825,6 +1827,7 @@ function formatBytes(bytes: number) {
 
 function WorkspaceTab({ configId, userId, token, files, currentPath, loading, preview, showNewFile, newFileName, newFileContent, dragOver, setFiles, setPath, setLoading, setPreview, setShowNewFile, setNewFileName, setNewFileContent, setDragOver }: any) {
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const [cleanupMsg, setCleanupMsg] = useState('');
 
     const fetchFiles = async (subPath?: string) => {
         setLoading(true);
@@ -1920,8 +1923,50 @@ function WorkspaceTab({ configId, userId, token, files, currentPath, loading, pr
                     className="flex items-center gap-1.5 bg-white/5 hover:bg-white/10 text-white/60 text-[10px] font-bold px-3 py-2 rounded-lg transition-all uppercase tracking-wider">
                     <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Refresh
                 </button>
+                <div className="flex-1" />
+                <button onClick={async () => {
+                    if (!confirm('Clear all sessions (chat history)?')) return;
+                    const resp = await fetch(`/api/workspace/${configId}/cleanup`, {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ targets: ['sessions'] }),
+                    });
+                    if (resp.ok) {
+                        const data = await resp.json();
+                        setCleanupMsg(`Cleared sessions — ${data.reclaimedFormatted || '0 B'} reclaimed`);
+                        setTimeout(() => setCleanupMsg(''), 5000);
+                        fetchFiles(currentPath);
+                    }
+                }}
+                    className="flex items-center gap-1.5 bg-orange-500/10 hover:bg-orange-500/20 text-orange-400/80 text-[10px] font-bold px-3 py-2 rounded-lg transition-all uppercase tracking-wider border border-orange-500/10">
+                    <Trash2 size={12} /> Clear Sessions
+                </button>
+                <button onClick={async () => {
+                    if (!confirm('Clear ALL workspace data (sessions, cron, screenshots, memory)? This cannot be undone.')) return;
+                    const resp = await fetch(`/api/workspace/${configId}/cleanup`, {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ targets: ['all'] }),
+                    });
+                    if (resp.ok) {
+                        const data = await resp.json();
+                        setCleanupMsg(`Cleared all data — ${data.reclaimedFormatted || '0 B'} reclaimed`);
+                        setTimeout(() => setCleanupMsg(''), 5000);
+                        fetchFiles(currentPath);
+                    }
+                }}
+                    className="flex items-center gap-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400/80 text-[10px] font-bold px-3 py-2 rounded-lg transition-all uppercase tracking-wider border border-red-500/10">
+                    <Trash2 size={12} /> Clear All
+                </button>
                 <input ref={fileInputRef} type="file" multiple className="hidden" onChange={e => { if (e.target.files?.length) uploadFiles(e.target.files); e.target.value = ''; }} />
             </div>
+
+            {cleanupMsg && (
+                <div className="mb-4 flex items-center gap-2 bg-green-500/10 border border-green-500/20 rounded-xl px-4 py-2">
+                    <Check size={14} className="text-green-400" />
+                    <p className="text-[11px] text-green-300/80">{cleanupMsg}</p>
+                </div>
+            )}
 
             {/* Breadcrumb */}
             <div className="flex items-center gap-1 text-[10px] font-bold text-white/30 mb-4 uppercase tracking-wider">
@@ -2044,8 +2089,18 @@ function WorkspaceTab({ configId, userId, token, files, currentPath, loading, pr
     );
 }
 
-function AgentCard({ agent, onEdit, onDelete, onToggle }: any) {
+function AgentCard({ agent, token, onEdit, onDelete, onToggle, onChat }: any) {
     const isRunning = agent.status === 'running';
+    const [wsStats, setWsStats] = useState<{ fileCount: number; totalSizeFormatted: string } | null>(null);
+
+    useEffect(() => {
+        if (!agent.id || agent.id.startsWith('temp-') || !token) return;
+        fetch(`/api/workspace/${agent.id}/stats`, { headers: { 'Authorization': `Bearer ${token}` } })
+            .then(r => r.ok ? r.json() : null)
+            .then(data => { if (data) setWsStats(data); })
+            .catch(() => { });
+    }, [agent.id, token]);
+
     return (
         <motion.div
             layout
@@ -2105,14 +2160,24 @@ function AgentCard({ agent, onEdit, onDelete, onToggle }: any) {
                 );
             })()}
 
-            {/* Model badge */}
-            {agent.model && (
-                <div className="flex items-center gap-2">
+            {/* Model + workspace badges */}
+            <div className="flex items-center gap-2 flex-wrap">
+                {agent.model && (
                     <span className="text-[10px] text-white/20 font-medium bg-white/[0.03] px-2 py-0.5 rounded-md truncate max-w-[200px] border border-white/[0.04]">
                         {agent.model}
                     </span>
-                </div>
-            )}
+                )}
+                {wsStats && wsStats.fileCount > 0 && (
+                    <button
+                        onClick={(e) => { e.stopPropagation(); onEdit(); }}
+                        className="inline-flex items-center gap-1.5 text-[10px] text-cyan-400/60 font-medium bg-cyan-500/5 px-2 py-0.5 rounded-md border border-cyan-500/10 hover:bg-cyan-500/10 hover:text-cyan-400 transition-all"
+                        title="Open workspace"
+                    >
+                        <HardDrive size={10} />
+                        {wsStats.fileCount} files · {wsStats.totalSizeFormatted}
+                    </button>
+                )}
+            </div>
 
             {/* Footer: channels + actions */}
             <div className="flex items-center justify-between pt-4 border-t border-white/[0.05] mt-auto">
@@ -2128,7 +2193,10 @@ function AgentCard({ agent, onEdit, onDelete, onToggle }: any) {
                     )}
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
+                    <button onClick={onChat} className="p-2 rounded-lg hover:bg-primary/10 text-white/25 hover:text-primary transition-all" title="Chat">
+                        <MessageSquare size={16} />
+                    </button>
                     <button onClick={onEdit} className="p-2 rounded-lg hover:bg-white/[0.06] text-white/25 hover:text-white/60 transition-all" title="Settings">
                         <Settings size={16} />
                     </button>

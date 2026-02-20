@@ -1354,6 +1354,256 @@ app.delete('/api/workspace/:configId/*', authenticateToken, async (req: any, res
         res.status(500).json({ error: 'Failed to delete' });
     }
 });
+
+// Workspace stats (file count + total size)
+app.get('/api/workspace/:configId/stats', authenticateToken, async (req: any, res: any) => {
+    try {
+        const config = await prisma.botConfig.findUnique({ where: { id: req.params.configId } });
+        if (!config || config.userId !== req.user.id) return res.status(403).json({ error: 'Forbidden' });
+
+        const ws = resolveWorkspace(config.userId, config.id);
+        if (!ws || !fs.existsSync(ws.base)) {
+            return res.json({ fileCount: 0, totalSize: 0, totalSizeFormatted: '0 B' });
+        }
+
+        let fileCount = 0;
+        let totalSize = 0;
+        const walk = (dir: string) => {
+            try {
+                const entries = fs.readdirSync(dir, { withFileTypes: true });
+                for (const entry of entries) {
+                    const full = path.join(dir, entry.name);
+                    if (entry.isDirectory()) {
+                        walk(full);
+                    } else {
+                        fileCount++;
+                        try { totalSize += fs.statSync(full).size; } catch { }
+                    }
+                }
+            } catch { }
+        };
+        walk(ws.base);
+
+        const units = ['B', 'KB', 'MB', 'GB'];
+        let size = totalSize;
+        let unitIdx = 0;
+        while (size >= 1024 && unitIdx < units.length - 1) { size /= 1024; unitIdx++; }
+        const totalSizeFormatted = `${size < 10 && unitIdx > 0 ? size.toFixed(1) : Math.round(size)} ${units[unitIdx]}`;
+
+        res.json({ fileCount, totalSize, totalSizeFormatted });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to get workspace stats' });
+    }
+});
+
+// Workspace cleanup (delete sessions, cron, screenshots, etc.)
+app.post('/api/workspace/:configId/cleanup', authenticateToken, async (req: any, res: any) => {
+    try {
+        const config = await prisma.botConfig.findUnique({ where: { id: req.params.configId } });
+        if (!config || config.userId !== req.user.id) return res.status(403).json({ error: 'Forbidden' });
+
+        const { targets } = req.body; // ['sessions', 'cron', 'screenshots', 'all']
+        if (!targets || !Array.isArray(targets)) return res.status(400).json({ error: 'targets array is required' });
+
+        const ws = resolveWorkspace(config.userId, config.id);
+        if (!ws || !fs.existsSync(ws.base)) return res.json({ success: true, reclaimedSize: 0 });
+
+        const allowedTargets = ['sessions', 'cron', 'screenshots', 'memory'];
+        const toDelete = targets.includes('all') ? allowedTargets : targets.filter((t: string) => allowedTargets.includes(t));
+
+        let reclaimedSize = 0;
+        for (const target of toDelete) {
+            const dirPath = path.join(ws.base, target);
+            if (fs.existsSync(dirPath)) {
+                // Calculate size before deleting
+                const walkSize = (d: string): number => {
+                    let s = 0;
+                    try {
+                        for (const entry of fs.readdirSync(d, { withFileTypes: true })) {
+                            const full = path.join(d, entry.name);
+                            s += entry.isDirectory() ? walkSize(full) : (fs.statSync(full).size || 0);
+                        }
+                    } catch { }
+                    return s;
+                };
+                reclaimedSize += walkSize(dirPath);
+                fs.rmSync(dirPath, { recursive: true, force: true });
+            }
+        }
+
+        const units = ['B', 'KB', 'MB', 'GB'];
+        let size = reclaimedSize;
+        let unitIdx = 0;
+        while (size >= 1024 && unitIdx < units.length - 1) { size /= 1024; unitIdx++; }
+        const reclaimedFormatted = `${size < 10 && unitIdx > 0 ? size.toFixed(1) : Math.round(size)} ${units[unitIdx]}`;
+
+        res.json({ success: true, reclaimedSize, reclaimedFormatted });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to cleanup workspace' });
+    }
+});
+
+// Per-user storage usage (all agents)
+app.get('/api/storage/usage', authenticateToken, async (req: any, res: any) => {
+    try {
+        const userId = req.user.id;
+        const userWorkspace = path.join(process.cwd(), 'workspaces', userId);
+        if (!fs.existsSync(userWorkspace)) return res.json({ agents: [], totalSize: 0, totalSizeFormatted: '0 B' });
+
+        const walkSize = (d: string): { files: number; size: number } => {
+            let files = 0, size = 0;
+            try {
+                for (const entry of fs.readdirSync(d, { withFileTypes: true })) {
+                    const full = path.join(d, entry.name);
+                    if (entry.isDirectory()) {
+                        const sub = walkSize(full);
+                        files += sub.files;
+                        size += sub.size;
+                    } else {
+                        files++;
+                        try { size += fs.statSync(full).size; } catch { }
+                    }
+                }
+            } catch { }
+            return { files, size };
+        };
+
+        const formatSize = (bytes: number) => {
+            const units = ['B', 'KB', 'MB', 'GB'];
+            let s = bytes, u = 0;
+            while (s >= 1024 && u < units.length - 1) { s /= 1024; u++; }
+            return `${s < 10 && u > 0 ? s.toFixed(1) : Math.round(s)} ${units[u]}`;
+        };
+
+        // Get agent names from DB
+        const configs = await prisma.botConfig.findMany({
+            where: { userId },
+            select: { id: true, name: true }
+        });
+        const nameMap = new Map(configs.map((c: any) => [c.id, c.name]));
+
+        const agentDirs = fs.readdirSync(userWorkspace).filter(d => {
+            try { return fs.statSync(path.join(userWorkspace, d)).isDirectory(); } catch { return false; }
+        });
+
+        let totalSize = 0;
+        const agents = agentDirs.map(agentId => {
+            const { files, size } = walkSize(path.join(userWorkspace, agentId));
+            totalSize += size;
+            return { agentId, name: nameMap.get(agentId) || agentId, fileCount: files, size, sizeFormatted: formatSize(size) };
+        });
+
+        res.json({ agents, totalSize, totalSizeFormatted: formatSize(totalSize) });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to get storage usage' });
+    }
+});
+
+// --- Web Chat: proxy messages to bot gateway ---
+app.post('/api/chat/:configId', authenticateToken, upload.array('files', 5), async (req: any, res: any) => {
+    try {
+        const config = await prisma.botConfig.findUnique({ where: { id: req.params.configId } });
+        if (!config) return res.status(404).json({ error: 'Bot not found' });
+        if (config.userId !== req.user.id) return res.status(403).json({ error: 'Forbidden' });
+        if (config.status !== 'running') return res.status(400).json({ error: 'Bot is not running. Start it first.' });
+
+        const { message } = req.body;
+        if (!message || !message.trim()) return res.status(400).json({ error: 'Message is required' });
+
+        // Save uploaded files to workspace if any
+        const mediaFiles: string[] = [];
+        const ws = resolveWorkspace(config.userId, config.id);
+        if (ws && req.files && req.files.length > 0) {
+            const uploadsDir = path.join(ws.base, 'uploads');
+            if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+            for (const file of req.files) {
+                const dest = path.join(uploadsDir, `${Date.now()}_${file.originalname}`);
+                fs.renameSync(file.path, dest);
+                mediaFiles.push(dest);
+            }
+        }
+
+        // Forward to nanobot gateway
+        const gatewayPort = config.gatewayPort || 18790;
+        const gatewayUrl = `http://localhost:${gatewayPort}/chat`;
+
+        const payload: any = {
+            message: message.trim(),
+            channel: 'webchat',
+            chat_id: req.user.id,
+            session_key: `webchat:${req.user.id}`,
+        };
+        if (mediaFiles.length > 0) payload.media = mediaFiles;
+
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 120000); // 2 minute timeout
+
+        try {
+            const response = await fetch(gatewayUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+                signal: controller.signal,
+            });
+            clearTimeout(timeout);
+
+            if (!response.ok) {
+                // Gateway may not have /chat endpoint yet — fallback to direct process
+                throw new Error(`Gateway returned ${response.status}`);
+            }
+
+            const data = await response.json();
+            res.json({ response: data.response || data.content || '' });
+        } catch (fetchErr: any) {
+            clearTimeout(timeout);
+            // Fallback: read session file directly for last response (if gateway doesn't support /chat)
+            // For now, return a helpful error
+            res.status(502).json({
+                error: 'Bot gateway is not responding. The bot may still be starting up.',
+                hint: 'Please wait a moment and try again.'
+            });
+        }
+    } catch (error: any) {
+        res.status(500).json({ error: error.message || 'Failed to send message' });
+    }
+});
+
+// Chat history (reads bot session file)
+app.get('/api/chat/:configId/history', authenticateToken, async (req: any, res: any) => {
+    try {
+        const config = await prisma.botConfig.findUnique({ where: { id: req.params.configId } });
+        if (!config) return res.status(404).json({ error: 'Bot not found' });
+        if (config.userId !== req.user.id) return res.status(403).json({ error: 'Forbidden' });
+
+        const ws = resolveWorkspace(config.userId, config.id);
+        if (!ws) return res.json({ messages: [] });
+
+        const sessionKey = `webchat_${req.user.id}`;
+        const sessionPath = path.join(ws.base, 'sessions', `${sessionKey}.jsonl`);
+
+        if (!fs.existsSync(sessionPath)) return res.json({ messages: [] });
+
+        const lines = fs.readFileSync(sessionPath, 'utf-8').split('\n').filter(l => l.trim());
+        const messages: any[] = [];
+
+        for (const line of lines) {
+            try {
+                const data = JSON.parse(line);
+                if (data._type === 'metadata') continue;
+                messages.push({
+                    role: data.role,
+                    content: data.content,
+                    timestamp: data.timestamp || null,
+                });
+            } catch { }
+        }
+
+        res.json({ messages });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to load chat history' });
+    }
+});
+
 // --- Serve workspace files (screenshots, etc.) ---
 app.get('/api/files/:userId/:configId/*', async (req: any, res: any) => {
     try {

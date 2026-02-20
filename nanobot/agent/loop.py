@@ -146,7 +146,7 @@ class AgentLoop:
         
         # Cron tool (for scheduling)
         if self.cron_service:
-            self.tools.register(CronTool(self.cron_service))
+            self.tools.register(CronTool(self.cron_service, timezone=self.timezone))
     
     async def run(self) -> None:
         """Run the agent loop, processing messages from the bus."""

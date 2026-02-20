@@ -23,6 +23,7 @@ const Profile = lazy(() => import('./pages/Profile'));
 const Billing = lazy(() => import('./pages/Billing'));
 const TopUpCredits = lazy(() => import('./pages/TopUpCredits'));
 const EmailCampaign = lazy(() => import('./pages/EmailCampaign'));
+const AgentChat = lazy(() => import('./pages/AgentChat'));
 const AdminApiActivity = lazy(() => import('./pages/AdminApiActivity'));
 const AdminOutreach = lazy(() => import('./pages/AdminOutreach'));
 const Hosting = lazy(() => import('./pages/seo/Hosting'));
@@ -119,6 +120,11 @@ function AppRoutes() {
                 <Route path="/topup" element={
                     <ProtectedRoute>
                         <TopUpCredits />
+                    </ProtectedRoute>
+                } />
+                <Route path="/chat/:agentId" element={
+                    <ProtectedRoute>
+                        <AgentChat />
                     </ProtectedRoute>
                 } />
 

@@ -1,7 +1,9 @@
 """Cron tool for scheduling reminders and tasks."""
 
 import time
+from datetime import datetime
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from nanobot.agent.tools.base import Tool
 from nanobot.cron.service import CronService
@@ -11,8 +13,9 @@ from nanobot.cron.types import CronSchedule
 class CronTool(Tool):
     """Tool to schedule reminders and recurring tasks."""
     
-    def __init__(self, cron_service: CronService):
+    def __init__(self, cron_service: CronService, timezone: str = "UTC"):
         self._cron = cron_service
+        self._timezone = timezone
         self._channel = ""
         self._chat_id = ""
     
@@ -27,8 +30,16 @@ class CronTool(Tool):
     
     @property
     def description(self) -> str:
+        try:
+            tz = ZoneInfo(self._timezone)
+            now_str = datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
+        except Exception:
+            now_str = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
         return (
             "Schedule tasks, reminders, and timers. "
+            f"Current time: {now_str} ({self._timezone}). "
+            "IMPORTANT: All cron expressions run in the user's timezone "
+            f"({self._timezone}), NOT UTC. "
             "Use 'in_seconds' for one-shot delayed tasks (e.g. 'do X in 2 minutes' → in_seconds=120). "
             "Use 'every_seconds' for recurring tasks (e.g. 'check X every hour' → every_seconds=3600). "
             "Use 'cron_expr' for scheduled recurring tasks (e.g. 'every day at 9am' → cron_expr='0 9 * * *'). "
@@ -115,7 +126,7 @@ class CronTool(Tool):
         elif every_seconds:
             schedule = CronSchedule(kind="every", every_ms=every_seconds * 1000)
         elif cron_expr:
-            schedule = CronSchedule(kind="cron", expr=cron_expr)
+            schedule = CronSchedule(kind="cron", expr=cron_expr, tz=self._timezone)
         else:
             return "Error: one of in_seconds, every_seconds, or cron_expr is required"
         
@@ -147,23 +158,35 @@ class CronTool(Tool):
         import time as t
         lines = []
         now_ms = int(t.time() * 1000)
+        try:
+            tz = ZoneInfo(self._timezone)
+        except Exception:
+            tz = ZoneInfo("UTC")
+        
         for j in jobs:
             sched_info = ""
             if j.schedule.kind == "at":
                 if j.state.next_run_at_ms:
                     remaining_s = max(0, (j.state.next_run_at_ms - now_ms) // 1000)
-                    sched_info = f"fires in {remaining_s}s (one-shot)"
+                    next_dt = datetime.fromtimestamp(j.state.next_run_at_ms / 1000, tz=tz)
+                    sched_info = f"fires in {remaining_s}s at {next_dt.strftime('%H:%M:%S %Z')} (one-shot)"
                 else:
                     sched_info = "one-shot (done)"
             elif j.schedule.kind == "every":
                 sched_info = f"every {(j.schedule.every_ms or 0) // 1000}s"
+                if j.state.next_run_at_ms:
+                    next_dt = datetime.fromtimestamp(j.state.next_run_at_ms / 1000, tz=tz)
+                    sched_info += f" (next: {next_dt.strftime('%H:%M:%S %Z')})"
             elif j.schedule.kind == "cron":
-                sched_info = f"cron: {j.schedule.expr}"
+                sched_info = f"cron: {j.schedule.expr} ({j.schedule.tz or self._timezone})"
+                if j.state.next_run_at_ms:
+                    next_dt = datetime.fromtimestamp(j.state.next_run_at_ms / 1000, tz=tz)
+                    sched_info += f" (next: {next_dt.strftime('%Y-%m-%d %H:%M %Z')})"
             
             status = "✅" if j.enabled else "⏸️"
             lines.append(f"- {status} {j.name} (id: {j.id}, {sched_info})")
         
-        return "Scheduled jobs:\n" + "\n".join(lines)
+        return f"Scheduled jobs (timezone: {self._timezone}):\n" + "\n".join(lines)
     
     def _remove_job(self, job_id: str | None) -> str:
         if not job_id:

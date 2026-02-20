@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { Bot, LayoutDashboard, User, Settings, LogOut, Activity, MessageSquare, Wallet, Cpu, Menu, X, Crown, Zap, Sparkles, Plus, Users, CreditCard, Mail, Megaphone } from 'lucide-react';
+import { Bot, LayoutDashboard, User, Settings, LogOut, Activity, MessageSquare, Wallet, Cpu, Menu, X, Crown, Zap, Sparkles, Plus, Users, CreditCard, Mail, Megaphone, HardDrive } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import Logo from './Logo';
 
@@ -10,6 +10,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     const location = useLocation();
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [subscription, setSubscription] = useState<any>(null);
+    const [storageUsage, setStorageUsage] = useState('');
 
     const isAdmin = user?.role === 'admin';
 
@@ -24,6 +25,18 @@ export default function Shell({ children }: { children: React.ReactNode }) {
             } catch (e) { }
         };
         fetchSub();
+        // Fetch storage usage
+        const fetchStorage = async () => {
+            try {
+                const token = localStorage.getItem('token');
+                const resp = await fetch('/api/storage/usage', { headers: { 'Authorization': `Bearer ${token}` } });
+                if (resp.ok) {
+                    const data = await resp.json();
+                    setStorageUsage(data.totalSizeFormatted || '');
+                }
+            } catch { }
+        };
+        fetchStorage();
     }, [location.pathname]);
 
     const menuItems = [
@@ -112,6 +125,12 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                                 <Plus size={11} strokeWidth={3} />
                                 Top Up
                             </button>
+                            {storageUsage && (
+                                <div className="flex items-center gap-2 bg-zinc-800/80 border border-zinc-700/50 rounded-lg px-3 py-1.5">
+                                    <HardDrive size={12} className="text-cyan-400" />
+                                    <span className="text-[10px] font-bold text-cyan-400/80">{storageUsage}</span>
+                                </div>
+                            )}
                         </div>
                     )}
                     <a href="mailto:support@myclaw.host" className="hidden sm:flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400 hover:text-red-500 transition-colors">

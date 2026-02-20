@@ -15,7 +15,7 @@ interface RestartState { count: number; firstAttemptAt: number; }
 const restartState: Record<string, RestartState> = {};
 const MAX_RESTARTS = 5;
 const RESTART_WINDOW_MS = 10 * 60 * 1000; // 10 minutes
-const RESTART_DELAY_MS = 5000; // 5 seconds before restart
+const RESTART_DELAY_MS = 8000; // 8 seconds before restart (give port time to release)
 
 async function autoRestartBot(configId: string, botName: string): Promise<void> {
     const now = Date.now();
@@ -47,6 +47,18 @@ async function autoRestartBot(configId: string, botName: string): Promise<void> 
     console.log(`[AutoRestart] Bot "${botName}" crashed, restarting in ${RESTART_DELAY_MS / 1000}s (attempt ${state.count}/${MAX_RESTARTS})...`);
 
     await new Promise(resolve => setTimeout(resolve, RESTART_DELAY_MS));
+
+    // Kill any leftover process holding the gateway port
+    try {
+        const botCfg = await prisma.botConfig.findUnique({
+            where: { id: configId },
+            select: { gatewayPort: true }
+        });
+        const port = botCfg?.gatewayPort || 18790;
+        execSync(`fuser -k ${port}/tcp > /dev/null 2>&1 || true`, { stdio: 'ignore' });
+        // Extra wait for port to fully release
+        await new Promise(resolve => setTimeout(resolve, 1000));
+    } catch (e) { /* ignore cleanup errors */ }
 
     try {
         await startBot(configId);

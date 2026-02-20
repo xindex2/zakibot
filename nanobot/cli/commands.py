@@ -300,8 +300,30 @@ def gateway(
 
             runner = web.AppRunner(http_app)
             await runner.setup()
-            site = web.TCPSite(runner, "0.0.0.0", port)
-            await site.start()
+            
+            # Retry binding in case the old process hasn't released the port yet
+            site = None
+            for attempt in range(6):
+                try:
+                    site = web.TCPSite(runner, "0.0.0.0", port)
+                    await site.start()
+                    break
+                except OSError as e:
+                    if "address already in use" in str(e).lower() and attempt < 5:
+                        import subprocess
+                        # Try to kill whatever is holding the port
+                        try:
+                            subprocess.run(
+                                ["fuser", "-k", f"{port}/tcp"],
+                                capture_output=True, timeout=3
+                            )
+                        except Exception:
+                            pass
+                        console.print(f"[yellow]⏳[/yellow] Port {port} busy, retrying in 3s (attempt {attempt + 1}/6)...")
+                        await asyncio.sleep(3)
+                    else:
+                        raise
+            
             console.print(f"[green]✓[/green] HTTP gateway listening on port {port}")
 
             await cron.start()

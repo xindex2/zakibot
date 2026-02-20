@@ -290,7 +290,7 @@ export async function startBot(configId: string) {
             restrict_to_workspace: decryptedConfig.restrictToWorkspace || false
         },
         gateway: {
-            host: decryptedConfig.gatewayHost || "0.0.0.0",
+            host: decryptedConfig.gatewayHost || "127.0.0.1",
             port: gatewayPort
         }
     };

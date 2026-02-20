@@ -239,7 +239,7 @@ app.post('/api/register-with-bot', async (req, res) => {
             cronEnabled: true,
             skillCreatorEnabled: true,
             restrictToWorkspace: true,
-            gatewayHost: '0.0.0.0',
+            gatewayHost: '127.0.0.1',
             gatewayPort: 0, // auto-assigned on first start by startBot()
             maxToolIterations: 30,
         };

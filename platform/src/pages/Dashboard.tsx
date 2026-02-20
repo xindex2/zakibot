@@ -336,7 +336,7 @@ export default function Dashboard() {
             captchaApiKey: '',
             proxyUrl: '',
             restrictToWorkspace: true,
-            gatewayHost: '0.0.0.0',
+            gatewayHost: '127.0.0.1',
             gatewayPort: 0, // auto-assigned on first start by startBot()
             maxToolIterations: 30,
             timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
@@ -378,7 +378,7 @@ export default function Dashboard() {
             captchaApiKey: '',
             proxyUrl: '',
             restrictToWorkspace: true,
-            gatewayHost: '0.0.0.0',
+            gatewayHost: '127.0.0.1',
             gatewayPort: 0, // auto-assigned on first start by startBot()
             maxToolIterations: 30,
             timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'

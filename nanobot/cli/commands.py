@@ -307,7 +307,7 @@ def gateway(
             bind_port = port
             for attempt in range(6):
                 try:
-                    site = web.TCPSite(runner, "0.0.0.0", bind_port, reuse_address=True)
+                    site = web.TCPSite(runner, "127.0.0.1", bind_port, reuse_address=True)
                     await site.start()
                     break
                 except OSError as e:

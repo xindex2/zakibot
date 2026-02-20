@@ -1130,6 +1130,25 @@ export default function Dashboard() {
                                 {activeTab === 'channels' && (
                                     <Section icon={<MessageSquare className="text-white" />} title="Channels" desc="Connect messaging platforms.">
                                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-10">
+                                            {/* Web Chat — always active */}
+                                            <div className="rounded-2xl border-2 border-green-500/30 bg-green-500/5 p-5 relative">
+                                                <div className="flex items-center justify-between mb-3">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-10 h-10 rounded-xl bg-green-500/15 flex items-center justify-center">
+                                                            <MessageSquare size={20} className="text-green-400" />
+                                                        </div>
+                                                        <div>
+                                                            <h4 className="font-bold text-sm text-white">Web Chat</h4>
+                                                            <p className="text-[10px] text-green-400/80 font-bold">Always Active</p>
+                                                        </div>
+                                                    </div>
+                                                    <span className="px-2.5 py-1 rounded-full bg-green-500/15 text-green-400 text-[9px] font-black uppercase tracking-widest">Built-in</span>
+                                                </div>
+                                                <p className="text-[11px] text-white/40 leading-relaxed">
+                                                    Chat with your agent directly from the dashboard. No setup needed — click the chat icon on your agent card.
+                                                </p>
+                                            </div>
+
                                             <ChannelInput
                                                 name="Telegram" icon={ICONS.telegram}
                                                 badge="Recommended"
@@ -2147,7 +2166,6 @@ function AgentCard({ agent, token, onEdit, onDelete, onToggle, onChat, onOpenWor
             {(() => {
                 const issues: string[] = [];
                 if (!agent.model) issues.push('No AI model selected');
-                if (!agent.telegramEnabled && !agent.discordEnabled && !agent.whatsappEnabled && !agent.feishuEnabled && !agent.slackEnabled && !agent.teamsEnabled) issues.push('No channel connected');
                 if (issues.length === 0) return null;
                 return (
                     <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 flex items-start gap-2.5">

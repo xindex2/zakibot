@@ -12,6 +12,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 
 const CHANNEL_ICONS: Record<string, string> = {
+    webchat: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZjRkNGQiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMjEgMTVhMiAyIDAgMCAxLTIgMkg3bC00IDRWNWEyIDIgMCAwIDEgMi0yaDE0YTIgMiAwIDAgMSAyIDJ6Ij48L3BhdGg+PC9zdmc+',
     telegram: 'https://cdn-icons-png.flaticon.com/512/2111/2111646.png',
     discord: 'https://favicon.im/discord.com?t=1770422839363',
     whatsapp: 'https://favicon.im/whatsapp.com?larger=true',
@@ -71,7 +72,7 @@ export default function Onboarding() {
     const [modelSearch, setModelSearch] = useState('');
 
     // Step 3 — Channel
-    const [selectedChannel, setSelectedChannel] = useState<'telegram' | 'discord' | 'whatsapp' | 'slack' | 'feishu' | null>(null);
+    const [selectedChannel, setSelectedChannel] = useState<'webchat' | 'telegram' | 'discord' | 'whatsapp' | 'slack' | 'feishu' | null>('webchat');
     const [telegramToken, setTelegramToken] = useState('');
     const [discordToken, setDiscordToken] = useState('');
     const [slackBotToken, setSlackBotToken] = useState('');
@@ -150,6 +151,7 @@ export default function Onboarding() {
             case 0: return fullName && email && password && password === confirmPassword;
             case 1: return model && (apiKeyMode === 'platform_credits' || ownApiKey);
             case 2: return selectedChannel && (
+                selectedChannel === 'webchat' ||
                 (selectedChannel === 'telegram' && telegramToken) ||
                 (selectedChannel === 'discord' && discordToken) ||
                 (selectedChannel === 'slack' && slackBotToken && slackAppToken) ||
@@ -472,6 +474,7 @@ export default function Onboarding() {
                                 {/* Channel cards */}
                                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                                     {[
+                                        { id: 'webchat' as const, name: 'Web Chat', desc: 'Built-in, no setup', badge: '✅ Always Active' },
                                         { id: 'telegram' as const, name: 'Telegram', desc: 'Easiest setup', badge: '⭐ Recommended' },
                                         { id: 'discord' as const, name: 'Discord', desc: 'For communities' },
                                         { id: 'whatsapp' as const, name: 'WhatsApp', desc: 'Personal chat' },
@@ -480,11 +483,11 @@ export default function Onboarding() {
                                     ].map(ch => (
                                         <button key={ch.id} onClick={() => setSelectedChannel(ch.id)}
                                             className={`p-4 rounded-2xl border-2 transition-all text-center relative ${selectedChannel === ch.id
-                                                ? 'border-[#ff6b6b]/50 bg-[#ff6b6b]/5'
+                                                ? ch.id === 'webchat' ? 'border-green-500/50 bg-green-500/5' : 'border-[#ff6b6b]/50 bg-[#ff6b6b]/5'
                                                 : 'border-white/5 hover:border-white/10'
                                                 }`}>
                                             {ch.badge && selectedChannel === ch.id && (
-                                                <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 px-2.5 py-0.5 bg-[#ff6b6b] text-white text-[7px] font-black uppercase rounded-full tracking-wider whitespace-nowrap">{ch.badge}</span>
+                                                <span className={`absolute -top-2.5 left-1/2 -translate-x-1/2 px-2.5 py-0.5 ${ch.id === 'webchat' ? 'bg-green-500' : 'bg-[#ff6b6b]'} text-white text-[7px] font-black uppercase rounded-full tracking-wider whitespace-nowrap`}>{ch.badge}</span>
                                             )}
                                             <img src={CHANNEL_ICONS[ch.id]} alt={ch.name} className="w-10 h-10 mx-auto mb-2 rounded-xl" />
                                             <div className="font-black text-sm">{ch.name}</div>
@@ -494,6 +497,20 @@ export default function Onboarding() {
                                 </div>
 
                                 {/* Channel-specific setup */}
+                                {selectedChannel === 'webchat' && (
+                                    <div className="mt-4">
+                                        <div className="bg-green-500/5 p-4 rounded-2xl text-[11px] text-green-300/80 leading-relaxed border border-green-500/10">
+                                            <div className="flex items-start gap-3">
+                                                <MessageSquare size={16} className="text-green-400 shrink-0 mt-0.5" />
+                                                <div>
+                                                    <p className="font-bold text-green-300 mb-1">💬 No setup needed!</p>
+                                                    <p>Web Chat is built into your dashboard. After deploying, click the chat icon on your agent card to start talking. You can always add more channels (Telegram, Discord, etc.) later from Settings.</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
                                 {selectedChannel === 'telegram' && (
                                     <div className="space-y-4 mt-4">
                                         <div className="bg-blue-500/5 p-4 rounded-2xl text-[11px] text-blue-300/80 leading-relaxed border border-blue-500/10">

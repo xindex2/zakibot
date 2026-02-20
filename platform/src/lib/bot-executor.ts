@@ -113,6 +113,14 @@ export async function startBot(configId: string, isAutoRestart = false) {
         console.log(`[StartBot] Skipping "${configId}" — already starting`);
         return { success: true, skipped: true };
     }
+
+    // Skip if bot process is already running (avoid killing it via pkill)
+    const existing = processes[configId];
+    if (existing?.bot && !existing.bot.killed && existing.bot.exitCode === null) {
+        console.log(`[StartBot] Bot "${configId}" already running (pid ${existing.bot.pid}) — skipping`);
+        return { success: true, skipped: true };
+    }
+
     startingLock[configId] = true;
 
     // Only clear restart state on MANUAL starts (not auto-restart)

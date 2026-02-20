@@ -325,12 +325,13 @@ export default function AgentChat() {
             try {
                 data = JSON.parse(text);
             } catch {
-                setError('Received an unexpected response from the bot. Please try again.');
+                console.error('[WebChat] Non-JSON response:', text.substring(0, 200));
+                setError('The bot returned an unexpected response. Please try again.');
                 return;
             }
 
             if (!resp.ok) {
-                setError(data.error || 'Failed to send message');
+                setError(data.error || data.hint || 'Failed to send message');
                 return;
             }
 

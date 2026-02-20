@@ -1620,16 +1620,32 @@ app.post('/api/chat/:configId', authenticateToken, upload.array('files', 5), asy
             });
             clearTimeout(timeout);
 
-            if (!response.ok) {
-                throw new Error(`Gateway returned ${response.status}`);
+            const responseText = await response.text();
+            let data: any;
+            try {
+                data = JSON.parse(responseText);
+            } catch {
+                console.error(`[WebChat] Gateway returned non-JSON (status ${response.status}):`, responseText.substring(0, 200));
+                return res.status(502).json({
+                    error: 'Bot returned an invalid response. Please try again.',
+                });
             }
 
-            const data = await response.json();
+            if (!response.ok) {
+                console.error(`[WebChat] Gateway error (status ${response.status}):`, data);
+                return res.status(502).json({
+                    error: data.error || `Bot gateway returned an error (status ${response.status}).`,
+                });
+            }
+
             res.json({ response: data.response || data.content || '' });
         } catch (fetchErr: any) {
             clearTimeout(timeout);
+            console.error(`[WebChat] Gateway fetch failed:`, fetchErr.message);
             res.status(502).json({
-                error: 'Bot gateway is not responding. The bot may still be starting up.',
+                error: fetchErr.name === 'AbortError'
+                    ? 'Bot took too long to respond. Please try again.'
+                    : 'Bot gateway is not responding. The bot may still be starting up.',
                 hint: 'Please wait a moment and try again.'
             });
         }

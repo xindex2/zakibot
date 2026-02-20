@@ -3,6 +3,8 @@
 import asyncio
 from pathlib import Path
 
+from loguru import logger
+
 import typer
 from rich.console import Console
 from rich.table import Table
@@ -338,10 +340,29 @@ def gateway(
 
             await cron.start()
             await heartbeat.start()
-            await asyncio.gather(
-                agent.run(),
-                channels.start_all(),
-            )
+            
+            # Start agent and channels as background tasks — don't let either
+            # exiting kill the process.  The gateway must stay alive for web chat.
+            agent_task = asyncio.create_task(agent.run())
+            channels_task = asyncio.create_task(channels.start_all())
+            
+            # Keep the event loop alive forever.
+            # Without this, if channels.start_all() returns (e.g. no channels
+            # enabled) the process would exit immediately, killing the web chat
+            # gateway and the agent loop.
+            try:
+                while True:
+                    await asyncio.sleep(60)
+                    # If both tasks died, log but keep running for web chat
+                    if agent_task.done() and channels_task.done():
+                        agent_exc = agent_task.exception() if not agent_task.cancelled() else None
+                        chan_exc = channels_task.exception() if not channels_task.cancelled() else None
+                        if agent_exc:
+                            logger.error(f"Agent loop exited with error: {agent_exc}")
+                        if chan_exc:
+                            logger.error(f"Channels exited with error: {chan_exc}")
+            except asyncio.CancelledError:
+                pass
         except KeyboardInterrupt:
             console.print("\nShutting down...")
             heartbeat.stop()

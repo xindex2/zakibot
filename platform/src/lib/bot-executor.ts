@@ -194,8 +194,24 @@ export async function startBot(configId: string) {
         }
     }
 
-    // Assign bridge port based on gateway port
-    const gatewayPort = decryptedConfig.gatewayPort || 18790;
+    // Assign a unique gateway port per bot.
+    // If gatewayPort is set in DB, use it. Otherwise, derive a deterministic
+    // port from the configId hash to avoid collisions between bots.
+    let gatewayPort = decryptedConfig.gatewayPort;
+    if (!gatewayPort || gatewayPort === 18790) {
+        // Hash the configId to get a deterministic port in range 19000-59000
+        let hash = 0;
+        for (let i = 0; i < configId.length; i++) {
+            hash = ((hash << 5) - hash + configId.charCodeAt(i)) | 0;
+        }
+        gatewayPort = 19000 + (Math.abs(hash) % 40000);
+        // Persist so it's stable across restarts and visible in dashboard
+        await prisma.botConfig.update({
+            where: { id: configId },
+            data: { gatewayPort }
+        }).catch(() => { });
+        console.log(`   🔌 [${config.name}] Auto-assigned gateway port ${gatewayPort}`);
+    }
     const bridgePort = gatewayPort + 1;
     const bridgeUrl = `ws://localhost:${bridgePort}`;
 

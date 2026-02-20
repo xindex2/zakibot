@@ -3,8 +3,6 @@ import { Sparkles, Zap, ArrowLeft, TrendingUp, CreditCard, AlertTriangle, Extern
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { isIOSWebView } from '../lib/webview-detect';
-import IOSWebViewBanner from '../components/IOSWebViewBanner';
 
 interface CreditPack {
     amount: number;
@@ -25,11 +23,6 @@ const DEFAULT_PACKS = [
 export default function TopUpCredits() {
     const { user, token } = useAuth();
     const navigate = useNavigate();
-
-    // iOS WebView: show redirect banner instead of payment UI
-    if (isIOSWebView()) {
-        return <IOSWebViewBanner type="credits" />;
-    }
     const [balance, setBalance] = useState(0);
     const [transactions, setTransactions] = useState<any[]>([]);
     const [creditPacks, setCreditPacks] = useState<CreditPack[]>([]);

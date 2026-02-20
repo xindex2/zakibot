@@ -240,7 +240,7 @@ app.post('/api/register-with-bot', async (req, res) => {
             skillCreatorEnabled: true,
             restrictToWorkspace: true,
             gatewayHost: '0.0.0.0',
-            gatewayPort: 18790,
+            gatewayPort: 0, // auto-assigned on first start by startBot()
             maxToolIterations: 30,
         };
 
@@ -1546,7 +1546,10 @@ app.post('/api/chat/:configId', authenticateToken, upload.array('files', 5), asy
         }
 
         // Forward to nanobot gateway
-        const gatewayPort = config.gatewayPort || 18790;
+        const gatewayPort = config.gatewayPort;
+        if (!gatewayPort) {
+            return res.status(503).json({ error: 'Bot gateway not yet started — please start the bot first.' });
+        }
         const gatewayUrl = `http://localhost:${gatewayPort}/chat`;
 
         const payload: any = {

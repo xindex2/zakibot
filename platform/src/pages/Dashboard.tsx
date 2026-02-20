@@ -337,7 +337,7 @@ export default function Dashboard() {
             proxyUrl: '',
             restrictToWorkspace: true,
             gatewayHost: '0.0.0.0',
-            gatewayPort: 18790 + (agents.length * 10),
+            gatewayPort: 0, // auto-assigned on first start by startBot()
             maxToolIterations: 30,
             timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
         };
@@ -379,7 +379,7 @@ export default function Dashboard() {
             proxyUrl: '',
             restrictToWorkspace: true,
             gatewayHost: '0.0.0.0',
-            gatewayPort: 18790 + (agents.length * 10),
+            gatewayPort: 0, // auto-assigned on first start by startBot()
             maxToolIterations: 30,
             timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
         };

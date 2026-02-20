@@ -1971,9 +1971,9 @@ app.listen(PORT, async () => {
     const WATCHDOG_INTERVAL_MS = 60_000; // 60 seconds
     setInterval(async () => {
         try {
-            // Find bots the DB thinks are running (or restarting)
+            // Only check bots the DB thinks are 'running' (NOT 'restarting' — autoRestart handles those)
             const runningBots = await prisma.botConfig.findMany({
-                where: { status: { in: ['running', 'restarting'] } },
+                where: { status: 'running' },
                 include: { user: { include: { subscription: true } } }
             });
 
@@ -1993,8 +1993,8 @@ app.listen(PORT, async () => {
                             data: { status: 'stopped' }
                         }).catch(() => { });
                     }
-                    // Brief delay between restarts
-                    await new Promise(r => setTimeout(r, 3000));
+                    // Stagger restarts — wait 8s between each to avoid Telegram token conflicts
+                    await new Promise(r => setTimeout(r, 8000));
                 } else if (actualStatus === 'stopped' && plan === 'Free') {
                     // Free user bot silently died — just correct the DB status
                     await prisma.botConfig.update({

@@ -9,6 +9,8 @@ import { deductCredits } from './usage-tracker.js';
 const prisma = new PrismaClient();
 // Process cache keyed by BOT CONFIG ID
 const processes: Record<string, { bot: ChildProcess, bridge?: ChildProcess }> = {};
+// Prevent concurrent startBot calls for the same bot
+const startingLock: Record<string, boolean> = {};
 
 // --- Auto-restart tracking for paid bots ---
 interface RestartState { count: number; firstAttemptAt: number; }
@@ -113,8 +115,14 @@ async function getModelPricing(modelId: string): Promise<ModelPricing> {
 }
 
 export async function startBot(configId: string, isAutoRestart = false) {
+    // Prevent concurrent starts for the same bot
+    if (startingLock[configId]) {
+        console.log(`[StartBot] Skipping "${configId}" — already starting`);
+        return { success: true, skipped: true };
+    }
+    startingLock[configId] = true;
+
     // Only clear restart state on MANUAL starts (not auto-restart)
-    // This prevents infinite restart loops from resetting the counter
     if (!isAutoRestart) {
         delete restartState[configId];
     }
@@ -123,7 +131,7 @@ export async function startBot(configId: string, isAutoRestart = false) {
         const killCmd = `pkill -f "nanobot.*${configId}.json" > /dev/null 2>&1 || true`;
         execSync(killCmd, { stdio: 'ignore' });
         // Wait for old process (and its Telegram polling) to fully release
-        await new Promise(resolve => setTimeout(resolve, 3000));
+        await new Promise(resolve => setTimeout(resolve, 5000));
     } catch (e) { }
 
     if (processes[configId]) {
@@ -138,7 +146,10 @@ export async function startBot(configId: string, isAutoRestart = false) {
         where: { id: configId },
         include: { user: { include: { subscription: true } } }
     });
-    if (!config) throw new Error('Bot configuration not found.');
+    if (!config) {
+        startingLock[configId] = false;
+        throw new Error('Bot configuration not found.');
+    }
 
     // Decrypt all sensitive fields from database
     const decryptedConfig = decryptSensitiveFields(config as any) as typeof config;
@@ -511,6 +522,7 @@ export async function startBot(configId: string, isAutoRestart = false) {
         data: { status: 'running' }
     });
 
+    startingLock[configId] = false;
     return { success: true };
 }
 

@@ -113,9 +113,9 @@ export default function AgentChat() {
     useEffect(() => {
         if (!agentId || !token) return;
 
-        // Get agent config
-        fetch('/api/config?userId=_all', { headers: { 'Authorization': `Bearer ${token}` } })
-            .then(r => r.json())
+        // Get agent config — must use actual user ID
+        fetch(`/api/config?userId=${user?.id || ''}`, { headers: { 'Authorization': `Bearer ${token}` } })
+            .then(r => r.ok ? r.json() : [])
             .then(configs => {
                 const agent = (configs || []).find((c: any) => c.id === agentId);
                 if (agent) {
@@ -304,7 +304,7 @@ export default function AgentChat() {
             </div>
 
             {/* Messages Area */}
-            <div className="flex-1 overflow-y-auto px-4 md:px-8 py-6 space-y-1">
+            <div className="flex-1 overflow-y-auto px-4 md:px-8 py-6 space-y-1" style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,0.06) transparent' }}>
                 {messages.length === 0 && !sending && (
                     <div className="flex flex-col items-center justify-center h-full text-center py-20">
                         <div className="w-24 h-24 rounded-[2rem] bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center mb-8 border border-primary/10">
@@ -479,8 +479,8 @@ export default function AgentChat() {
                             value={input}
                             onChange={e => setInput(e.target.value)}
                             onKeyDown={handleKeyDown}
-                            placeholder={isOnline ? "Message..." : "Agent is offline"}
-                            disabled={!isOnline}
+                            placeholder="Message..."
+                            disabled={false}
                             rows={1}
                             className="w-full bg-white/[0.03] border border-white/[0.06] rounded-xl px-4 py-3 text-sm text-white/85 placeholder:text-white/15 focus:outline-none focus:ring-1 focus:ring-primary/20 focus:border-primary/20 resize-none transition-all disabled:opacity-30"
                             style={{ minHeight: '44px', maxHeight: '160px' }}
@@ -493,7 +493,7 @@ export default function AgentChat() {
                     </div>
                     <button
                         onClick={sendMessage}
-                        disabled={sending || (!input.trim() && attachments.length === 0) || !isOnline}
+                        disabled={sending || (!input.trim() && attachments.length === 0)}
                         className="p-2.5 rounded-xl bg-primary hover:bg-primary/80 text-white transition-all disabled:opacity-20 disabled:cursor-not-allowed shrink-0 mb-0.5 shadow-lg shadow-primary/10"
                         title="Send"
                     >

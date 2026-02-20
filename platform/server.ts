@@ -1639,8 +1639,27 @@ app.get('/api/chat/:configId/history', authenticateToken, async (req: any, res: 
             return new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
         });
 
+        // Pagination: ?limit=50&before=<index>
+        const limit = Math.min(parseInt(req.query.limit as string) || 50, 200);
+        const before = req.query.before !== undefined ? parseInt(req.query.before as string) : undefined;
+        const totalCount = allMessages.length;
+
+        let slicedMessages: any[];
+        let hasMore = false;
+
+        if (before !== undefined && before > 0) {
+            // Load older messages before the given index
+            const start = Math.max(0, before - limit);
+            slicedMessages = allMessages.slice(start, before);
+            hasMore = start > 0;
+        } else {
+            // Load the most recent N messages
+            const start = Math.max(0, totalCount - limit);
+            slicedMessages = allMessages.slice(start);
+            hasMore = start > 0;
+        }
+
         // Count unread (assistant messages after the user's last read mark)
-        // Simple heuristic: messages from assistant in last 24h that happened after the user's last webchat session
         let unreadCount = 0;
         const now = Date.now();
         const lastUserMsg = [...allMessages].reverse().find(m => m.role === 'user' && m.channel === 'webchat');
@@ -1654,7 +1673,7 @@ app.get('/api/chat/:configId/history', authenticateToken, async (req: any, res: 
             }
         }
 
-        res.json({ messages: allMessages, sessionKey: primarySessionKey, unreadCount });
+        res.json({ messages: slicedMessages, sessionKey: primarySessionKey, unreadCount, hasMore, totalCount });
     } catch (error) {
         res.status(500).json({ error: 'Failed to load chat history' });
     }

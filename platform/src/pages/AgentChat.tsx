@@ -1,15 +1,16 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
     ArrowLeft, Send, Paperclip, Trash2, Loader2, Bot, User, Image, File as FileIcon, X, AlertTriangle,
-    Sparkles, MessageSquare, Phone, Globe, Zap
+    Sparkles, MessageSquare, Globe, ChevronUp
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
-// ---- Markdown Renderer ----
-function renderMarkdown(text: string) {
+// ---- Markdown Renderer with tables & images ----
+function renderMarkdown(text: string, agentId?: string) {
     if (!text) return null;
 
+    // Split by code blocks
     const blocks = text.split(/(```[\s\S]*?```)/g);
     return blocks.map((block, bi) => {
         if (block.startsWith('```') && block.endsWith('```')) {
@@ -29,12 +30,49 @@ function renderMarkdown(text: string) {
             );
         }
 
-        // Process inline formatting
-        const parts = block.split('\n').map((line, li) => {
+        // Check if this block contains a table
+        const lines = block.split('\n');
+        const tableResult = tryParseTable(lines);
+        if (tableResult) {
+            return <div key={bi}>{tableResult}</div>;
+        }
+
+        // Process line by line
+        const parts = lines.map((line, li) => {
+            // Images: ![alt](path)
+            const imgMatch = line.match(/!\[([^\]]*)\]\(([^)]+)\)/);
+            if (imgMatch) {
+                const alt = imgMatch[1];
+                let src = imgMatch[2];
+                // Convert workspace-relative paths to API URLs
+                if (src.startsWith('screenshots/')) {
+                    src = '/' + src; // /screenshots/filename.png is served by the backend
+                } else if (!src.startsWith('http') && !src.startsWith('/')) {
+                    src = `/screenshots/${src}`;
+                }
+                return (
+                    <div key={li} className="my-2">
+                        <img
+                            src={src}
+                            alt={alt || 'Image'}
+                            className="max-w-full rounded-xl border border-white/10 cursor-pointer hover:opacity-90 transition-opacity"
+                            onClick={() => window.open(src, '_blank')}
+                            onError={(e) => {
+                                (e.target as HTMLImageElement).style.display = 'none';
+                            }}
+                        />
+                        {alt && <p className="text-[9px] text-white/20 mt-1">{alt}</p>}
+                    </div>
+                );
+            }
+
             // Headers
             if (line.startsWith('### ')) return <h3 key={li} className="text-sm font-bold text-white/80 mt-3 mb-1">{line.slice(4)}</h3>;
             if (line.startsWith('## ')) return <h3 key={li} className="text-sm font-bold text-white/80 mt-3 mb-1">{line.slice(3)}</h3>;
             if (line.startsWith('# ')) return <h2 key={li} className="text-base font-bold text-white/90 mt-3 mb-1">{line.slice(2)}</h2>;
+
+            // Horizontal rule
+            if (line.match(/^-{3,}$/) || line.match(/^\*{3,}$/)) return <hr key={li} className="border-white/10 my-3" />;
 
             // Bullet points
             if (line.match(/^[\s]*[-*]\s/)) {
@@ -49,6 +87,9 @@ function renderMarkdown(text: string) {
                 return <div key={li} className="flex gap-2 ml-2"><span className="text-primary/60 font-bold text-[11px] mt-0.5">{num}.</span><span dangerouslySetInnerHTML={{ __html: inlineFormat(content) }} /></div>;
             }
 
+            // Empty lines
+            if (!line.trim()) return <div key={li} className="h-2" />;
+
             let processed = inlineFormat(line);
             return (
                 <span key={li}>
@@ -62,34 +103,80 @@ function renderMarkdown(text: string) {
     });
 }
 
+function tryParseTable(lines: string[]): JSX.Element | null {
+    // Find table rows: lines that contain | characters
+    const tableLines = lines.filter(l => l.trim().startsWith('|') && l.trim().endsWith('|'));
+    if (tableLines.length < 2) return null;
+
+    // Check for separator line (|---|---|)
+    const sepIdx = tableLines.findIndex(l => l.match(/^\|[\s-:|]+\|$/));
+    if (sepIdx < 1) return null;
+
+    const parseRow = (line: string) =>
+        line.split('|').slice(1, -1).map(cell => cell.trim());
+
+    const headers = parseRow(tableLines[0]);
+    const rows = tableLines.slice(sepIdx + 1).map(parseRow);
+
+    return (
+        <div className="my-3 overflow-x-auto rounded-xl border border-white/[0.08]">
+            <table className="w-full text-[11px]">
+                <thead>
+                    <tr className="bg-white/[0.04] border-b border-white/[0.08]">
+                        {headers.map((h, i) => (
+                            <th key={i} className="px-3 py-2 text-left font-bold text-white/60 uppercase tracking-wider text-[9px]">
+                                <span dangerouslySetInnerHTML={{ __html: inlineFormat(h) }} />
+                            </th>
+                        ))}
+                    </tr>
+                </thead>
+                <tbody>
+                    {rows.map((row, ri) => (
+                        <tr key={ri} className="border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors">
+                            {row.map((cell, ci) => (
+                                <td key={ci} className="px-3 py-2 text-white/50">
+                                    <span dangerouslySetInnerHTML={{ __html: inlineFormat(cell) }} />
+                                </td>
+                            ))}
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
+    );
+}
+
 function inlineFormat(line: string): string {
     return line
         .replace(/\*\*(.*?)\*\*/g, '<strong class="text-white/90 font-semibold">$1</strong>')
         .replace(/\*(.*?)\*/g, '<em class="text-white/70">$1</em>')
         .replace(/`([^`]+)`/g, '<code class="bg-white/[0.08] text-cyan-300/90 px-1.5 py-0.5 rounded text-[11px] font-mono">$1</code>')
         .replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener" class="text-primary underline underline-offset-2 hover:text-primary/80 transition-colors">$1</a>')
-        .replace(/(^|[^"'])(https?:\/\/[^\s<]+)/g, '$1<a href="$2" target="_blank" rel="noopener" class="text-primary/70 underline underline-offset-2 hover:text-primary transition-colors">$2</a>');
+        .replace(/(^|[^"'(])(https?:\/\/[^\s<)]+)/g, '$1<a href="$2" target="_blank" rel="noopener" class="text-primary/70 underline underline-offset-2 hover:text-primary transition-colors">$2</a>');
 }
 
 interface ChatMessage {
-    role: 'user' | 'assistant';
+    role: 'user' | 'assistant' | 'system';
     content: string;
     timestamp?: string;
     channel?: string;
     attachments?: string[];
 }
 
-const CHANNEL_LABELS: Record<string, { label: string; color: string }> = {
-    telegram: { label: 'Telegram', color: 'text-blue-400 bg-blue-500/10' },
-    discord: { label: 'Discord', color: 'text-indigo-400 bg-indigo-500/10' },
-    whatsapp: { label: 'WhatsApp', color: 'text-green-400 bg-green-500/10' },
-    slack: { label: 'Slack', color: 'text-purple-400 bg-purple-500/10' },
-    webchat: { label: 'Web', color: 'text-primary bg-primary/10' },
-    cli: { label: 'CLI', color: 'text-gray-400 bg-gray-500/10' },
-    cron: { label: 'Cron', color: 'text-amber-400 bg-amber-500/10' },
-};
+function cleanChannelLabel(channel?: string): { label: string; color: string } | null {
+    if (!channel) return null;
+    const lower = channel.toLowerCase();
+    if (lower === 'webchat' || lower.startsWith('webchat')) return { label: 'Web Chat', color: 'text-primary bg-primary/10' };
+    if (lower === 'telegram' || lower.startsWith('telegram')) return { label: 'Telegram', color: 'text-blue-400 bg-blue-500/10' };
+    if (lower === 'discord' || lower.startsWith('discord')) return { label: 'Discord', color: 'text-indigo-400 bg-indigo-500/10' };
+    if (lower === 'whatsapp' || lower.startsWith('whatsapp')) return { label: 'WhatsApp', color: 'text-green-400 bg-green-500/10' };
+    if (lower === 'slack' || lower.startsWith('slack')) return { label: 'Slack', color: 'text-purple-400 bg-purple-500/10' };
+    if (lower === 'cli' || lower.startsWith('cli')) return { label: 'CLI', color: 'text-gray-400 bg-gray-500/10' };
+    if (lower === 'cron' || lower.startsWith('cron')) return { label: 'Cron', color: 'text-amber-400 bg-amber-500/10' };
+    return { label: channel, color: 'text-white/30 bg-white/5' };
+}
 
-const INTRO_MESSAGE = "Tell me who am I, and who you are. What can you help me with?";
+const PAGE_SIZE = 50;
 
 export default function AgentChat() {
     const { agentId } = useParams<{ agentId: string }>();
@@ -104,8 +191,13 @@ export default function AgentChat() {
     const [agentChannels, setAgentChannels] = useState<string[]>([]);
     const [error, setError] = useState('');
     const [attachments, setAttachments] = useState<File[]>([]);
-    const [historyLoaded, setHistoryLoaded] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const [loadingMore, setLoadingMore] = useState(false);
+    const [hasMore, setHasMore] = useState(false);
+    const [totalCount, setTotalCount] = useState(0);
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const messagesTopRef = useRef<HTMLDivElement>(null);
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -113,7 +205,7 @@ export default function AgentChat() {
     useEffect(() => {
         if (!agentId || !token) return;
 
-        // Get agent config — must use actual user ID
+        // Get agent config
         fetch(`/api/config?userId=${user?.id || ''}`, { headers: { 'Authorization': `Bearer ${token}` } })
             .then(r => r.ok ? r.json() : [])
             .then(configs => {
@@ -127,37 +219,73 @@ export default function AgentChat() {
                     if (agent.discordEnabled) chs.push('Discord');
                     if (agent.whatsappEnabled) chs.push('WhatsApp');
                     if (agent.slackEnabled) chs.push('Slack');
-                    if (agent.feishuEnabled) chs.push('Feishu');
-                    if (agent.teamsEnabled) chs.push('Teams');
                     setAgentChannels(chs);
                 }
             })
             .catch(() => { });
 
-        // Get unified chat history
-        fetch(`/api/chat/${agentId}/history`, { headers: { 'Authorization': `Bearer ${token}` } })
+        // Get paginated chat history (last 50)
+        setLoading(true);
+        fetch(`/api/chat/${agentId}/history?limit=${PAGE_SIZE}`, { headers: { 'Authorization': `Bearer ${token}` } })
             .then(r => r.ok ? r.json() : { messages: [] })
             .then(data => {
                 setMessages(data.messages || []);
-                setHistoryLoaded(true);
+                setHasMore(data.hasMore || false);
+                setTotalCount(data.totalCount || 0);
+                setLoading(false);
             })
-            .catch(() => setHistoryLoaded(true));
+            .catch(() => setLoading(false));
     }, [agentId, token]);
 
-    // Auto-send intro message on first conversation
+    // Auto-scroll to bottom on initial load and new messages
     useEffect(() => {
-        if (!historyLoaded || messages.length > 0 || sending || agentStatus !== 'running') return;
-        // First ever conversation — send intro automatically
-        const timer = setTimeout(() => {
-            doSendMessage(INTRO_MESSAGE);
-        }, 500);
-        return () => clearTimeout(timer);
-    }, [historyLoaded, messages.length, agentStatus]);
+        if (!loading) {
+            messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        }
+    }, [messages.length, loading]);
 
-    // Auto-scroll on new messages
-    useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages]);
+    // Load older messages on scroll up
+    const loadOlderMessages = useCallback(async () => {
+        if (loadingMore || !hasMore || !agentId || !token) return;
+        setLoadingMore(true);
+
+        // The "before" index = totalCount - current messages length
+        // Because we're loading older messages from the total sorted array
+        const beforeIdx = totalCount - messages.length;
+
+        try {
+            const resp = await fetch(`/api/chat/${agentId}/history?limit=${PAGE_SIZE}&before=${beforeIdx}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await resp.json();
+            if (data.messages && data.messages.length > 0) {
+                // Preserve scroll position
+                const container = scrollContainerRef.current;
+                const prevHeight = container?.scrollHeight || 0;
+
+                setMessages(prev => [...data.messages, ...prev]);
+                setHasMore(data.hasMore || false);
+
+                // Restore scroll position after prepending
+                requestAnimationFrame(() => {
+                    if (container) {
+                        const newHeight = container.scrollHeight;
+                        container.scrollTop = newHeight - prevHeight;
+                    }
+                });
+            }
+        } catch { }
+        setLoadingMore(false);
+    }, [loadingMore, hasMore, agentId, token, totalCount, messages.length]);
+
+    // Scroll up detection
+    const handleScroll = useCallback(() => {
+        const container = scrollContainerRef.current;
+        if (!container) return;
+        if (container.scrollTop < 100 && hasMore && !loadingMore) {
+            loadOlderMessages();
+        }
+    }, [hasMore, loadingMore, loadOlderMessages]);
 
     const doSendMessage = async (msgText: string, files: File[] = []) => {
         if ((!msgText.trim() && files.length === 0) || sending || !agentId) return;
@@ -214,7 +342,6 @@ export default function AgentChat() {
         const currentFiles = [...attachments];
         setInput('');
         setAttachments([]);
-        // Reset textarea height
         if (inputRef.current) inputRef.current.style.height = 'auto';
         await doSendMessage(currentInput, currentFiles);
     };
@@ -226,20 +353,16 @@ export default function AgentChat() {
         }
     };
 
-    const removeAttachment = (idx: number) => {
-        setAttachments(prev => prev.filter((_, i) => i !== idx));
-    };
+    const removeAttachment = (idx: number) => setAttachments(prev => prev.filter((_, i) => i !== idx));
 
     const clearChat = () => {
-        if (!confirm('Clear all chat history?')) return;
+        if (!confirm('Clear all chat history from view?')) return;
         setMessages([]);
     };
 
     const formatTime = (ts?: string) => {
         if (!ts) return '';
-        try {
-            return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        } catch { return ''; }
+        try { return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); } catch { return ''; }
     };
 
     const formatDate = (ts?: string) => {
@@ -249,16 +372,13 @@ export default function AgentChat() {
             const today = new Date();
             const yesterday = new Date(today);
             yesterday.setDate(yesterday.getDate() - 1);
-
             if (d.toDateString() === today.toDateString()) return 'Today';
             if (d.toDateString() === yesterday.toDateString()) return 'Yesterday';
             return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
         } catch { return ''; }
     };
 
-    // Group messages by date
     let lastDate = '';
-
     const isOnline = agentStatus === 'running';
 
     return (
@@ -289,23 +409,57 @@ export default function AgentChat() {
                                 <span className="text-[10px] text-white/25 font-medium">Offline</span>
                             )}
                             {agentChannels.length > 0 && (
-                                <span className="text-[9px] text-white/15 hidden md:inline">
-                                    · {agentChannels.join(', ')}
-                                </span>
+                                <span className="text-[9px] text-white/15 hidden md:inline">· {agentChannels.join(', ')}</span>
                             )}
                         </div>
                     </div>
                 </div>
-                <div className="flex items-center gap-1">
-                    <button onClick={clearChat} className="p-2 rounded-xl hover:bg-red-500/10 text-white/15 hover:text-red-400 transition-all" title="Clear chat">
-                        <Trash2 size={16} />
-                    </button>
-                </div>
+                <button onClick={clearChat} className="p-2 rounded-xl hover:bg-red-500/10 text-white/15 hover:text-red-400 transition-all" title="Clear chat">
+                    <Trash2 size={16} />
+                </button>
             </div>
 
             {/* Messages Area */}
-            <div className="flex-1 overflow-y-auto px-4 md:px-8 py-6 space-y-1" style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,0.06) transparent' }}>
-                {messages.length === 0 && !sending && (
+            <div
+                ref={scrollContainerRef}
+                onScroll={handleScroll}
+                className="flex-1 overflow-y-auto px-4 md:px-8 py-6 space-y-1"
+                style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,0.06) transparent' }}
+            >
+                {/* Loading state */}
+                {loading && (
+                    <div className="flex flex-col items-center justify-center h-full">
+                        <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-4 animate-pulse">
+                            <Bot size={28} className="text-primary/50" />
+                        </div>
+                        <div className="flex items-center gap-2 text-white/20">
+                            <Loader2 size={14} className="animate-spin" />
+                            <span className="text-[11px] font-medium">Loading conversation...</span>
+                        </div>
+                    </div>
+                )}
+
+                {/* Load more button */}
+                {!loading && hasMore && (
+                    <div className="flex justify-center pb-4">
+                        <button
+                            onClick={loadOlderMessages}
+                            disabled={loadingMore}
+                            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/[0.04] border border-white/[0.06] text-[10px] text-white/30 hover:text-white/50 hover:bg-white/[0.06] transition-all disabled:opacity-50"
+                        >
+                            {loadingMore ? (
+                                <><Loader2 size={12} className="animate-spin" /> Loading older messages...</>
+                            ) : (
+                                <><ChevronUp size={12} /> Load older messages</>
+                            )}
+                        </button>
+                    </div>
+                )}
+
+                <div ref={messagesTopRef} />
+
+                {/* Empty state (only when not loading) */}
+                {!loading && messages.length === 0 && !sending && (
                     <div className="flex flex-col items-center justify-center h-full text-center py-20">
                         <div className="w-24 h-24 rounded-[2rem] bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center mb-8 border border-primary/10">
                             <Bot size={40} className="text-primary/50" />
@@ -323,17 +477,12 @@ export default function AgentChat() {
                                 <p className="text-[11px] text-yellow-300/70">Agent is stopped — start it from the dashboard to chat</p>
                             </div>
                         )}
-                        {isOnline && (
-                            <div className="flex items-center gap-2 text-white/20">
-                                <Sparkles size={14} className="text-primary/50" />
-                                <p className="text-[11px]">Starting conversation...</p>
-                            </div>
-                        )}
                     </div>
                 )}
 
-                {messages.map((msg, i) => {
-                    // Date separator
+                {/* Messages */}
+                {!loading && messages.map((msg, i) => {
+                    if (msg.role === 'system') return null;
                     const msgDate = formatDate(msg.timestamp);
                     let showDate = false;
                     if (msgDate && msgDate !== lastDate) {
@@ -341,7 +490,8 @@ export default function AgentChat() {
                         showDate = true;
                     }
 
-                    const channelInfo = msg.channel ? CHANNEL_LABELS[msg.channel] || { label: msg.channel, color: 'text-white/30 bg-white/5' } : null;
+                    const channelInfo = cleanChannelLabel(msg.channel);
+                    const isWebchat = msg.channel?.toLowerCase().startsWith('webchat');
 
                     return (
                         <div key={i}>
@@ -363,7 +513,7 @@ export default function AgentChat() {
                                     : 'bg-white/[0.03] border border-white/[0.05] rounded-2xl rounded-bl-sm'
                                     } px-4 py-2.5`}>
                                     {/* Channel tag for non-webchat messages */}
-                                    {channelInfo && msg.channel !== 'webchat' && (
+                                    {channelInfo && !isWebchat && (
                                         <div className="mb-1.5">
                                             <span className={`inline-flex items-center gap-1 text-[8px] font-bold uppercase tracking-wider ${channelInfo.color} px-1.5 py-0.5 rounded`}>
                                                 <Globe size={8} /> via {channelInfo.label}
@@ -382,7 +532,7 @@ export default function AgentChat() {
                                     )}
                                     {/* Content */}
                                     <div className={`text-[13px] leading-relaxed ${msg.role === 'user' ? 'text-white/85' : 'text-white/65'}`}>
-                                        {msg.role === 'assistant' ? renderMarkdown(msg.content) : msg.content}
+                                        {msg.role === 'assistant' ? renderMarkdown(msg.content, agentId) : msg.content}
                                     </div>
                                     {/* Timestamp */}
                                     {msg.timestamp && (
@@ -428,9 +578,7 @@ export default function AgentChat() {
                         <div className="bg-red-500/10 border border-red-500/15 rounded-2xl px-4 py-2.5 flex items-center gap-2 max-w-md">
                             <AlertTriangle size={14} className="text-red-400/70 shrink-0" />
                             <p className="text-[11px] text-red-300/70 flex-1">{error}</p>
-                            <button onClick={() => setError('')} className="text-red-400/40 hover:text-red-400 ml-1">
-                                <X size={12} />
-                            </button>
+                            <button onClick={() => setError('')} className="text-red-400/40 hover:text-red-400 ml-1"><X size={12} /></button>
                         </div>
                     </div>
                 )}
@@ -445,9 +593,7 @@ export default function AgentChat() {
                         <div key={i} className="inline-flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-1.5 text-[11px] text-white/50">
                             {file.type.startsWith('image/') ? <Image size={12} className="text-pink-400" /> : <FileIcon size={12} className="text-white/25" />}
                             <span className="truncate max-w-[120px]">{file.name}</span>
-                            <button onClick={() => removeAttachment(i)} className="text-white/25 hover:text-white">
-                                <X size={12} />
-                            </button>
+                            <button onClick={() => removeAttachment(i)} className="text-white/25 hover:text-white"><X size={12} /></button>
                         </div>
                     ))}
                 </div>
@@ -482,7 +628,7 @@ export default function AgentChat() {
                             placeholder="Message..."
                             disabled={false}
                             rows={1}
-                            className="w-full bg-white/[0.03] border border-white/[0.06] rounded-xl px-4 py-3 text-sm text-white/85 placeholder:text-white/15 focus:outline-none focus:ring-1 focus:ring-primary/20 focus:border-primary/20 resize-none transition-all disabled:opacity-30"
+                            className="w-full bg-white/[0.03] border border-white/[0.06] rounded-xl px-4 py-3 text-sm text-white/85 placeholder:text-white/15 focus:outline-none focus:ring-1 focus:ring-primary/20 focus:border-primary/20 resize-none transition-all"
                             style={{ minHeight: '44px', maxHeight: '160px' }}
                             onInput={(e) => {
                                 const el = e.target as HTMLTextAreaElement;
@@ -500,7 +646,7 @@ export default function AgentChat() {
                         {sending ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
                     </button>
                 </div>
-                <p className="text-[9px] text-white/[0.06] text-center mt-2 select-none">Enter to send · Shift+Enter for new line · Unified with all channels</p>
+                <p className="text-[9px] text-white/[0.06] text-center mt-2 select-none">Enter to send · Shift+Enter for new line</p>
             </div>
         </div>
     );

@@ -48,9 +48,12 @@ async function autoRestartBot(configId: string, botName: string): Promise<void> 
         return;
     }
 
-    console.log(`[AutoRestart] Bot "${botName}" crashed, restarting in ${RESTART_DELAY_MS / 1000}s (attempt ${state.count}/${MAX_RESTARTS})...`);
+    // Add random jitter (0-5s) to prevent all bots restarting simultaneously and overwhelming memory
+    const jitter = Math.floor(Math.random() * 5000);
+    const totalDelay = RESTART_DELAY_MS + jitter;
+    console.log(`[AutoRestart] Bot "${botName}" crashed, restarting in ${(totalDelay / 1000).toFixed(1)}s (attempt ${state.count}/${MAX_RESTARTS})...`);
 
-    await new Promise(resolve => setTimeout(resolve, RESTART_DELAY_MS));
+    await new Promise(resolve => setTimeout(resolve, totalDelay));
 
     try {
         await startBot(configId, true);
@@ -475,8 +478,13 @@ export async function startBot(configId: string, isAutoRestart = false) {
     // Clear suppress flag now that the new process is spawned
     suppressRestart[configId] = false;
 
-    child.on('close', async (code: any) => {
+    child.on('close', async (code: any, signal: any) => {
         const botName = config.name || configId;
+
+        // Log exit details for debugging silent crashes (e.g., OOM killer = SIGKILL/code 137)
+        if (code !== 0 || signal) {
+            console.error(`[BotExit] "${botName}" (${configId}) exited: code=${code} signal=${signal}`);
+        }
 
         // If this is a STALE close handler (process was replaced by a newer one), ignore it
         if (processes[configId]?.bot !== child) {

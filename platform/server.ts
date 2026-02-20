@@ -1505,7 +1505,55 @@ app.post('/api/chat/:configId', authenticateToken, upload.array('files', 5), asy
         const config = await prisma.botConfig.findUnique({ where: { id: req.params.configId } });
         if (!config) return res.status(404).json({ error: 'Bot not found' });
         if (config.userId !== req.user.id) return res.status(403).json({ error: 'Forbidden' });
-        if (config.status !== 'running') return res.status(400).json({ error: 'Bot is not running. Start it first.' });
+        // Auto-start paid bots on incoming chat messages
+        if (config.status !== 'running') {
+            // Check if user has a paid plan
+            const userWithSub = await prisma.user.findUnique({
+                where: { id: config.userId },
+                include: { subscription: true }
+            });
+            const plan = (userWithSub as any)?.subscription?.plan || 'Free';
+
+            if (plan === 'Free') {
+                return res.status(400).json({ error: 'Bot is not running. Start it first.' });
+            }
+
+            // Auto-start the bot for paid users
+            try {
+                await startBot(req.params.configId);
+
+                // Wait up to 15s for bot gateway to come online
+                const gatewayPort = (await prisma.botConfig.findUnique({
+                    where: { id: req.params.configId },
+                    select: { gatewayPort: true }
+                }))?.gatewayPort;
+
+                if (gatewayPort) {
+                    let ready = false;
+                    for (let i = 0; i < 15; i++) {
+                        try {
+                            const health = await fetch(`http://localhost:${gatewayPort}/health`, {
+                                signal: AbortSignal.timeout(1000)
+                            });
+                            if (health.ok) { ready = true; break; }
+                        } catch { /* not ready yet */ }
+                        await new Promise(r => setTimeout(r, 1000));
+                    }
+                    if (!ready) {
+                        return res.status(503).json({ error: 'Bot is starting up. Please try again in a few seconds.' });
+                    }
+                }
+            } catch (err: any) {
+                return res.status(500).json({ error: 'Failed to auto-start bot: ' + err.message });
+            }
+
+            // Refresh config after auto-start (port may have been assigned)
+            const freshConfig = await prisma.botConfig.findUnique({ where: { id: req.params.configId } });
+            if (freshConfig) {
+                (config as any).gatewayPort = freshConfig.gatewayPort;
+                (config as any).status = freshConfig.status;
+            }
+        }
 
         const { message } = req.body;
         if (!message || !message.trim()) return res.status(400).json({ error: 'Message is required' });

@@ -13,8 +13,8 @@ const processes: Record<string, { bot: ChildProcess, bridge?: ChildProcess }> = 
 // --- Auto-restart tracking for paid bots ---
 interface RestartState { count: number; firstAttemptAt: number; }
 const restartState: Record<string, RestartState> = {};
-const MAX_RESTARTS = 5;
-const RESTART_WINDOW_MS = 10 * 60 * 1000; // 10 minutes
+const MAX_RESTARTS = 10;
+const RESTART_WINDOW_MS = 30 * 60 * 1000; // 30 minutes
 const RESTART_DELAY_MS = 8000; // 8 seconds before restart (give port time to release)
 
 async function autoRestartBot(configId: string, botName: string): Promise<void> {
@@ -113,6 +113,8 @@ async function getModelPricing(modelId: string): Promise<ModelPricing> {
 }
 
 export async function startBot(configId: string) {
+    // Clear any stale restart state — fresh start gets a clean slate
+    delete restartState[configId];
     try {
         // Cleanup existing processes with this config ID in command line
         const killCmd = `pkill -f "nanobot.*${configId}.json" > /dev/null 2>&1 || true`;

@@ -1949,8 +1949,8 @@ app.listen(PORT, async () => {
                 console.log(`   🚀 Restarting "${bot.name}" for ${plan} user ${(bot as any).user?.email}...`);
                 await startBot(bot.id);
                 restartedCount++;
-                // Small delay between bot starts to avoid overwhelming the server
-                await new Promise(resolve => setTimeout(resolve, 3000));
+                // Stagger bot starts to avoid overwhelming the server and Telegram token conflicts
+                await new Promise(resolve => setTimeout(resolve, 8000));
             } catch (err: any) {
                 console.error(`   ❌ Failed to restart "${bot.name}":`, err.message);
                 await prisma.botConfig.update({

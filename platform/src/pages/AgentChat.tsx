@@ -44,9 +44,14 @@ function renderMarkdown(text: string, agentId?: string) {
             if (imgMatch) {
                 const alt = imgMatch[1];
                 let src = imgMatch[2];
-                // Convert workspace-relative paths to API URLs
-                if (src.startsWith('screenshots/')) {
-                    src = '/' + src; // /screenshots/filename.png is served by the backend
+                // Convert workspace-relative or absolute paths to API URLs
+                // Absolute paths like /root/zakibot/.../screenshots/file.png
+                const screenshotIdx = src.indexOf('/screenshots/');
+                if (screenshotIdx !== -1) {
+                    const filename = src.slice(screenshotIdx + '/screenshots/'.length);
+                    src = `/screenshots/${filename}`;
+                } else if (src.startsWith('screenshots/')) {
+                    src = '/' + src;
                 } else if (!src.startsWith('http') && !src.startsWith('/')) {
                     src = `/screenshots/${src}`;
                 }
@@ -320,7 +325,7 @@ export default function AgentChat() {
             try {
                 data = JSON.parse(text);
             } catch {
-                setError('Bot is not responding — it may still be starting up. Please try again.');
+                setError('Received an unexpected response from the bot. Please try again.');
                 return;
             }
 

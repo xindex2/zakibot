@@ -1116,7 +1116,9 @@ class BrowserTool(Tool):
                 await self.page.screenshot(path=path, full_page=full_page)
                 # Get file size for debugging
                 file_size = path.stat().st_size if path.exists() else 0
-                return f"Screenshot saved to {path} ({file_size // 1024}KB)"
+                # Return relative path (screenshots/filename.png) for clean markdown rendering
+                rel_path = f"screenshots/{path.name}"
+                return f"Screenshot saved to {rel_path} ({file_size // 1024}KB)"
             
             # ---- Extract readable text ----
             elif action == "extract":

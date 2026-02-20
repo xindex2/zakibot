@@ -3,6 +3,7 @@
 import asyncio
 import json
 import os
+import re
 from pathlib import Path
 from typing import Any
 
@@ -22,6 +23,26 @@ from nanobot.agent.tools.spawn import SpawnTool
 from nanobot.agent.tools.cron import CronTool
 from nanobot.agent.subagent import SubagentManager
 from nanobot.session.manager import SessionManager
+
+
+def _strip_thinking(text: str) -> str:
+    """Remove LLM thinking / reasoning blocks from user-facing responses."""
+    if not text:
+        return text
+    # Remove <think>...</think> and <thinking>...</thinking> blocks
+    text = re.sub(r'<think(?:ing)?>.*?</think(?:ing)?>', '', text, flags=re.DOTALL | re.IGNORECASE)
+    # Remove <reasoning>...</reasoning> blocks
+    text = re.sub(r'<reasoning>.*?</reasoning>', '', text, flags=re.DOTALL | re.IGNORECASE)
+    # Remove lines starting with "thought:" or "thinking:"
+    lines = text.split('\n')
+    cleaned = []
+    for line in lines:
+        s = line.strip().lower()
+        if s.startswith('thought:') or s.startswith('**thought:') or s.startswith('thinking:'):
+            continue
+        cleaned.append(line)
+    text = '\n'.join(cleaned).strip()
+    return text
 
 
 class AgentLoop:
@@ -360,6 +381,9 @@ class AgentLoop:
         if final_content is None:
             final_content = "I've completed processing but have no response to give."
         
+        # Strip any leaked thinking/reasoning from the response
+        final_content = _strip_thinking(final_content)
+        
         # Save to session
         session.add_message("user", msg.content)
         session.add_message("assistant", final_content)
@@ -466,6 +490,9 @@ class AgentLoop:
         
         if final_content is None:
             final_content = "Background task completed."
+        
+        # Strip any leaked thinking/reasoning
+        final_content = _strip_thinking(final_content)
         
         # Save to session (mark as system message in history)
         session.add_message("user", f"[System: {msg.sender_id}] {msg.content}")

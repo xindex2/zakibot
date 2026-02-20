@@ -415,8 +415,8 @@ export async function startBot(configId: string, isAutoRestart = false) {
     // Capture current bridge reference so close handler doesn't kill a NEW bridge on restart
     const currentBridge = processes[configId].bridge;
 
-    // Spawn nanobot
-    const child = spawn(pythonPath, ['-m', 'nanobot', 'gateway'], {
+    // Spawn nanobot — pass configPath as CLI arg so pkill -f can match this process
+    const child = spawn(pythonPath, ['-m', 'nanobot', 'gateway', '--config', configPath], {
         cwd: nanobotRoot,
         env: {
             ...env,

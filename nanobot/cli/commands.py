@@ -156,6 +156,7 @@ This file stores important information that should persist across sessions.
 def gateway(
     port: int = typer.Option(18790, "--port", "-p", help="Gateway port"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Verbose output"),
+    config: str = typer.Option(None, "--config", "-c", help="Path to config file (overrides NANOBOT_CONFIG env)"),
 ):
     """Start the nanobot gateway."""
     from nanobot.config.loader import load_config, get_data_dir
@@ -166,6 +167,11 @@ def gateway(
     from nanobot.cron.service import CronService
     from nanobot.cron.types import CronJob
     from nanobot.heartbeat.service import HeartbeatService
+    
+    # If --config provided, set it as env var so load_config picks it up
+    if config:
+        import os
+        os.environ["NANOBOT_CONFIG"] = config
     
     if verbose:
         import logging

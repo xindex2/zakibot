@@ -1095,8 +1095,35 @@ class BrowserTool(Tool):
                 full_page = kwargs.get("full_page", False)
                 ts = int(time.time())
                 path = self._screenshots_dir / f"screenshot_{ts}.png"
-                # Brief wait to ensure page has fully painted
-                await self.page.wait_for_timeout(500)
+                
+                # Wait for network to settle and page to fully paint
+                try:
+                    await self.page.wait_for_load_state("networkidle", timeout=5000)
+                except Exception:
+                    pass
+                
+                # Wait for body to have visible content (avoid white screenshots)
+                try:
+                    await self.page.wait_for_function(
+                        """() => {
+                            const body = document.body;
+                            if (!body) return false;
+                            // Check if body has meaningful content
+                            const text = body.innerText || '';
+                            const images = document.querySelectorAll('img');
+                            const hasText = text.trim().length > 50;
+                            const hasImages = images.length > 0;
+                            const hasCanvas = document.querySelectorAll('canvas').length > 0;
+                            return hasText || hasImages || hasCanvas;
+                        }""",
+                        timeout=8000
+                    )
+                except Exception:
+                    pass  # Take screenshot anyway even if content check fails
+                
+                # Final settle delay for CSS transitions/animations/fonts
+                await self.page.wait_for_timeout(1500)
+                
                 await self.page.screenshot(path=path, full_page=full_page)
                 return f"Screenshot saved to {path}"
             

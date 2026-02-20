@@ -301,31 +301,34 @@ def gateway(
             runner = web.AppRunner(http_app)
             await runner.setup()
             
-            # Retry binding — use reuse_address to handle TIME_WAIT sockets
-            import socket
-            site = None
-            bind_port = port
-            for attempt in range(6):
-                try:
-                    site = web.TCPSite(runner, "127.0.0.1", bind_port, reuse_address=True)
-                    await site.start()
-                    break
-                except OSError as e:
-                    if "address already in use" in str(e).lower() and attempt < 5:
-                        import subprocess
-                        try:
-                            subprocess.run(
-                                ["fuser", "-k", f"{bind_port}/tcp"],
-                                capture_output=True, timeout=3
-                            )
-                        except Exception:
-                            pass
-                        console.print(f"[yellow]⏳[/yellow] Port {bind_port} busy, retrying in 3s (attempt {attempt + 1}/6)...")
-                        await asyncio.sleep(3)
-                    else:
-                        raise
-            
-            console.print(f"[green]✓[/green] HTTP gateway listening on port {bind_port}")
+            # Try to start gateway — NON-FATAL if port is busy
+            # Bot continues running for Telegram/Discord/etc even without web chat
+            try:
+                import socket
+                bind_port = port
+                for attempt in range(3):
+                    try:
+                        site = web.TCPSite(runner, "127.0.0.1", bind_port, reuse_address=True)
+                        await site.start()
+                        console.print(f"[green]✓[/green] HTTP gateway listening on port {bind_port}")
+                        break
+                    except OSError as e:
+                        if "address already in use" in str(e).lower() and attempt < 2:
+                            import subprocess
+                            try:
+                                subprocess.run(
+                                    ["fuser", "-k", f"{bind_port}/tcp"],
+                                    capture_output=True, timeout=3
+                                )
+                            except Exception:
+                                pass
+                            console.print(f"[yellow]⏳[/yellow] Port {bind_port} busy, retrying in 3s (attempt {attempt + 1}/3)...")
+                            await asyncio.sleep(3)
+                        else:
+                            raise
+            except Exception as gw_err:
+                console.print(f"[yellow]⚠️[/yellow] Web chat gateway failed (port {port}): {gw_err}")
+                console.print(f"[yellow]⚠️[/yellow] Bot will continue running without web chat")
 
             await cron.start()
             await heartbeat.start()

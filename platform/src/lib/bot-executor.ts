@@ -61,7 +61,7 @@ async function autoRestartBot(configId: string, botName: string): Promise<void> 
     } catch (e) { /* ignore cleanup errors */ }
 
     try {
-        await startBot(configId);
+        await startBot(configId, true);
         console.log(`[AutoRestart] Bot "${botName}" restarted successfully.`);
     } catch (err: any) {
         console.error(`[AutoRestart] Failed to restart bot "${botName}":`, err.message);
@@ -112,9 +112,12 @@ async function getModelPricing(modelId: string): Promise<ModelPricing> {
     return { prompt: 0.000001, completion: 0.000002 }; // $1/$2 per 1M
 }
 
-export async function startBot(configId: string) {
-    // Clear any stale restart state — fresh start gets a clean slate
-    delete restartState[configId];
+export async function startBot(configId: string, isAutoRestart = false) {
+    // Only clear restart state on MANUAL starts (not auto-restart)
+    // This prevents infinite restart loops from resetting the counter
+    if (!isAutoRestart) {
+        delete restartState[configId];
+    }
     try {
         // Cleanup existing processes with this config ID in command line
         const killCmd = `pkill -f "nanobot.*${configId}.json" > /dev/null 2>&1 || true`;

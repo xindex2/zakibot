@@ -596,6 +596,7 @@ export default function Dashboard() {
                                         onDelete={() => deleteAgent(agent.id)}
                                         onToggle={() => toggleBot(agent.id, agent.status)}
                                         onChat={() => navigate(`/chat/${agent.id}`)}
+                                        onOpenWorkspace={() => { setEditingAgent(agent); setActiveTab('workspace'); }}
                                     />
                                 ))}
                             </div>
@@ -2089,15 +2090,22 @@ function WorkspaceTab({ configId, userId, token, files, currentPath, loading, pr
     );
 }
 
-function AgentCard({ agent, token, onEdit, onDelete, onToggle, onChat }: any) {
+function AgentCard({ agent, token, onEdit, onDelete, onToggle, onChat, onOpenWorkspace }: any) {
     const isRunning = agent.status === 'running';
     const [wsStats, setWsStats] = useState<{ fileCount: number; totalSizeFormatted: string } | null>(null);
+    const [unreadCount, setUnreadCount] = useState(0);
 
     useEffect(() => {
         if (!agent.id || agent.id.startsWith('temp-') || !token) return;
+        // Fetch workspace stats
         fetch(`/api/workspace/${agent.id}/stats`, { headers: { 'Authorization': `Bearer ${token}` } })
             .then(r => r.ok ? r.json() : null)
             .then(data => { if (data) setWsStats(data); })
+            .catch(() => { });
+        // Fetch unread count
+        fetch(`/api/chat/${agent.id}/history`, { headers: { 'Authorization': `Bearer ${token}` } })
+            .then(r => r.ok ? r.json() : null)
+            .then(data => { if (data?.unreadCount) setUnreadCount(data.unreadCount); })
             .catch(() => { });
     }, [agent.id, token]);
 
@@ -2169,7 +2177,7 @@ function AgentCard({ agent, token, onEdit, onDelete, onToggle, onChat }: any) {
                 )}
                 {wsStats && wsStats.fileCount > 0 && (
                     <button
-                        onClick={(e) => { e.stopPropagation(); onEdit(); }}
+                        onClick={(e) => { e.stopPropagation(); onOpenWorkspace?.(); }}
                         className="inline-flex items-center gap-1.5 text-[10px] text-cyan-400/60 font-medium bg-cyan-500/5 px-2 py-0.5 rounded-md border border-cyan-500/10 hover:bg-cyan-500/10 hover:text-cyan-400 transition-all"
                         title="Open workspace"
                     >
@@ -2179,24 +2187,38 @@ function AgentCard({ agent, token, onEdit, onDelete, onToggle, onChat }: any) {
                 )}
             </div>
 
-            {/* Footer: channels + actions */}
+            {/* Footer: channels + chat + actions */}
             <div className="flex items-center justify-between pt-4 border-t border-white/[0.05] mt-auto">
-                <div className="flex -space-x-1.5">
-                    {agent.telegramEnabled && <ChannelIcon src={ICONS.telegram} />}
-                    {agent.discordEnabled && <ChannelIcon src={ICONS.discord} />}
-                    {agent.whatsappEnabled && <ChannelIcon src={ICONS.whatsapp} />}
-                    {agent.feishuEnabled && <ChannelIcon src={ICONS.feishu} />}
-                    {agent.slackEnabled && <ChannelIcon src={ICONS.slack} />}
-                    {agent.teamsEnabled && <ChannelIcon src={ICONS.teams} />}
+                <div className="flex items-center gap-1">
+                    {/* Channel icons */}
+                    <div className="flex -space-x-1.5">
+                        {agent.telegramEnabled && <ChannelIcon src={ICONS.telegram} />}
+                        {agent.discordEnabled && <ChannelIcon src={ICONS.discord} />}
+                        {agent.whatsappEnabled && <ChannelIcon src={ICONS.whatsapp} />}
+                        {agent.feishuEnabled && <ChannelIcon src={ICONS.feishu} />}
+                        {agent.slackEnabled && <ChannelIcon src={ICONS.slack} />}
+                        {agent.teamsEnabled && <ChannelIcon src={ICONS.teams} />}
+                    </div>
+                    {/* Web Chat icon with unread badge — always shown, next to channel icons */}
+                    <button
+                        onClick={onChat}
+                        className="relative w-8 h-8 rounded-full border-2 border-[#050505] bg-primary/15 hover:bg-primary/25 flex items-center justify-center transition-all ml-1"
+                        title="Web Chat"
+                    >
+                        <MessageSquare size={14} className="text-primary" />
+                        {unreadCount > 0 && (
+                            <span className="absolute -top-1 -right-1 min-w-[16px] h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center px-1 shadow-lg shadow-red-900/30 animate-pulse">
+                                {unreadCount > 99 ? '99+' : unreadCount}
+                            </span>
+                        )}
+                    </button>
+                    {/* No channels at all */}
                     {!agent.telegramEnabled && !agent.discordEnabled && !agent.whatsappEnabled && !agent.feishuEnabled && !agent.slackEnabled && !agent.teamsEnabled && (
-                        <span className="text-[10px] text-white/15 font-medium">No channels</span>
+                        <span className="text-[10px] text-white/15 font-medium ml-1">Web only</span>
                     )}
                 </div>
 
                 <div className="flex items-center gap-1.5">
-                    <button onClick={onChat} className="p-2 rounded-lg hover:bg-primary/10 text-white/25 hover:text-primary transition-all" title="Chat">
-                        <MessageSquare size={16} />
-                    </button>
                     <button onClick={onEdit} className="p-2 rounded-lg hover:bg-white/[0.06] text-white/25 hover:text-white/60 transition-all" title="Settings">
                         <Settings size={16} />
                     </button>

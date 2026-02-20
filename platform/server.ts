@@ -1523,6 +1523,28 @@ app.post('/api/chat/:configId', authenticateToken, upload.array('files', 5), asy
             }
         }
 
+        // Find the primary/existing session key for this bot
+        // This ensures the web chat shares the same conversation as Telegram/Discord
+        let sessionKey = `webchat:${req.user.id}`;
+        if (ws) {
+            const sessionsDir = path.join(ws.base, 'sessions');
+            if (fs.existsSync(sessionsDir)) {
+                const sessionFiles = fs.readdirSync(sessionsDir)
+                    .filter((f: string) => f.endsWith('.jsonl') && !f.includes('_metadata'))
+                    .map((f: string) => ({
+                        name: f,
+                        key: f.replace('.jsonl', ''),
+                        mtime: fs.statSync(path.join(sessionsDir, f)).mtimeMs,
+                    }))
+                    .sort((a: any, b: any) => b.mtime - a.mtime); // Most recent first
+
+                // Prefer the most recently used session (likely Telegram/Discord) over webchat
+                if (sessionFiles.length > 0) {
+                    sessionKey = sessionFiles[0].key;
+                }
+            }
+        }
+
         // Forward to nanobot gateway
         const gatewayPort = config.gatewayPort || 18790;
         const gatewayUrl = `http://localhost:${gatewayPort}/chat`;
@@ -1531,7 +1553,7 @@ app.post('/api/chat/:configId', authenticateToken, upload.array('files', 5), asy
             message: message.trim(),
             channel: 'webchat',
             chat_id: req.user.id,
-            session_key: `webchat:${req.user.id}`,
+            session_key: sessionKey,
         };
         if (mediaFiles.length > 0) payload.media = mediaFiles;
 
@@ -1548,7 +1570,6 @@ app.post('/api/chat/:configId', authenticateToken, upload.array('files', 5), asy
             clearTimeout(timeout);
 
             if (!response.ok) {
-                // Gateway may not have /chat endpoint yet — fallback to direct process
                 throw new Error(`Gateway returned ${response.status}`);
             }
 
@@ -1556,8 +1577,6 @@ app.post('/api/chat/:configId', authenticateToken, upload.array('files', 5), asy
             res.json({ response: data.response || data.content || '' });
         } catch (fetchErr: any) {
             clearTimeout(timeout);
-            // Fallback: read session file directly for last response (if gateway doesn't support /chat)
-            // For now, return a helpful error
             res.status(502).json({
                 error: 'Bot gateway is not responding. The bot may still be starting up.',
                 hint: 'Please wait a moment and try again.'
@@ -1568,7 +1587,7 @@ app.post('/api/chat/:configId', authenticateToken, upload.array('files', 5), asy
     }
 });
 
-// Chat history (reads bot session file)
+// Chat history — reads ALL session files for the bot (unified across channels)
 app.get('/api/chat/:configId/history', authenticateToken, async (req: any, res: any) => {
     try {
         const config = await prisma.botConfig.findUnique({ where: { id: req.params.configId } });
@@ -1576,29 +1595,66 @@ app.get('/api/chat/:configId/history', authenticateToken, async (req: any, res: 
         if (config.userId !== req.user.id) return res.status(403).json({ error: 'Forbidden' });
 
         const ws = resolveWorkspace(config.userId, config.id);
-        if (!ws) return res.json({ messages: [] });
+        if (!ws) return res.json({ messages: [], sessionKey: null, unreadCount: 0 });
 
-        const sessionKey = `webchat_${req.user.id}`;
-        const sessionPath = path.join(ws.base, 'sessions', `${sessionKey}.jsonl`);
+        const sessionsDir = path.join(ws.base, 'sessions');
+        if (!fs.existsSync(sessionsDir)) return res.json({ messages: [], sessionKey: null, unreadCount: 0 });
 
-        if (!fs.existsSync(sessionPath)) return res.json({ messages: [] });
+        // Read all session JSONL files
+        const sessionFiles = fs.readdirSync(sessionsDir).filter((f: string) => f.endsWith('.jsonl'));
+        const allMessages: any[] = [];
+        let primarySessionKey: string | null = null;
+        let latestMtime = 0;
 
-        const lines = fs.readFileSync(sessionPath, 'utf-8').split('\n').filter(l => l.trim());
-        const messages: any[] = [];
+        for (const file of sessionFiles) {
+            const filePath = path.join(sessionsDir, file);
+            const fileKey = file.replace('.jsonl', '');
+            const stat = fs.statSync(filePath);
 
-        for (const line of lines) {
-            try {
-                const data = JSON.parse(line);
-                if (data._type === 'metadata') continue;
-                messages.push({
-                    role: data.role,
-                    content: data.content,
-                    timestamp: data.timestamp || null,
-                });
-            } catch { }
+            if (stat.mtimeMs > latestMtime) {
+                latestMtime = stat.mtimeMs;
+                primarySessionKey = fileKey;
+            }
+
+            const lines = fs.readFileSync(filePath, 'utf-8').split('\n').filter((l: string) => l.trim());
+            for (const line of lines) {
+                try {
+                    const data = JSON.parse(line);
+                    if (data._type === 'metadata') continue;
+                    allMessages.push({
+                        role: data.role,
+                        content: data.content,
+                        timestamp: data.timestamp || null,
+                        channel: fileKey.split(':')[0] || 'unknown',
+                    });
+                } catch { }
+            }
         }
 
-        res.json({ messages });
+        // Sort by timestamp
+        allMessages.sort((a, b) => {
+            if (!a.timestamp && !b.timestamp) return 0;
+            if (!a.timestamp) return -1;
+            if (!b.timestamp) return 1;
+            return new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
+        });
+
+        // Count unread (assistant messages after the user's last read mark)
+        // Simple heuristic: messages from assistant in last 24h that happened after the user's last webchat session
+        let unreadCount = 0;
+        const now = Date.now();
+        const lastUserMsg = [...allMessages].reverse().find(m => m.role === 'user' && m.channel === 'webchat');
+        const lastUserTs = lastUserMsg?.timestamp ? new Date(lastUserMsg.timestamp).getTime() : 0;
+        for (const msg of allMessages) {
+            if (msg.role === 'assistant' && msg.timestamp) {
+                const ts = new Date(msg.timestamp).getTime();
+                if (ts > lastUserTs && (now - ts) < 86400000) {
+                    unreadCount++;
+                }
+            }
+        }
+
+        res.json({ messages: allMessages, sessionKey: primarySessionKey, unreadCount });
     } catch (error) {
         res.status(500).json({ error: 'Failed to load chat history' });
     }

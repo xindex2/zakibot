@@ -1540,11 +1540,11 @@ app.post('/api/chat/:configId', authenticateToken, upload.array('files', 5), asy
                         await new Promise(r => setTimeout(r, 1000));
                     }
                     if (!ready) {
-                        return res.status(503).json({ error: 'Bot is starting up. Please try again in a few seconds.' });
+                        return res.json({ ok: false, error: 'Bot is starting up. Please try again in a few seconds.' });
                     }
                 }
             } catch (err: any) {
-                return res.status(500).json({ error: 'Failed to auto-start bot: ' + err.message });
+                return res.json({ ok: false, error: 'Failed to auto-start bot: ' + err.message });
             }
 
             // Refresh config after auto-start (port may have been assigned)
@@ -1556,7 +1556,7 @@ app.post('/api/chat/:configId', authenticateToken, upload.array('files', 5), asy
         }
 
         const { message } = req.body;
-        if (!message || !message.trim()) return res.status(400).json({ error: 'Message is required' });
+        if (!message || !message.trim()) return res.json({ ok: false, error: 'Message is required' });
 
         // Save uploaded files to workspace if any
         const mediaFiles: string[] = [];
@@ -1596,7 +1596,7 @@ app.post('/api/chat/:configId', authenticateToken, upload.array('files', 5), asy
         // Forward to nanobot gateway
         const gatewayPort = config.gatewayPort;
         if (!gatewayPort) {
-            return res.status(503).json({ error: 'Bot gateway not yet started — please start the bot first.' });
+            return res.json({ ok: false, error: 'Bot gateway not yet started — please start the bot first.' });
         }
         const gatewayUrl = `http://localhost:${gatewayPort}/chat`;
 
@@ -1626,31 +1626,33 @@ app.post('/api/chat/:configId', authenticateToken, upload.array('files', 5), asy
                 data = JSON.parse(responseText);
             } catch {
                 console.error(`[WebChat] Gateway returned non-JSON (status ${response.status}):`, responseText.substring(0, 200));
-                return res.status(502).json({
+                return res.json({
+                    ok: false,
                     error: 'Bot returned an invalid response. Please try again.',
                 });
             }
 
             if (!response.ok) {
                 console.error(`[WebChat] Gateway error (status ${response.status}):`, data);
-                return res.status(502).json({
+                return res.json({
+                    ok: false,
                     error: data.error || `Bot gateway returned an error (status ${response.status}).`,
                 });
             }
 
-            res.json({ response: data.response || data.content || '' });
+            res.json({ ok: true, response: data.response || data.content || '' });
         } catch (fetchErr: any) {
             clearTimeout(timeout);
             console.error(`[WebChat] Gateway fetch failed:`, fetchErr.message);
-            res.status(502).json({
+            res.json({
+                ok: false,
                 error: fetchErr.name === 'AbortError'
                     ? 'Bot took too long to respond. Please try again.'
                     : 'Bot gateway is not responding. The bot may still be starting up.',
-                hint: 'Please wait a moment and try again.'
             });
         }
     } catch (error: any) {
-        res.status(500).json({ error: error.message || 'Failed to send message' });
+        res.json({ ok: false, error: error.message || 'Failed to send message' });
     }
 });
 

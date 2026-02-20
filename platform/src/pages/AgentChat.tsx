@@ -330,8 +330,10 @@ export default function AgentChat() {
                 return;
             }
 
-            if (!resp.ok) {
-                setError(data.error || data.hint || 'Failed to send message');
+            // Server now returns 200 for all responses to avoid Cloudflare interception
+            // Check the ok flag or error field instead of HTTP status
+            if (data.ok === false || data.error) {
+                setError(data.error || 'Failed to send message');
                 return;
             }
 

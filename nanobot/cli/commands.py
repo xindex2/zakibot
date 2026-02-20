@@ -179,9 +179,16 @@ def gateway(
         import logging
         logging.basicConfig(level=logging.DEBUG)
     
-    console.print(f"{__logo__} Starting nanobot gateway on port {port}...")
+    console.print(f"{__logo__} Starting nanobot gateway...")
     
     config = load_config()
+    
+    # Use the port from the config file (set per-bot by the platform) if the CLI
+    # port was not explicitly provided (i.e. still the default 18790).
+    if port == 18790 and config.gateway.port != 18790:
+        port = config.gateway.port
+    
+    console.print(f"[green]✓[/green] Gateway port: {port}")
     
     # Create components
     bus = MessageBus()

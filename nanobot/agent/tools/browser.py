@@ -699,13 +699,13 @@ class BrowserTool(Tool):
                 '--disable-setuid-sandbox',
                 '--disable-infobars',
                 '--window-size=1920,1080',
-                '--disable-web-security',
                 '--disable-features=VizDisplayCompositor',
-                # ── Rendering: use software rendering to avoid black screenshots ──
+                # ── Rendering: software rendering for headless servers ──
+                '--disable-gpu',
                 '--disable-gpu-compositing',
                 '--force-color-profile=srgb',
                 '--disable-skia-runtime-opts',
-                # ── Memory reduction flags ──
+                # ── Memory / perf flags ──
                 '--disable-extensions',
                 '--disable-background-networking',
                 '--disable-background-timer-throttling',
@@ -723,7 +723,7 @@ class BrowserTool(Tool):
                 '--disable-domain-reliability',
                 '--disable-client-side-phishing-detection',
                 '--disable-ipc-flooding-protection',
-                '--js-flags=--max-old-space-size=128',
+                '--js-flags=--max-old-space-size=256',
             ]
         )
         
@@ -910,22 +910,30 @@ class BrowserTool(Tool):
                 if not url:
                     return "Error: 'url' parameter is required for 'goto' action."
                 await self._human_delay(100, 300)
-                # Set a realistic referer on navigation (article technique #10)
+                # Navigate with a realistic referer
                 try:
-                    await self.page.goto(url, wait_until="domcontentloaded", timeout=60000,
+                    await self.page.goto(url, wait_until="domcontentloaded", timeout=30000,
                                           referer=random.choice(["https://www.google.com/", "https://www.google.com/search?q=", ""]))
                 except Exception:
-                    await self.page.goto(url, wait_until="domcontentloaded", timeout=60000)
+                    try:
+                        await self.page.goto(url, wait_until="domcontentloaded", timeout=30000)
+                    except Exception as nav_err:
+                        return f"Error: Failed to navigate to {url}: {str(nav_err)}"
+                # Wait for network to settle (but don't block forever)
                 try:
-                    await self.page.wait_for_load_state("networkidle", timeout=8000)
+                    await self.page.wait_for_load_state("networkidle", timeout=5000)
                 except Exception:
                     pass
+                # Small extra wait for JS-rendered pages
+                await self.page.wait_for_timeout(500)
                 # Auto-dismiss cookie banners
                 await self._dismiss_cookie_banners()
                 # Auto-solve CAPTCHA if present
                 captcha_msg = await self._auto_solve_captcha()
                 title = await self.page.title()
-                result = f"Navigated to {url} — Title: \"{title}\""
+                # Get content length for debugging
+                body_len = await self.page.evaluate("document.body?.innerText?.length || 0")
+                result = f"Navigated to {url} — Title: \"{title}\" ({body_len} chars of text)"
                 if captcha_msg:
                     result += f"\n{captcha_msg}"
                 return result
@@ -1095,37 +1103,12 @@ class BrowserTool(Tool):
                 full_page = kwargs.get("full_page", False)
                 ts = int(time.time())
                 path = self._screenshots_dir / f"screenshot_{ts}.png"
-                
-                # Wait for network to settle and page to fully paint
-                try:
-                    await self.page.wait_for_load_state("networkidle", timeout=5000)
-                except Exception:
-                    pass
-                
-                # Wait for body to have visible content (avoid white screenshots)
-                try:
-                    await self.page.wait_for_function(
-                        """() => {
-                            const body = document.body;
-                            if (!body) return false;
-                            // Check if body has meaningful content
-                            const text = body.innerText || '';
-                            const images = document.querySelectorAll('img');
-                            const hasText = text.trim().length > 50;
-                            const hasImages = images.length > 0;
-                            const hasCanvas = document.querySelectorAll('canvas').length > 0;
-                            return hasText || hasImages || hasCanvas;
-                        }""",
-                        timeout=8000
-                    )
-                except Exception:
-                    pass  # Take screenshot anyway even if content check fails
-                
-                # Final settle delay for CSS transitions/animations/fonts
-                await self.page.wait_for_timeout(1500)
-                
+                # Brief settle for any pending renders (goto already waited for load)
+                await self.page.wait_for_timeout(800)
                 await self.page.screenshot(path=path, full_page=full_page)
-                return f"Screenshot saved to {path}"
+                # Get file size for debugging
+                file_size = path.stat().st_size if path.exists() else 0
+                return f"Screenshot saved to {path} ({file_size // 1024}KB)"
             
             # ---- Extract readable text ----
             elif action == "extract":

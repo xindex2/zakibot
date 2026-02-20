@@ -77,6 +77,40 @@ def _markdown_to_telegram_html(text: str) -> str:
     return text
 
 
+def _split_telegram_message(text: str, max_len: int = 4000) -> list[str]:
+    """Split a long message into Telegram-safe chunks (≤ max_len chars each).
+    
+    Splits at newlines to preserve formatting. Falls back to hard split if a
+    single line exceeds max_len.
+    """
+    if len(text) <= max_len:
+        return [text]
+    
+    chunks: list[str] = []
+    current = ""
+    
+    for line in text.split("\n"):
+        # If adding this line would exceed the limit, flush current chunk
+        if current and len(current) + 1 + len(line) > max_len:
+            chunks.append(current)
+            current = ""
+        
+        # If a single line exceeds max_len, hard-split it
+        if len(line) > max_len:
+            if current:
+                chunks.append(current)
+                current = ""
+            for i in range(0, len(line), max_len):
+                chunks.append(line[i:i + max_len])
+        else:
+            current = current + "\n" + line if current else line
+    
+    if current:
+        chunks.append(current)
+    
+    return chunks if chunks else [text]
+
+
 class TelegramChannel(BaseChannel):
     """
     Telegram channel using long polling.
@@ -327,11 +361,14 @@ class TelegramChannel(BaseChannel):
             # Send remaining text if any
             if text_content:
                 html_content = _markdown_to_telegram_html(text_content)
-                await self._app.bot.send_message(
-                    chat_id=chat_id,
-                    text=html_content,
-                    parse_mode="HTML"
-                )
+                # Telegram has a 4096 character limit per message — split if needed
+                chunks = _split_telegram_message(html_content, max_len=4000)
+                for chunk in chunks:
+                    await self._app.bot.send_message(
+                        chat_id=chat_id,
+                        text=chunk,
+                        parse_mode="HTML"
+                    )
         except ValueError:
             logger.error(f"Invalid chat_id: {msg.chat_id}")
         except Exception as e:

@@ -315,7 +315,14 @@ export default function AgentChat() {
                 body: formData,
             });
 
-            const data = await resp.json();
+            const text = await resp.text();
+            let data: any;
+            try {
+                data = JSON.parse(text);
+            } catch {
+                setError('Bot is not responding — it may still be starting up. Please try again.');
+                return;
+            }
 
             if (!resp.ok) {
                 setError(data.error || 'Failed to send message');

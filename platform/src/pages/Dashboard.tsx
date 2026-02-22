@@ -167,6 +167,15 @@ export default function Dashboard() {
     const [wsNewFileName, setWsNewFileName] = useState('');
     const [wsNewFileContent, setWsNewFileContent] = useState('');
     const [wsDragOver, setWsDragOver] = useState(false);
+    const [wsError, setWsError] = useState<string | null>(null);
+
+    // Reset workspace state when switching agents to prevent showing stale files
+    useEffect(() => {
+        setWsFiles([]);
+        setWsPath('');
+        setWsPreview(null);
+        setWsError(null);
+    }, [editingAgent?.id]);
 
     useEffect(() => {
         if (user) {
@@ -1638,6 +1647,7 @@ export default function Dashboard() {
                                         newFileName={wsNewFileName}
                                         newFileContent={wsNewFileContent}
                                         dragOver={wsDragOver}
+                                        error={wsError}
                                         setFiles={setWsFiles}
                                         setPath={setWsPath}
                                         setLoading={setWsLoading}
@@ -1646,6 +1656,7 @@ export default function Dashboard() {
                                         setNewFileName={setWsNewFileName}
                                         setNewFileContent={setWsNewFileContent}
                                         setDragOver={setWsDragOver}
+                                        setError={setWsError}
                                     />
                                 )}
 
@@ -1845,7 +1856,7 @@ function formatBytes(bytes: number) {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
 }
 
-function WorkspaceTab({ configId, userId, token, files, currentPath, loading, preview, showNewFile, newFileName, newFileContent, dragOver, setFiles, setPath, setLoading, setPreview, setShowNewFile, setNewFileName, setNewFileContent, setDragOver }: any) {
+function WorkspaceTab({ configId, userId, token, files, currentPath, loading, preview, showNewFile, newFileName, newFileContent, dragOver, error, setFiles, setPath, setLoading, setPreview, setShowNewFile, setNewFileName, setNewFileContent, setDragOver, setError }: any) {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [cleanupMsg, setCleanupMsg] = useState('');
 
@@ -1860,12 +1871,21 @@ function WorkspaceTab({ configId, userId, token, files, currentPath, loading, pr
                 const data = await resp.json();
                 setFiles(data.files || []);
                 setPath(subPath || '');
+                if (setError) setError(null);
+            } else {
+                console.error(`Workspace fetch failed: ${resp.status}`);
+                setFiles([]);
+                if (setError) setError('Failed to load workspace files. Try refreshing.');
             }
-        } catch (e) { console.error(e); }
+        } catch (e) {
+            console.error('Workspace fetch error:', e);
+            setFiles([]);
+            if (setError) setError('Could not connect to workspace. Try refreshing.');
+        }
         setLoading(false);
     };
 
-    useEffect(() => { if (configId && !configId.startsWith('temp-')) fetchFiles(); }, [configId]);
+    useEffect(() => { if (configId && !configId.startsWith('temp-')) fetchFiles(); }, [configId, token]);
 
     const uploadFiles = async (fileList: FileList) => {
         const fd = new FormData();
@@ -2015,8 +2035,15 @@ function WorkspaceTab({ configId, userId, token, files, currentPath, loading, pr
                     </div>
                 ) : files.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-16 text-center">
-                        <FolderOpen size={32} className="text-white/10 mb-3" />
-                        <p className="text-white/30 text-xs">Empty workspace. Drag files here or use the buttons above.</p>
+                        <FolderOpen size={32} className={error ? "text-red-400/30 mb-3" : "text-white/10 mb-3"} />
+                        {error ? (
+                            <>
+                                <p className="text-red-400/60 text-xs mb-2">{error}</p>
+                                <button onClick={() => fetchFiles(currentPath)} className="text-[10px] text-primary hover:text-primary/80 font-bold uppercase tracking-wider">Retry</button>
+                            </>
+                        ) : (
+                            <p className="text-white/30 text-xs">Empty workspace. Drag files here or use the buttons above.</p>
+                        )}
                     </div>
                 ) : (
                     <div className="divide-y divide-white/5">

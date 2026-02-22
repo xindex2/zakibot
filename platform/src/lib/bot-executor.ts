@@ -21,6 +21,10 @@ const MAX_RESTARTS = 5;
 const RESTART_WINDOW_MS = 10 * 60 * 1000; // 10 minutes
 const RESTART_DELAY_MS = 8000; // 8 seconds before restart (give port time to release)
 
+// --- Auto-shutdown for free-tier bots (save resources for paid users) ---
+const FREE_TTL_MS = 60 * 60 * 1000; // 1 hour
+const freeTimers: Record<string, NodeJS.Timeout> = {};
+
 async function autoRestartBot(configId: string, botName: string): Promise<void> {
     const now = Date.now();
     let state = restartState[configId];
@@ -548,11 +552,33 @@ export async function startBot(configId: string, isAutoRestart = false) {
         data: { status: 'running' }
     });
 
+    // Auto-stop free-tier bots after 1 hour to conserve server resources
+    const userPlan = (decryptedConfig as any).user?.subscription?.plan || 'Free';
+    if (userPlan === 'Free') {
+        if (freeTimers[configId]) clearTimeout(freeTimers[configId]);
+        freeTimers[configId] = setTimeout(async () => {
+            console.log(`[FreeTTL] Auto-stopping free bot "${config.name}" (${configId}) after 1h`);
+            try {
+                await stopBot(configId);
+            } catch (e: any) {
+                console.error(`[FreeTTL] Failed to stop bot "${config.name}":`, e.message);
+            }
+            delete freeTimers[configId];
+        }, FREE_TTL_MS);
+        console.log(`   ⏳ [${config.name}] Free-tier — will auto-stop in 1h`);
+    }
+
     startingLock[configId] = false;
     return { success: true };
 }
 
 export async function stopBot(configId: string) {
+    // Clear free-tier auto-shutdown timer if one exists
+    if (freeTimers[configId]) {
+        clearTimeout(freeTimers[configId]);
+        delete freeTimers[configId];
+    }
+
     try {
         execSync(`pkill -f "nanobot.*${configId}.json" > /dev/null 2>&1 || true`, { stdio: 'ignore' });
     } catch (e) { }
